@@ -28,9 +28,16 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Differentiator Hypothesis “Cho tôi biết điều gì cần chú ý và nên làm gì tiếp theo” — ưu tiên cao, chưa được phê duyệt là JTBD.
 - Cơ sở: [`docs/research/step-2-market-user-research.md`](docs/research/step-2-market-user-research.md).
 
+### Step 3 — Hoàn thành
+
+- Current User Journey v0.1 — `APPROVED`.
+- Pain Point Map v0.1 — `APPROVED`.
+- Product Model DO → TRUST → UNDERSTAND & ACT — `APPROVED`.
+- Nguyên tắc: Nếu DO và TRUST chưa tốt thì UNDERSTAND & ACT không đáng tin.
+
 ### Bước tiếp theo
 
-Tiếp tục Product Discovery và kiểm chứng các giả thuyết/câu hỏi mở sau Step 2.
+Tiếp tục Product Discovery và kiểm chứng các giả thuyết/câu hỏi mở sau Step 3.
 
 ## Chưa thuộc phạm vi
 
@@ -41,4 +48,4 @@ Tiếp tục Product Discovery và kiểm chứng các giả thuyết/câu hỏi
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 2: Primary Persona v0.1 và Jobs To Be Done v0.1 được Product Owner phê duyệt; Differentiator Hypothesis được giữ lại để kiểm chứng.
+2026-09-20 — Hoàn thành Step 3: Current User Journey v0.1, Pain Point Map v0.1 và Product Model DO → TRUST → UNDERSTAND & ACT được Product Owner phê duyệt.

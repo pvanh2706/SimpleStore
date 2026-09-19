@@ -30,3 +30,10 @@ Các nội dung dưới đây là câu hỏi hoặc assumption cần kiểm ch�
 - Người dùng cần thấy bằng chứng hoặc cách giải thích nào để tin và hành động theo gợi ý?
 - Hypothesis này có tạo khác biệt đủ rõ so với các sản phẩm hiện có không?
 - Người dùng có willingness-to-pay cho outcome này hay chỉ sẵn sàng trả tiền cho các workflow nền tảng?
+
+### Current User Journey / Pain Point Map — kiểm chứng tiếp
+
+- Tần suất và mức độ nghiêm trọng của P1–P7 khác nhau thế nào giữa các phân khúc trong Primary Persona?
+- Giai đoạn nào trong vòng vận hành tạo ra nhiều gián đoạn, sai sót hoặc mất niềm tin nhất?
+- HĐĐT/thuế phát sinh tại những điểm nào trong bán hàng, đổi trả và điều chỉnh đối với từng nhóm cửa hàng?
+- Có thể quan sát và đo lường DO, TRUST và UNDERSTAND & ACT bằng những hành vi hoặc kết quả nào?
