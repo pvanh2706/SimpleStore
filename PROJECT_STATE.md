@@ -4,9 +4,9 @@
 
 **Product Discovery**
 
-## Đối tượng nghiên cứu ban đầu
+## Primary Persona
 
-Chủ cửa hàng tạp hóa nhỏ tại Việt Nam.
+Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vận hành và chịu trách nhiệm ít nhất cho bán hàng, nhập hàng/tồn kho và kết quả kinh doanh — `APPROVED`.
 
 ## Phạm vi hiện tại
 
@@ -21,9 +21,16 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam.
 - Product Vision v0.1 — `APPROVED`.
 - Problem Definition v0.1 — `APPROVED`.
 
+### Step 2 — Hoàn thành
+
+- Primary Persona v0.1 — `APPROVED`.
+- Jobs To Be Done v0.1 — `APPROVED`.
+- Differentiator Hypothesis “Cho tôi biết điều gì cần chú ý và nên làm gì tiếp theo” — ưu tiên cao, chưa được phê duyệt là JTBD.
+- Cơ sở: [`docs/research/step-2-market-user-research.md`](docs/research/step-2-market-user-research.md).
+
 ### Bước tiếp theo
 
-Target Persona / Jobs To Be Done.
+Tiếp tục Product Discovery và kiểm chứng các giả thuyết/câu hỏi mở sau Step 2.
 
 ## Chưa thuộc phạm vi
 
@@ -34,4 +41,4 @@ Target Persona / Jobs To Be Done.
 
 ## Cập nhật gần nhất
 
-2026-09-19 — Hoàn thành Step 1: Product Vision v0.1 và Problem Definition v0.1 được Product Owner phê duyệt.
+2026-09-20 — Hoàn thành Step 2: Primary Persona v0.1 và Jobs To Be Done v0.1 được Product Owner phê duyệt; Differentiator Hypothesis được giữ lại để kiểm chứng.
