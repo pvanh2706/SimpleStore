@@ -1,8 +1,8 @@
 # Step 2 Market & User Research — Chủ cửa hàng tạp hóa nhỏ tại Việt Nam
 
-**Trạng thái:** Draft for Product Owner review — không phải quyết định đã APPROVED
-**Ngày nghiên cứu:** 2026-09-20
-**Mục đích:** Cung cấp bằng chứng để BA hoàn thiện Target Persona + Jobs To Be Done v0.1. Tài liệu không thiết kế solution và không tự quyết định product requirements.
+- **Trạng thái:** Draft for Product Owner review — không phải quyết định đã APPROVED
+- **Ngày nghiên cứu:** 2026-09-20
+- **Mục đích:** Cung cấp bằng chứng để BA hoàn thiện Target Persona + Jobs To Be Done v0.1. Tài liệu không thiết kế solution và không tự quyết định product requirements.
 
 ## 1. Executive Summary
 
