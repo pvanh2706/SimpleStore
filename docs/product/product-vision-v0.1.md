@@ -8,6 +8,8 @@
 
 SimpleStore giúp chủ cửa hàng nhỏ vận hành và hiểu tình hình kinh doanh mà không cần giỏi phần mềm hoặc kế toán.
 
+Thay vì yêu cầu người dùng học cách sử dụng một hệ thống quản lý, SimpleStore thích nghi với cách họ suy nghĩ, giải thích những gì đang xảy ra trong cửa hàng và giúp họ biết việc tiếp theo cần làm.
+
 ## Định vị đã được phê duyệt
 
 SimpleStore không được định vị chỉ là một hệ thống POS. Khả năng hỗ trợ bán hàng có thể là một phần của sản phẩm, nhưng không phải toàn bộ định nghĩa sản phẩm.
