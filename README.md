@@ -9,6 +9,8 @@ SimpleStore đang ở giai đoạn **Product Discovery**.
 - `PROJECT_STATE.md`: trạng thái hiện tại của dự án.
 - `DECISIONS.md`: nhật ký quyết định sản phẩm.
 - `OPEN_QUESTIONS.md`: các câu hỏi cần làm rõ.
+- `docs/product/product-vision-v0.1.md`: Product Vision v0.1 đã được phê duyệt.
+- `docs/product/problem-definition-v0.1.md`: Problem Definition v0.1 đã được phê duyệt.
 - `docs/`: tài liệu Product/BA, nghiên cứu, UX và kiến trúc.
 
-Hiện tại repository chỉ chứa tài liệu khởi tạo; chưa có frontend, backend, database hoặc source code ứng dụng.
+Hiện tại repository chỉ chứa tài liệu Product Discovery; chưa có frontend, backend, database hoặc source code ứng dụng.

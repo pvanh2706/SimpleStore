@@ -14,6 +14,17 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam.
 - Ghi nhận câu hỏi mở, giả thuyết và bằng chứng nghiên cứu.
 - Chuẩn bị cơ sở để Product Owner xem xét các quyết định sản phẩm.
 
+## Tiến độ
+
+### Step 1 — Hoàn thành
+
+- Product Vision v0.1 — `APPROVED`.
+- Problem Definition v0.1 — `APPROVED`.
+
+### Bước tiếp theo
+
+Target Persona / Jobs To Be Done.
+
 ## Chưa thuộc phạm vi
 
 - Phát triển frontend.
@@ -23,4 +34,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam.
 
 ## Cập nhật gần nhất
 
-2026-09-19 — Khởi tạo cấu trúc tài liệu Product/BA.
+2026-09-19 — Hoàn thành Step 1: Product Vision v0.1 và Problem Definition v0.1 được Product Owner phê duyệt.
