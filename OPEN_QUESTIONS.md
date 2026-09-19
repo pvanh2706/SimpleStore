@@ -24,7 +24,9 @@ Các nội dung dưới đây là câu hỏi hoặc assumption cần kiểm ch�
 - Họ hiện dựa vào dữ liệu, kinh nghiệm hoặc tín hiệu nào để ra quyết định?
 - Bằng chứng nào cho thấy chiều sâu và mức độ ảnh hưởng của Decision Problem trong thực tế vận hành?
 
-### Differentiator Hypothesis
+### C14 / Differentiator Hypothesis — cần tiếp tục kiểm chứng
+
+C14 — Attention & Decision Support đã được phê duyệt là một phần của Capability Map. Việc phê duyệt capability không xác nhận nhu cầu, value hoặc willingness-to-pay cho outcome liên quan.
 
 - “Cho tôi biết điều gì cần chú ý và nên làm gì tiếp theo” có phải là một outcome đủ quan trọng và thường xuyên không?
 - Người dùng cần thấy bằng chứng hoặc cách giải thích nào để tin và hành động theo gợi ý?

@@ -40,9 +40,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Product Principles v0.1 gồm 6 principles — `APPROVED`.
 - Product Principle Evaluation Checklist được lưu cùng tài liệu để hỗ trợ review feature.
 
+### Step 5 — Hoàn thành
+
+- Capability Map v0.1 gồm 19 capability thuộc DO, TRUST, UNDERSTAND & ACT và FOUNDATION — `APPROVED`.
+- Capability Map chưa quyết định capability nào thuộc MVP.
+- C14 — Attention & Decision Support đã được phê duyệt là capability; value và willingness-to-pay liên quan vẫn cần được kiểm chứng.
+
 ### Bước tiếp theo
 
-Capability Map.
+Step 6 — MVP Scope.
 
 ## Chưa thuộc phạm vi
 
@@ -53,4 +59,4 @@ Capability Map.
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 4: Product Principles v0.1 được Product Owner phê duyệt; bước tiếp theo là Capability Map.
+2026-09-20 — Hoàn thành Step 5: Capability Map v0.1 được Product Owner phê duyệt; bước tiếp theo là Step 6 — MVP Scope.
