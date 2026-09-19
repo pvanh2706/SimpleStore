@@ -35,9 +35,14 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Product Model DO → TRUST → UNDERSTAND & ACT — `APPROVED`.
 - Nguyên tắc: Nếu DO và TRUST chưa tốt thì UNDERSTAND & ACT không đáng tin.
 
+### Step 4 — Hoàn thành
+
+- Product Principles v0.1 gồm 6 principles — `APPROVED`.
+- Product Principle Evaluation Checklist được lưu cùng tài liệu để hỗ trợ review feature.
+
 ### Bước tiếp theo
 
-Tiếp tục Product Discovery và kiểm chứng các giả thuyết/câu hỏi mở sau Step 3.
+Capability Map.
 
 ## Chưa thuộc phạm vi
 
@@ -48,4 +53,4 @@ Tiếp tục Product Discovery và kiểm chứng các giả thuyết/câu hỏi
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 3: Current User Journey v0.1, Pain Point Map v0.1 và Product Model DO → TRUST → UNDERSTAND & ACT được Product Owner phê duyệt.
+2026-09-20 — Hoàn thành Step 4: Product Principles v0.1 được Product Owner phê duyệt; bước tiếp theo là Capability Map.

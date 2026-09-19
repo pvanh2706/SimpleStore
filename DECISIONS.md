@@ -54,3 +54,12 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Quyết định:** Current User Journey v0.1 gồm 8 giai đoạn; Pain Point Map v0.1 gồm P1–P7; Product Model là DO → TRUST → UNDERSTAND & ACT.
 - **Nguyên tắc:** Nếu DO và TRUST chưa tốt thì UNDERSTAND & ACT không đáng tin.
 - **Tài liệu:** [`docs/product/current-user-journey-v0.1.md`](docs/product/current-user-journey-v0.1.md), [`docs/product/pain-point-map-v0.1.md`](docs/product/pain-point-map-v0.1.md), [`docs/product/product-model-do-trust-understand-act.md`](docs/product/product-model-do-trust-understand-act.md)
+
+### D-006 — Product Principles v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Principles v0.1 gồm 6 principles: Simple on the surface, capable underneath; Reliability before intelligence; Design around user outcomes, not software modules; Explain instead of exposing complexity; Protect the critical path; Information should lead toward action.
+- **Lưu ý:** “Dễ dùng” không phải Product Principle độc lập vì quá chung chung.
+- **Tài liệu:** [`docs/product/product-principles-v0.1.md`](docs/product/product-principles-v0.1.md)
