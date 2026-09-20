@@ -84,9 +84,20 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Giữ nguyên Step 1–7; không thêm feature hoặc thiết kế database/API/UI/architecture.
 - Tài liệu: [`docs/ux/mvp-user-flows-v0.1.md`](docs/ux/mvp-user-flows-v0.1.md).
 
+### Step 9 — Hoàn thành
+
+- Domain Model v0.1 — `APPROVED`: domain concepts, relationships, 13 invariants, costing và payment/debt behavior.
+- Decision A — `APPROVED`: Moving Weighted Average; SaleLine giữ cost snapshot, Return dùng cost basis gốc; Purchase reversal đảo đúng quantity/value contribution.
+- Decision B — `APPROVED`: Payment là tiền thực thu/thực trả; một transaction có thể có nhiều Payment; trả nợ khách/NCC sau ghi nhận Payment và giảm outstanding debt.
+- InventoryMovement là nguồn giải thích tồn; debt giải thích được từ transaction/payment; các số liệu tổng hợp là derived information.
+- Completed Sale/Purchase/Return bất biến, không hard-delete; ReturnLine tham chiếu OriginalSaleLine; consistency/idempotency Step 8 giữ nguyên.
+- Customer chỉ đủ nhận diện người nợ, không CRM; không generic accounting ledger.
+- Giữ nguyên Step 1–8; chưa thiết kế database/API/EF Core/frontend model hoặc architecture implementation chi tiết.
+- Tài liệu: [`docs/architecture/domain-model-v0.1.md`](docs/architecture/domain-model-v0.1.md).
+
 ### Bước tiếp theo
 
-**Step 9 — Domain Model**.
+**Step 10 — Architecture**.
 
 ## Chưa thuộc phạm vi
 
@@ -97,4 +108,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 8: MVP User Flows v0.1 được Product Owner phê duyệt; bước tiếp theo là Step 9 — Domain Model. Step 1–7 giữ nguyên.
+2026-09-20 — Hoàn thành Step 9: Domain Model v0.1 cùng Decision A (Moving Weighted Average) và Decision B (Payment & Debt) được Product Owner phê duyệt. Bước tiếp theo: Step 10 — Architecture. Step 1–8 giữ nguyên.

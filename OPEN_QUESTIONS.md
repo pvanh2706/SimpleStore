@@ -54,7 +54,6 @@ Phạm vi đã chốt được ghi tại [MVP Scope v0.1](docs/product/mvp-scope
 
 Các câu hỏi dưới đây không mở rộng functional scope đã APPROVED và chưa phải quyết định thiết kế:
 
-- Phương pháp giá vốn nào sẽ được chọn để nhập hàng, bán hàng và trả/hủy phản ánh nhất quán?
 - Cashier bị hạn chế cụ thể thế nào trong từng luồng sửa/hủy/điều chỉnh của MVP?
 - Pilot thực tế có cần nhiều barcode cho một sản phẩm không (SHOULD có điều kiện tại C2)?
 - Template import cố định cuối cùng cần những trường bắt buộc nào? Step 7 đã chốt validation bắt buộc, barcode trùng, kiểu số và báo dòng lỗi; không xây importer tổng quát.
@@ -67,6 +66,29 @@ Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, t
 
 - Có chốt áp dụng giới hạn chỉ Owner được Void transaction Completed trong pilot không? Step 8 cho phép giới hạn này; chưa suy diễn thành quyền Void cho Cashier.
 - Import áp dụng chính sách nhận toàn bộ file hay từng phần? Dù chọn cách nào, không được có trạng thái import nửa vời mà người dùng không biết; phải báo rõ kết quả để xử lý an toàn.
-- Phương pháp giá vốn, khổ giấy/thiết bị pilot và ngưỡng/cửa sổ dữ liệu C14 vẫn cần làm rõ như các câu hỏi ở trên; ví dụ trong user flows không chốt các lựa chọn này.
+- Khổ giấy/thiết bị pilot và ngưỡng/cửa sổ dữ liệu C14 vẫn cần làm rõ như các câu hỏi ở trên; ví dụ trong user flows không chốt các lựa chọn này.
 
-Bước tiếp theo: **Step 9 — Domain Model**. Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
+Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
+
+## Đã giải quyết tại Step 9 — APPROVED
+
+### Phương pháp giá vốn — D-012 / Decision A
+
+**Đã quyết định:** Moving Weighted Average — Bình quân gia quyền di động.
+
+SaleLine snapshot giá vốn tại Sale Completed; không tính lại lịch sử từ CurrentCost. Return dùng cost basis SaleLine gốc; restock phục hồi quantity/value phù hợp. Purchase reversal đảo đúng quantity/value contribution của transaction gốc theo business semantics. Không đưa lot/FIFO/serial/expiry costing vào MVP.
+
+### Payment / Debt behavior — D-013 / Decision B
+
+**Đã quyết định:** Payment là tiền thực thu/thực trả, domain cho phép nhiều Payment liên quan một transaction. Khách trả nợ sau và cửa hàng trả nợ NCC sau đều phải ghi nhận Payment và giảm Outstanding Debt.
+
+Customer/Supplier debt được suy ra và giải thích từ transaction, payment, returns/reversals/adjustments phù hợp; không sửa số nợ tùy ý. Customer chỉ cần đủ để nhận diện người đang nợ; không mở CRM hoặc generic accounting ledger.
+
+## Ranh giới chưa chốt sau Step 9
+
+- Permission chi tiết, giới hạn Void, chính sách import, thiết bị pilot và các câu hỏi kiểm chứng người dùng/C14 ở trên vẫn mở.
+- Việc Sale Payment, Customer Debt Payment, Purchase Payment và Supplier Debt Payment dùng chung abstraction hay không được quyết định ở Architecture/Technical Design.
+- Cách cache/materialize current stock hoặc outstanding balance chưa chốt; mọi lựa chọn phải giữ nguồn nghiệp vụ audit/explain được.
+- Chưa thiết kế SQL/database schema, API contracts, EF Core entities, frontend model hoặc architecture implementation chi tiết.
+
+Bước tiếp theo: **Step 10 — Architecture**. Tham chiếu: [Domain Model v0.1](docs/architecture/domain-model-v0.1.md). Tài liệu Step 1–8 giữ nguyên như lịch sử phê duyệt; hai quyết định trên là trạng thái hiện hành.

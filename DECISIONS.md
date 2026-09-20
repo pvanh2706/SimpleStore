@@ -123,3 +123,36 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Ranh giới:** Giữ nguyên Step 1–7; không thêm feature, không thiết kế database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation. C7 vẫn chỉ là integration point.
 - **Bước tiếp theo:** Step 9 — Domain Model.
 - **Tài liệu:** [`docs/ux/mvp-user-flows-v0.1.md`](docs/ux/mvp-user-flows-v0.1.md)
+
+### D-011 — Domain Model v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Phê duyệt Step 9 — conceptual domain model gồm Store, Warehouse, User, Product, Customer tối thiểu, Supplier, Purchase/PurchaseLine, Sale/SaleLine, Return/ReturnLine, Payment, InventoryMovement, StockAdjustment và Reversal/Audit relationships.
+- **Inventory:** InventoryMovement giải thích nguồn tồn, quantity/value và cost basis; mọi thay đổi tồn có movement/source. Current stock là tổng movement hợp lệ; cache/materialization không thay thế nguồn nghiệp vụ có thể audit.
+- **Cost history / Return:** SaleLine giữ UnitCostAtSale/CostBasis tại Sale Completed; không lấy CurrentCost để tính lại lịch sử. ReturnLine tham chiếu OriginalSaleLine, không vượt số còn được trả; restock phục hồi quantity/value theo cost basis gốc.
+- **Invariants:** Phê duyệt 13 domain invariants trong tài liệu. Completed Sale/Purchase/Return bất biến; không hard-delete; correction có reversal/audit; consistency/idempotency Step 8 tiếp tục áp dụng. Số liệu tổng hợp và “Hôm nay cửa hàng thế nào?” là projection từ domain data.
+- **Ranh giới:** Giữ nguyên Step 1–8; không thêm feature ngoài nội dung được duyệt, không thiết kế SQL/database schema, API contracts, EF Core entities, frontend model hoặc architecture implementation chi tiết.
+- **Bước tiếp theo:** Step 10 — Architecture.
+- **Tài liệu:** [`docs/architecture/domain-model-v0.1.md`](docs/architecture/domain-model-v0.1.md)
+
+### D-012 — Step 9 / Decision A — Costing Method
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** MVP dùng Moving Weighted Average — Bình quân gia quyền di động.
+- **Hành vi:** SaleLine snapshot giá vốn khi Sale Completed. Return dùng cost basis của SaleLine gốc; restock phục hồi quantity và inventory value tương ứng. Purchase reversal phải đảo đúng quantity/value contribution của transaction gốc theo business semantics, không chỉ giảm quantity.
+- **Ranh giới:** Không đưa lot/FIFO/serial/expiry costing complexity vào MVP. Các câu hỏi chọn phương pháp giá vốn ở bước trước được giải quyết bởi quyết định này; tài liệu Step 1–8 được giữ nguyên.
+- **Tài liệu:** [Domain Model v0.1 — Decision A](docs/architecture/domain-model-v0.1.md#decision-a--costing-method--approved)
+
+### D-013 — Step 9 / Decision B — Payment & Debt Model
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Payment chỉ biểu diễn tiền thực nhận/thực trả, không đồng nghĩa Debt. Domain cho phép nhiều Payment liên quan một transaction.
+- **Hành vi:** Customer trả nợ sau hoặc cửa hàng trả nợ NCC sau đều ghi nhận Payment và giảm Outstanding Debt. Debt phải suy ra, giải thích được từ transaction, payment và returns/reversals/adjustments phù hợp; không sửa Customer.Debt hoặc Supplier outstanding debt tùy ý.
+- **Ranh giới:** Customer tối thiểu để xác định người đang nợ, không CRM; Payment/Debt không trở thành generic accounting ledger đầy đủ. Sale Payment, Customer Debt Payment, Purchase Payment và Supplier Debt Payment là các vai trò conceptual; việc dùng chung abstraction chưa chốt.
+- **Tài liệu:** [Domain Model v0.1 — Decision B](docs/architecture/domain-model-v0.1.md#decision-b--payment--debt-model--approved)
