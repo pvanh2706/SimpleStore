@@ -46,9 +46,22 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Capability Map chưa quyết định capability nào thuộc MVP.
 - C14 — Attention & Decision Support đã được phê duyệt là capability; value và willingness-to-pay liên quan vẫn cần được kiểm chứng.
 
+### Step 6 — Hoàn thành
+
+- MVP Scope v0.1 — `APPROVED`.
+- MVP phục vụ vận hành thật cho 1 cửa hàng, 1 kho chính, 1 chủ cửa hàng và một số nhân viên bán hàng.
+- Vòng end-to-end: khởi tạo → tạo/import hàng → nhập hàng → bán + thanh toán + in → tồn/tiền/giá vốn tự cập nhật → trả hoặc sửa giao dịch → đối soát cuối ngày → hiểu tình hình hôm nay → biết ít nhất một việc đáng chú ý.
+- CORE: C1, C2, C3, C4, C8, C9, C10, C15, C17.
+- CORE-LITE: C5, C6, C11, C16, C18.
+- DIFFERENTIATOR-LITE / EXPERIMENT: C12, C13, C14; C14 chỉ là experiment mỏng, ưu tiên deterministic/rule-based, nhu cầu và willingness-to-pay chưa validated.
+- C19 chỉ gồm integration thực sự cần cho MVP. C7 chỉ chừa integration point cho service API HĐĐT riêng của Product Owner; không xây capability HĐĐT nội bộ.
+- DO và TRUST phải đủ chắc; resilience phải ngăn double sale và dữ liệu nửa vời khi timeout, double-submit, retry hoặc lỗi thiết bị/external API. Không yêu cầu full offline.
+- Tài liệu: [`docs/product/mvp-scope-v0.1.md`](docs/product/mvp-scope-v0.1.md).
+- Các nội dung Step 1–5 ở trên ghi nhận phạm vi phê duyệt tại từng bước và được giữ nguyên; phạm vi MVP hiện tại được chốt tại Step 6.
+
 ### Bước tiếp theo
 
-Step 6 — MVP Scope.
+Chưa chốt bước tiếp theo. Tiếp tục theo chỉ đạo của Product Owner trong phạm vi MVP đã duyệt; không tự mở rộng MVP hoặc bắt đầu triển khai ứng dụng trong lần cập nhật tài liệu này.
 
 ## Chưa thuộc phạm vi
 
@@ -59,4 +72,4 @@ Step 6 — MVP Scope.
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 5: Capability Map v0.1 được Product Owner phê duyệt; bước tiếp theo là Step 6 — MVP Scope.
+2026-09-20 — Hoàn thành Step 6: MVP Scope v0.1 được Product Owner phê duyệt. Step 1–5 giữ nguyên; C14/willingness-to-pay chưa validated và C7 chỉ là integration point trong MVP.

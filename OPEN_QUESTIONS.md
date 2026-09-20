@@ -26,7 +26,7 @@ Các nội dung dưới đây là câu hỏi hoặc assumption cần kiểm ch�
 
 ### C14 / Differentiator Hypothesis — cần tiếp tục kiểm chứng
 
-C14 — Attention & Decision Support đã được phê duyệt là một phần của Capability Map. Việc phê duyệt capability không xác nhận nhu cầu, value hoặc willingness-to-pay cho outcome liên quan.
+C14 — Attention & Decision Support đã được phê duyệt là một phần của Capability Map. Step 6 đã phê duyệt đưa C14 vào MVP chỉ ở mức experiment mỏng, ưu tiên rule-based/deterministic, chưa cần AI. Việc phê duyệt capability và phạm vi experiment không xác nhận nhu cầu, value hoặc willingness-to-pay cho outcome liên quan; các giả thuyết này vẫn chưa validated.
 
 - “Cho tôi biết điều gì cần chú ý và nên làm gì tiếp theo” có phải là một outcome đủ quan trọng và thường xuyên không?
 - Người dùng cần thấy bằng chứng hoặc cách giải thích nào để tin và hành động theo gợi ý?
@@ -39,3 +39,13 @@ C14 — Attention & Decision Support đã được phê duyệt là một phần
 - Giai đoạn nào trong vòng vận hành tạo ra nhiều gián đoạn, sai sót hoặc mất niềm tin nhất?
 - HĐĐT/thuế phát sinh tại những điểm nào trong bán hàng, đổi trả và điều chỉnh đối với từng nhóm cửa hàng?
 - Có thể quan sát và đo lường DO, TRUST và UNDERSTAND & ACT bằng những hành vi hoặc kết quả nào?
+
+### Làm rõ trong phạm vi MVP đã duyệt
+
+Các câu hỏi này không mở lại phạm vi Step 6 và không tự tạo thêm capability hoặc feature:
+
+- Với experiment C14, rule/tín hiệu tối thiểu nào giúp chủ cửa hàng nhận biết việc đáng chú ý, và bằng chứng nào đủ để đánh giá value/willingness-to-pay?
+- Những integration C19 và thiết bị C17 cụ thể nào thực sự cần cho vòng vận hành MVP?
+- Integration point C7 cần chừa dữ liệu và ranh giới trách nhiệm nào để sau này gọi service API HĐĐT riêng của Product Owner? Không xây capability HĐĐT nội bộ và không mặc định phải kết nối service ngay trong MVP.
+
+Phạm vi đã chốt được ghi tại [MVP Scope v0.1](docs/product/mvp-scope-v0.1.md).

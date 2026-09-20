@@ -73,3 +73,19 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Ranh giới:** Capability Map chưa quyết định capability nào thuộc MVP. AI không phải capability cấp cao mà chỉ là một possible implementation mechanism.
 - **Chưa được xác nhận:** C14 — Attention & Decision Support thuộc Capability Map đã được phê duyệt, nhưng nhu cầu và willingness-to-pay cho outcome liên quan vẫn chưa được validated.
 - **Tài liệu:** [`docs/capabilities/capability-map-v0.1.md`](docs/capabilities/capability-map-v0.1.md)
+
+### D-008 — MVP Scope v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** MVP phải đủ để một cửa hàng tạp hóa nhỏ vận hành thật theo vòng end-to-end từ khởi tạo, tạo/import hàng, nhập hàng, bán + thanh toán + in, tự cập nhật tồn/tiền/giá vốn, xử lý trả hoặc sửa giao dịch, đối soát cuối ngày đến hiểu “Hôm nay cửa hàng thế nào?” và biết ít nhất một việc đáng chú ý.
+- **Ranh giới:** 1 cửa hàng, 1 kho chính, 1 chủ cửa hàng và một số nhân viên bán hàng; chưa hỗ trợ multi-branch đầy đủ hoặc kế toán đầy đủ.
+- **CORE:** C1, C2, C3, C4, C8, C9, C10, C15, C17.
+- **CORE-LITE:** C5, C6, C11, C16, C18.
+- **DIFFERENTIATOR-LITE / EXPERIMENT:** C12, C13, C14. C14 chỉ là experiment mỏng, ưu tiên rule-based/deterministic, chưa cần AI; nhu cầu, value và willingness-to-pay vẫn chưa validated.
+- **LIMITED / OUT OF BUILD SCOPE:** C19 chỉ gồm integration thực sự cần cho MVP. C7 chỉ chừa integration point để sau này gọi service API HĐĐT riêng của Product Owner; không xây capability HĐĐT nội bộ trong MVP.
+- **Nguyên tắc:** Vòng vận hành hoàn chỉnh; DO và TRUST trước UNDERSTAND & ACT; C8–C11 là nền tảng TRUST. Không cần full offline nhưng phải xử lý timeout, double-submit, retry, lỗi thiết bị/external API mà không tạo double sale hoặc dữ liệu nửa vời.
+- **Ngoài MVP:** CRM đầy đủ, loyalty phức tạp, marketing automation, website/e-commerce, multi-branch đầy đủ, kế toán đầy đủ, AI chatbot, forecasting phức tạp, dashboard BI lớn, phân quyền enterprise, full offline synchronization.
+- **Bảo toàn quyết định:** Không thay đổi Step 1–5 đã `APPROVED`; không tự mở rộng MVP.
+- **Tài liệu:** [`docs/product/mvp-scope-v0.1.md`](docs/product/mvp-scope-v0.1.md)
