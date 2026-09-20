@@ -56,7 +56,7 @@ Các câu hỏi dưới đây không mở rộng functional scope đã APPROVED 
 
 - Cashier bị hạn chế cụ thể thế nào trong từng luồng sửa/hủy/điều chỉnh của MVP?
 - Pilot thực tế có cần nhiều barcode cho một sản phẩm không (SHOULD có điều kiện tại C2)?
-- Template import cố định cuối cùng cần những trường bắt buộc nào? Step 7 đã chốt validation bắt buộc, barcode trùng, kiểu số và báo dòng lỗi; không xây importer tổng quát.
+- Chi tiết định dạng template/validation per field sẽ hoàn thiện cho Slice 1 theo required fields và Opening Cost rule đã chốt tại Step 11; không mở lại all-or-nothing policy.
 
 Phạm vi functional scope tham chiếu: [MVP Functional Scope v0.1](docs/capabilities/mvp-functional-scope-v0.1.md).
 
@@ -65,7 +65,6 @@ Phạm vi functional scope tham chiếu: [MVP Functional Scope v0.1](docs/capabi
 Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, timeout recovery, Completed bất biến, Purchase consistency, Return validation và Reprint. Các câu hỏi sau không mở lại các nguyên tắc đó:
 
 - Có chốt áp dụng giới hạn chỉ Owner được Void transaction Completed trong pilot không? Step 8 cho phép giới hạn này; chưa suy diễn thành quyền Void cho Cashier.
-- Import áp dụng chính sách nhận toàn bộ file hay từng phần? Dù chọn cách nào, không được có trạng thái import nửa vời mà người dùng không biết; phải báo rõ kết quả để xử lý an toàn.
 - Khổ giấy/thiết bị pilot và ngưỡng/cửa sổ dữ liệu C14 vẫn cần làm rõ như các câu hỏi ở trên; ví dụ trong user flows không chốt các lựa chọn này.
 
 Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
@@ -90,13 +89,13 @@ Customer/Supplier debt được suy ra và giải thích từ transaction, payme
 
 **Đã quyết định:** Critical operation dùng client-generated `OperationId`/`IdempotencyKey`. Retry cùng operation đã Completed trả lại kết quả cũ; không tạo business transaction mới. Cùng OperationId nhưng request identity khác bị từ chối.
 
-Business changes và operation result phải commit atomically trong cùng local SQL transaction. Frontend disable button chỉ hỗ trợ UX; backend là idempotency boundary. Step 11 mới quyết định schema, request fingerprint representation, status transition và recovery implementation cụ thể.
+Business changes và operation result phải commit atomically trong cùng local SQL transaction. Frontend disable button chỉ hỗ trợ UX; backend là idempotency boundary. Các chi tiết schema, request fingerprint representation, status transition và recovery implementation sẽ được làm just enough cho slice tương ứng; Step 11 chưa chốt toàn bộ.
 
 ### Inventory ledger / materialized balance / concurrency — D-014 / Decision B
 
 **Đã quyết định:** `InventoryMovement` là immutable/explainable ledger; `InventoryBalance` là materialized operational state. Movement và balance cập nhật atomically trong cùng transaction.
 
-Concurrent mutation trên cùng `Product + Warehouse` phải được serialized/controlled và operation nhiều sản phẩm dùng deterministic order. Không hỗ trợ direct retroactive Purchase Void khi downstream movement làm costing không còn an toàn; không xây retroactive costing/revaluation engine trong MVP. Locking/isolation/optimistic concurrency strategy cụ thể thuộc Step 11.
+Concurrent mutation trên cùng `Product + Warehouse` phải được serialized/controlled và operation nhiều sản phẩm dùng deterministic order. Không hỗ trợ direct retroactive Purchase Void khi downstream movement làm costing không còn an toàn; không xây retroactive costing/revaluation engine trong MVP. Locking/isolation/optimistic concurrency strategy cụ thể còn mở cho technical design của slice tương ứng.
 
 ### Negative Stock policy — D-014 / Decision C
 
@@ -104,17 +103,37 @@ Concurrent mutation trên cùng `Product + Warehouse` phải được serialized
 
 Cost tạm dùng last known average cost, fallback reference purchase cost; nếu cost vẫn chưa đáng tin thì cost/profit liên quan phải được đánh dấu và hiển thị là ước tính. Không retroactively revalue lịch sử trong MVP.
 
-## Ranh giới chưa chốt sau Step 10
+## Chi tiết kỹ thuật còn mở sau Step 11
 
 Các câu hỏi này là technical/design detail hoặc validation tiếp theo, không mở lại Architecture v0.1:
 
 - Permission matrix chi tiết và việc Void transaction Completed có giới hạn Owner only trong pilot hay không.
-- Chính sách import toàn bộ hay từng phần, trường bắt buộc cuối cùng và nhu cầu nhiều barcode cho một sản phẩm.
+- Định dạng template cụ thể trong phạm vi các rule Step 11 và nhu cầu nhiều barcode cho một sản phẩm trong pilot.
 - Thiết bị/khổ giấy pilot và lựa chọn browser print, local print agent hay printer service.
 - Rule window, threshold và điều kiện dữ liệu đủ tin cậy cho C14; value/willingness-to-pay vẫn cần kiểm chứng.
 - Việc các vai trò Payment dùng chung abstraction hay không; cách materialize outstanding debt nếu cần.
 - SQL schema, API contracts, EF Core mapping, concurrency implementation, idempotency record/status và permission implementation cụ thể.
-- Cơ chế authentication ASP.NET Core cụ thể; deployment topology, backup, monitoring, secrets và CI/CD chi tiết.
+- Chi tiết cấu hình Identity/Auth + secure HttpOnly cookie; deployment topology, backup, monitoring, secrets và CI/CD. Authentication direction đã chốt tại Step 11.
 - Request mapping, lifecycle/status và retry/dispatch mechanism nếu HĐĐT integration được bổ sung sau MVP core.
 
-Bước tiếp theo: **Step 11 — Development Plan / Technical Design Breakdown**. Tham chiếu: [Architecture v0.1](docs/architecture/architecture-v0.1.md). Tài liệu Step 1–9 giữ nguyên như lịch sử phê duyệt.
+Tham chiếu: [Architecture v0.1](docs/architecture/architecture-v0.1.md). Các chi tiết Slice 2+ được giải quyết per slice; không mở lại Step 1–10.
+
+## Đã giải quyết tại Step 11 — APPROVED
+
+### Tenancy Foundation — D-016 / Decision D
+
+1 tenant/account → 1 Store → 1 Main Warehouse; shared deployment/database có thể nhiều Store tenant. Business data phải scope theo Store/Tenant; test User Store A không đọc/sửa dữ liệu Store B. Không multi-branch/cross-store hoặc tenant management platform lớn.
+
+### Initial Import Policy — D-017 / Decision E
+
+Template cố định; Validate → Preview → Confirm. Có lỗi thì không import và báo rõ dòng/trường/lý do. Confirm all-or-nothing; không partial import trong pilot đầu. Product, OpeningBalance movement và InventoryBalance ghi atomically; retry confirm không duplicate.
+
+SKU bắt buộc nhưng có thể auto-generate; Barcode optional; Name/Unit/SalePrice required; ReferencePurchaseCost optional. Opening Qty > 0 cần Opening Cost hợp lệ. Các câu hỏi policy import ở Step 8/10 đã được giải quyết.
+
+### Foundation direction — D-015
+
+Identity/Auth + secure HttpOnly cookie cho SPA cùng site; không JWT/localStorage mặc định. EF Core migrations trong Infrastructure, production migration explicit. Testing dùng xUnit, WebApplicationFactory + SQL Server test DB, Vitest/Vue Test Utils và Playwright. Không dùng EF InMemory để kiểm chứng inventory transaction/concurrency.
+
+**Ready to begin implementation — Slice 0 Engineering Foundation**
+
+Sau đó: **Slice 1 — Setup + Product**. Tham chiếu: [Development Plan](docs/architecture/development-plan-v0.1.md), [Technical Breakdown Slice 0–1](docs/architecture/technical-breakdown-slice-0-1-v0.1.md).

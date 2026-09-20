@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Product Discovery**
+**Ready to begin implementation — Slice 0 Engineering Foundation**
 
 ## Primary Persona
 
@@ -10,9 +10,9 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Phạm vi hiện tại
 
-- Tìm hiểu người dùng, bối cảnh vận hành, vấn đề và nhu cầu.
-- Ghi nhận câu hỏi mở, giả thuyết và bằng chứng nghiên cứu.
-- Chuẩn bị cơ sở để Product Owner xem xét các quyết định sản phẩm.
+- Step 1–11 đã APPROVED; kế hoạch triển khai theo vertical slice đã được ghi nhận.
+- Sẵn sàng bắt đầu Slice 0 Engineering Foundation, sau đó Slice 1 — Setup + Product.
+- Lần cập nhật này chỉ ghi nhận tài liệu; chưa triển khai source code.
 
 ## Tiến độ
 
@@ -110,11 +110,25 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Giữ nguyên Step 1–9; chưa thiết kế SQL schema/API contract/EF mapping/frontend component tree/UI hoặc production infrastructure chi tiết.
 - Tài liệu: [`docs/architecture/architecture-v0.1.md`](docs/architecture/architecture-v0.1.md).
 
+### Step 11 — Hoàn thành
+
+- Development Plan / Technical Design Breakdown v0.1 — `APPROVED`.
+- Foundation → Setup + Product → Purchase → Inventory → Sale → Payment → Print → Return / Void → Debt + End-of-day → Understand & Act → Pilot, theo vertical slice end-to-end.
+- Chốt engineering foundation, repo structure, stack direction, thin Controllers/use cases, typed errors, cookie auth, explicit migrations và testing direction.
+- Decision D: 1 tenant/account → 1 Store → 1 Main Warehouse; shared deployment/database có thể nhiều tenant, business data scope theo Store/Tenant và phải test isolation.
+- Decision E: import template cố định, Validate → Preview → Confirm all-or-nothing; không partial import.
+- Slice 1: Product + OpeningBalance movement + InventoryBalance ghi atomically; tồn đầu dương cần cost hợp lệ, retry confirm không duplicate.
+- Milestones M0–M7; mỗi slice phải chạy thật Vue → API → DB và thỏa Definition of Done; không estimate ngày cứng.
+- Giữ nguyên Step 1–10; không mở rộng functional scope hoặc triển khai code trong lần cập nhật này.
+- Tài liệu: [Development Plan](docs/architecture/development-plan-v0.1.md), [Technical Breakdown Slice 0–1](docs/architecture/technical-breakdown-slice-0-1-v0.1.md).
+
 ### Bước tiếp theo
 
-**Step 11 — Development Plan / Technical Design Breakdown**.
+**Ready to begin implementation — Slice 0 Engineering Foundation**
 
-## Chưa thuộc phạm vi
+Sau đó: **Slice 1 — Setup + Product**.
+
+## Chưa triển khai trong lần cập nhật tài liệu này
 
 - Phát triển frontend.
 - Phát triển backend.
@@ -123,4 +137,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Hoàn thành Step 10: Architecture v0.1 cùng Transaction/Idempotency, Inventory Ledger/Balance/Concurrency và Negative Stock Policy được Product Owner phê duyệt. Bước tiếp theo: Step 11 — Development Plan / Technical Design Breakdown. Step 1–9 giữ nguyên.
+Hoàn thành Step 11: Development Plan / Technical Design Breakdown v0.1, Tenancy Foundation và Initial Import Policy đã APPROVED. Ready to begin implementation — Slice 0 Engineering Foundation; sau đó Slice 1 — Setup + Product. Chưa triển khai code.

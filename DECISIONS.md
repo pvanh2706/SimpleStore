@@ -173,3 +173,38 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Ranh giới:** Không thiết kế SQL schema đầy đủ, API contracts, EF Core mapping, frontend component tree, UI/wireframe hoặc production infrastructure phức tạp. Giữ nguyên Step 1–9; không thêm feature.
 - **Bước tiếp theo:** Step 11 — Development Plan / Technical Design Breakdown.
 - **Tài liệu:** [`docs/architecture/architecture-v0.1.md`](docs/architecture/architecture-v0.1.md)
+
+### D-015 — Development Plan / Technical Design Breakdown v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Step 11 triển khai theo Foundation → Setup + Product → Purchase → Inventory → Sale → Payment → Print → Return / Void → Debt + End-of-day → Understand & Act → Pilot; tổ chức theo vertical slice end-to-end, không theo module completeness.
+- **Definition of Done:** Happy path và failure/recovery quan trọng, authorization, consistency, automated business-rule tests, Vue → API → DB chạy thật, log/error đủ debug và không phá domain/architecture invariants. Backend riêng lẻ chưa đủ để gọi slice Done.
+- **Milestones/testing:** M0–M7 từ skeleton deploy được đến Pilot-ready; không estimate ngày cứng. Domain Unit, Application/Integration và một số critical E2E; không đặt mục tiêu 100% coverage.
+- **Foundation:** .NET 10 LTS / ASP.NET Core / EF Core 10 / SQL Server; Vue 3.5 stable / TypeScript / Vite / Vue Router / Pinia / Tailwind / pnpm / Node 24 LTS; shadcn-vue khi cần. Không Vue RC.
+- **Implementation direction:** Thin Controllers; use cases trong Application/Domain, không bắt buộc MediatR. ProblemDetails/typed errors; frontend không parse message để điều khiển logic. SPA cùng site dùng Identity/Auth và secure HttpOnly cookie; backend enforce authorization.
+- **Migration/testing:** Migration trong Infrastructure, production migration là explicit deployment step, không mặc định startup migration. xUnit, WebApplicationFactory + SQL Server test DB, Vitest/Vue Test Utils, Playwright; không dùng EF InMemory để kiểm chứng inventory transaction/concurrency.
+- **Slice 1:** Store/Main Warehouse/Owner, Product, import tồn đầu, InventoryMovement/InventoryBalance. SKU bắt buộc nhưng có thể auto-generate; Barcode và ReferencePurchaseCost optional; Name/Unit/SalePrice required. Opening Qty > 0 cần Opening Cost hợp lệ.
+- **Ranh giới:** Just enough technical design per slice; không thêm functional scope, không triển khai code trong cập nhật này; giữ nguyên Step 1–10.
+- **Tiếp theo:** Ready to begin implementation — Slice 0 Engineering Foundation; sau đó Slice 1 — Setup + Product.
+- **Tài liệu:** [Development Plan](docs/architecture/development-plan-v0.1.md), [Technical Breakdown Slice 0–1](docs/architecture/technical-breakdown-slice-0-1-v0.1.md).
+
+### D-016 — Step 11 / Decision D — Tenancy Foundation
+
+- **Trạng thái:** `APPROVED`
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** 1 tenant/account → 1 Store → 1 Main Warehouse; shared deployment/database có thể phục vụ nhiều Store tenant.
+- **Scope:** Product, Sale, Purchase, InventoryBalance, InventoryMovement, Customer, Supplier và business data phải scope theo Store/Tenant.
+- **Isolation:** Phải test User Store A không đọc/sửa dữ liệu Store B.
+- **Ranh giới:** Không multi-branch, cross-store business feature hoặc tenant management platform lớn.
+- **Tài liệu:** [Technical Breakdown Slice 0–1](docs/architecture/technical-breakdown-slice-0-1-v0.1.md).
+
+### D-017 — Step 11 / Decision E — Initial Import Policy
+
+- **Trạng thái:** `APPROVED`
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Template cố định; Validate → Preview → Confirm. Có lỗi thì không import; Confirm là all-or-nothing DB transaction. Không partial import trong pilot đầu.
+- **Validation:** Báo dòng, trường và lý do lỗi; barcode/SKU duplicate phù hợp, kiểu dữ liệu, required fields.
+- **Opening inventory:** Opening Qty > 0 cần Opening Cost hợp lệ. Product + InventoryMovement(Type = OpeningBalance) + InventoryBalance ghi atomically; không sửa Product.Stock trực tiếp.
+- **Kiểm chứng:** Retry confirm không duplicate; balance nhất quán movement; isolation hoạt động.
+- **Tài liệu:** [Technical Breakdown Slice 0–1](docs/architecture/technical-breakdown-slice-0-1-v0.1.md).
