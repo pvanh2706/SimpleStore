@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStore.Api", "src\backend\SimpleStore.Api\SimpleStore.Api.csproj", "{8D456E1E-4347-4F4A-9D3D-C40DE5BD6503}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStore.Application", "src\backend\SimpleStore.Application\SimpleStore.Application.csproj", "{0EF213C8-4666-44B5-AFC6-19814FD657C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStore.Domain", "src\backend\SimpleStore.Domain\SimpleStore.Domain.csproj", "{FE2D49D0-0828-4563-B37E-854EB060E236}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStore.Infrastructure", "src\backend\SimpleStore.Infrastructure\SimpleStore.Infrastructure.csproj", "{B23C622D-D60B-457A-AED1-865175B5C0F9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStore.Domain.Tests", "tests\SimpleStore.Domain.Tests\SimpleStore.Domain.Tests.csproj", "{2EF8E452-D72B-4D8A-83E9-41F3B1D9DFE1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleStore.IntegrationTests", "tests\SimpleStore.IntegrationTests\SimpleStore.IntegrationTests.csproj", "{625A6A9F-C80B-41AF-AE27-21EA7854E56B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D456E1E-4347-4F4A-9D3D-C40DE5BD6503}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D456E1E-4347-4F4A-9D3D-C40DE5BD6503}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D456E1E-4347-4F4A-9D3D-C40DE5BD6503}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D456E1E-4347-4F4A-9D3D-C40DE5BD6503}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EF213C8-4666-44B5-AFC6-19814FD657C8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EF213C8-4666-44B5-AFC6-19814FD657C8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EF213C8-4666-44B5-AFC6-19814FD657C8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EF213C8-4666-44B5-AFC6-19814FD657C8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE2D49D0-0828-4563-B37E-854EB060E236}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE2D49D0-0828-4563-B37E-854EB060E236}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE2D49D0-0828-4563-B37E-854EB060E236}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE2D49D0-0828-4563-B37E-854EB060E236}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B23C622D-D60B-457A-AED1-865175B5C0F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B23C622D-D60B-457A-AED1-865175B5C0F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B23C622D-D60B-457A-AED1-865175B5C0F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B23C622D-D60B-457A-AED1-865175B5C0F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2EF8E452-D72B-4D8A-83E9-41F3B1D9DFE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EF8E452-D72B-4D8A-83E9-41F3B1D9DFE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EF8E452-D72B-4D8A-83E9-41F3B1D9DFE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EF8E452-D72B-4D8A-83E9-41F3B1D9DFE1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{625A6A9F-C80B-41AF-AE27-21EA7854E56B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{625A6A9F-C80B-41AF-AE27-21EA7854E56B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{625A6A9F-C80B-41AF-AE27-21EA7854E56B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{625A6A9F-C80B-41AF-AE27-21EA7854E56B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

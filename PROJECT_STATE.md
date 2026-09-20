@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Ready to begin implementation — Slice 0 Engineering Foundation**
+**Slice 0 — Engineering Foundation đã được triển khai và kiểm chứng**
 
 ## Primary Persona
 
@@ -11,8 +11,9 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 ## Phạm vi hiện tại
 
 - Step 1–11 đã APPROVED; kế hoạch triển khai theo vertical slice đã được ghi nhận.
-- Sẵn sàng bắt đầu Slice 0 Engineering Foundation, sau đó Slice 1 — Setup + Product.
-- Lần cập nhật này chỉ ghi nhận tài liệu; chưa triển khai source code.
+- Slice 0 Engineering Foundation đã có backend, frontend, testing và CI foundation theo D-015.
+- Migration hiện tại chỉ tạo ASP.NET Core Identity schema; chưa có domain table của Slice 1.
+- Bước triển khai tiếp theo là Slice 1 — Setup + Product.
 
 ## Tiến độ
 
@@ -137,4 +138,4 @@ Sau đó: **Slice 1 — Setup + Product**.
 
 ## Cập nhật gần nhất
 
-Hoàn thành Step 11: Development Plan / Technical Design Breakdown v0.1, Tenancy Foundation và Initial Import Policy đã APPROVED. Ready to begin implementation — Slice 0 Engineering Foundation; sau đó Slice 1 — Setup + Product. Chưa triển khai code.
+2026-09-21 — Hoàn thành implementation Slice 0 Engineering Foundation: .NET/Vue solution skeleton, SQL Server + Identity/EF migration foundation, secure cookie direction, ProblemDetails, health/OpenAPI, test foundations và CI. Chưa triển khai business functionality của Slice 1. Các quyết định Step 1–11 giữ nguyên.

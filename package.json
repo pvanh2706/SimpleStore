@@ -1,0 +1,14 @@
+{
+  "name": "simplestore",
+  "private": true,
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build:web": "pnpm --dir src/frontend/simplestore-web build",
+    "test:web": "pnpm --dir src/frontend/simplestore-web test",
+    "test:e2e": "pnpm --dir tests/e2e test"
+  }
+}
