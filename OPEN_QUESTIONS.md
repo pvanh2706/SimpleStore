@@ -84,11 +84,37 @@ SaleLine snapshot giá vốn tại Sale Completed; không tính lại lịch s�
 
 Customer/Supplier debt được suy ra và giải thích từ transaction, payment, returns/reversals/adjustments phù hợp; không sửa số nợ tùy ý. Customer chỉ cần đủ để nhận diện người đang nợ; không mở CRM hoặc generic accounting ledger.
 
-## Ranh giới chưa chốt sau Step 9
+## Đã giải quyết tại Step 10 — APPROVED
 
-- Permission chi tiết, giới hạn Void, chính sách import, thiết bị pilot và các câu hỏi kiểm chứng người dùng/C14 ở trên vẫn mở.
-- Việc Sale Payment, Customer Debt Payment, Purchase Payment và Supplier Debt Payment dùng chung abstraction hay không được quyết định ở Architecture/Technical Design.
-- Cách cache/materialize current stock hoặc outstanding balance chưa chốt; mọi lựa chọn phải giữ nguồn nghiệp vụ audit/explain được.
-- Chưa thiết kế SQL/database schema, API contracts, EF Core entities, frontend model hoặc architecture implementation chi tiết.
+### Transaction / Idempotency strategy — D-014 / Decision A
 
-Bước tiếp theo: **Step 10 — Architecture**. Tham chiếu: [Domain Model v0.1](docs/architecture/domain-model-v0.1.md). Tài liệu Step 1–8 giữ nguyên như lịch sử phê duyệt; hai quyết định trên là trạng thái hiện hành.
+**Đã quyết định:** Critical operation dùng client-generated `OperationId`/`IdempotencyKey`. Retry cùng operation đã Completed trả lại kết quả cũ; không tạo business transaction mới. Cùng OperationId nhưng request identity khác bị từ chối.
+
+Business changes và operation result phải commit atomically trong cùng local SQL transaction. Frontend disable button chỉ hỗ trợ UX; backend là idempotency boundary. Step 11 mới quyết định schema, request fingerprint representation, status transition và recovery implementation cụ thể.
+
+### Inventory ledger / materialized balance / concurrency — D-014 / Decision B
+
+**Đã quyết định:** `InventoryMovement` là immutable/explainable ledger; `InventoryBalance` là materialized operational state. Movement và balance cập nhật atomically trong cùng transaction.
+
+Concurrent mutation trên cùng `Product + Warehouse` phải được serialized/controlled và operation nhiều sản phẩm dùng deterministic order. Không hỗ trợ direct retroactive Purchase Void khi downstream movement làm costing không còn an toàn; không xây retroactive costing/revaluation engine trong MVP. Locking/isolation/optimistic concurrency strategy cụ thể thuộc Step 11.
+
+### Negative Stock policy — D-014 / Decision C
+
+**Đã quyết định:** Store có `AllowNegativeStock`, mặc định `false`; chỉ Owner thay đổi và thay đổi phải audit được. Khi tắt, backend từ chối Sale làm âm tồn và báo lượng thiếu. Khi bật, Sale được hoàn tất, movement vẫn ghi và balance có thể âm.
+
+Cost tạm dùng last known average cost, fallback reference purchase cost; nếu cost vẫn chưa đáng tin thì cost/profit liên quan phải được đánh dấu và hiển thị là ước tính. Không retroactively revalue lịch sử trong MVP.
+
+## Ranh giới chưa chốt sau Step 10
+
+Các câu hỏi này là technical/design detail hoặc validation tiếp theo, không mở lại Architecture v0.1:
+
+- Permission matrix chi tiết và việc Void transaction Completed có giới hạn Owner only trong pilot hay không.
+- Chính sách import toàn bộ hay từng phần, trường bắt buộc cuối cùng và nhu cầu nhiều barcode cho một sản phẩm.
+- Thiết bị/khổ giấy pilot và lựa chọn browser print, local print agent hay printer service.
+- Rule window, threshold và điều kiện dữ liệu đủ tin cậy cho C14; value/willingness-to-pay vẫn cần kiểm chứng.
+- Việc các vai trò Payment dùng chung abstraction hay không; cách materialize outstanding debt nếu cần.
+- SQL schema, API contracts, EF Core mapping, concurrency implementation, idempotency record/status và permission implementation cụ thể.
+- Cơ chế authentication ASP.NET Core cụ thể; deployment topology, backup, monitoring, secrets và CI/CD chi tiết.
+- Request mapping, lifecycle/status và retry/dispatch mechanism nếu HĐĐT integration được bổ sung sau MVP core.
+
+Bước tiếp theo: **Step 11 — Development Plan / Technical Design Breakdown**. Tham chiếu: [Architecture v0.1](docs/architecture/architecture-v0.1.md). Tài liệu Step 1–9 giữ nguyên như lịch sử phê duyệt.

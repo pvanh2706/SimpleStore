@@ -95,9 +95,24 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Giữ nguyên Step 1–8; chưa thiết kế database/API/EF Core/frontend model hoặc architecture implementation chi tiết.
 - Tài liệu: [`docs/architecture/domain-model-v0.1.md`](docs/architecture/domain-model-v0.1.md).
 
+### Step 10 — Hoàn thành
+
+- Architecture v0.1 — `APPROVED`.
+- MVP dùng Modular Monolith: Vue 3 SPA → ASP.NET Core Backend → SQL Server; một deployable backend và một database, chia domain/module boundary rõ.
+- Backend định hướng `SimpleStore.Api`, `SimpleStore.Application`, `SimpleStore.Domain`, `SimpleStore.Infrastructure`; SQL Server + EF Core.
+- Critical operation dùng client-generated `OperationId`/`IdempotencyKey`; business changes và operation result commit atomically trong cùng local transaction; retry sau timeout không tạo duplicate.
+- `InventoryMovement` là ledger có thể giải thích/audit; `InventoryBalance` là materialized current state. Cả hai cập nhật atomically; mutation cùng Product + Warehouse phải được kiểm soát concurrency và dùng deterministic order khi xử lý nhiều balance.
+- Không cho direct retroactive Purchase Void khi downstream movement làm Moving Weighted Average không còn an toàn; không xây retroactive costing/revaluation engine trong MVP.
+- `AllowNegativeStock` ở cấp Store, mặc định `false`, chỉ Owner thay đổi và có audit. Khi bật, balance có thể âm; cost dùng last known average cost, fallback reference purchase cost; profit phải thể hiện là ước tính nếu cost chưa đáng tin.
+- Reporting dùng read query/projection trên transactional data; C14 là deterministic rule/query, không AI subsystem.
+- Printing và HĐĐT nằm ngoài core Sale transaction; failure bên ngoài không mặc định rollback Sale. Backend là authorization boundary.
+- Deployment ưu tiên Windows Server/IIS, Vue static files, ASP.NET Core API và SQL Server; không cần distributed infrastructure phức tạp.
+- Giữ nguyên Step 1–9; chưa thiết kế SQL schema/API contract/EF mapping/frontend component tree/UI hoặc production infrastructure chi tiết.
+- Tài liệu: [`docs/architecture/architecture-v0.1.md`](docs/architecture/architecture-v0.1.md).
+
 ### Bước tiếp theo
 
-**Step 10 — Architecture**.
+**Step 11 — Development Plan / Technical Design Breakdown**.
 
 ## Chưa thuộc phạm vi
 
@@ -108,4 +123,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 9: Domain Model v0.1 cùng Decision A (Moving Weighted Average) và Decision B (Payment & Debt) được Product Owner phê duyệt. Bước tiếp theo: Step 10 — Architecture. Step 1–8 giữ nguyên.
+2026-09-21 — Hoàn thành Step 10: Architecture v0.1 cùng Transaction/Idempotency, Inventory Ledger/Balance/Concurrency và Negative Stock Policy được Product Owner phê duyệt. Bước tiếp theo: Step 11 — Development Plan / Technical Design Breakdown. Step 1–9 giữ nguyên.

@@ -156,3 +156,20 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Hành vi:** Customer trả nợ sau hoặc cửa hàng trả nợ NCC sau đều ghi nhận Payment và giảm Outstanding Debt. Debt phải suy ra, giải thích được từ transaction, payment và returns/reversals/adjustments phù hợp; không sửa Customer.Debt hoặc Supplier outstanding debt tùy ý.
 - **Ranh giới:** Customer tối thiểu để xác định người đang nợ, không CRM; Payment/Debt không trở thành generic accounting ledger đầy đủ. Sale Payment, Customer Debt Payment, Purchase Payment và Supplier Debt Payment là các vai trò conceptual; việc dùng chung abstraction chưa chốt.
 - **Tài liệu:** [Domain Model v0.1 — Decision B](docs/architecture/domain-model-v0.1.md#decision-b--payment--debt-model--approved)
+
+### D-014 — Architecture v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Architecture style:** MVP dùng Modular Monolith: Vue 3 SPA → HTTPS/JSON → ASP.NET Core Backend → SQL Server. Một backend deployable và một database; code chia domain/module boundary rõ, không coi module là microservice.
+- **Backend structure:** Định hướng `SimpleStore.Api`, `SimpleStore.Application`, `SimpleStore.Domain`, `SimpleStore.Infrastructure`; Domain không phụ thuộc EF Core/API/Vue. SQL Server + EF Core là persistence direction.
+- **Decision A — Transaction/Idempotency:** Critical operation dùng client-generated `OperationId`/`IdempotencyKey`; retry cùng operation đã Completed trả kết quả cũ; cùng ID nhưng request khác bị từ chối. Business changes và operation result commit atomically trong cùng local SQL transaction.
+- **Decision B — Inventory:** `InventoryMovement` là immutable/explainable ledger; `InventoryBalance` là materialized operational state. Hai phần cập nhật atomically. Concurrent mutation cùng `Product + Warehouse` phải được serialized/controlled; operation nhiều sản phẩm dùng deterministic order. MVP không cho direct retroactive Purchase Void khi downstream movement làm costing không còn an toàn và không xây revaluation engine.
+- **Decision C — Negative stock:** Store có `AllowNegativeStock`, mặc định `false`, chỉ Owner thay đổi và có audit. Khi tắt, backend từ chối Sale làm âm tồn và báo lượng thiếu. Khi bật, Sale được hoàn tất, movement vẫn ghi và balance có thể âm. Cost tạm dùng last known average cost, fallback reference purchase cost; profit phải thể hiện là ước tính khi cost chưa đáng tin.
+- **Read model/C14:** Reporting dùng query/projection từ transactional data; chưa cần analytics service, data warehouse hoặc cache riêng. C14 dùng deterministic rule/query, không AI/vector DB/agent/generic rule engine lớn.
+- **External boundaries:** Printing và HĐĐT nằm ngoài core Sale transaction. Print failure không rollback Sale và phải cho Reprint. HĐĐT external failure không mặc định rollback Sale; integration có lifecycle riêng nếu bổ sung sau.
+- **Authorization/deployment:** Backend là authorization boundary với role Owner/Cashier. Deployment ưu tiên Windows Server/IIS, Vue static files, ASP.NET Core API và SQL Server; không cần Kubernetes, orchestration hoặc microservices infrastructure.
+- **Ranh giới:** Không thiết kế SQL schema đầy đủ, API contracts, EF Core mapping, frontend component tree, UI/wireframe hoặc production infrastructure phức tạp. Giữ nguyên Step 1–9; không thêm feature.
+- **Bước tiếp theo:** Step 11 — Development Plan / Technical Design Breakdown.
+- **Tài liệu:** [`docs/architecture/architecture-v0.1.md`](docs/architecture/architecture-v0.1.md)
