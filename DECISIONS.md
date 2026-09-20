@@ -89,3 +89,19 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Ngoài MVP:** CRM đầy đủ, loyalty phức tạp, marketing automation, website/e-commerce, multi-branch đầy đủ, kế toán đầy đủ, AI chatbot, forecasting phức tạp, dashboard BI lớn, phân quyền enterprise, full offline synchronization.
 - **Bảo toàn quyết định:** Không thay đổi Step 1–5 đã `APPROVED`; không tự mở rộng MVP.
 - **Tài liệu:** [`docs/product/mvp-scope-v0.1.md`](docs/product/mvp-scope-v0.1.md)
+
+### D-009 — Capability Decomposition / Functional Scope v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Phê duyệt Step 7: functional scope cụ thể theo capability, với các mức MUST/SHOULD, phạm vi tối thiểu, experiment và integration boundary được ghi trong tài liệu.
+- **Traceability:** Feature → Capability → JTBD / Pain Point → MVP Outcome. Feature không trace được mặc định không đưa vào MVP tới khi chứng minh được lý do.
+- **Vertical slices:** (1) Setup + Product; (2) Purchase → Inventory; (3) Sale → Payment → Print; (4) Return / Void → dữ liệu vẫn đúng; (5) End-of-day → tiền + tồn + lãi gộp; (6) “Hôm nay cửa hàng thế nào?” + 1 attention experiment. Ưu tiên end-to-end outcome thay vì module completeness.
+- **Giới hạn pilot:** C5 trả toàn bộ/một phần và void có audit, không sửa trực tiếp transaction hoàn tất hoặc xây correction framework tổng quát. C6 chỉ theo dõi tiền/nợ sale và purchase cùng số liệu cuối ngày. Import template cố định; 2 role Owner/Cashier.
+- **TRUST và resilience:** Giao dịch nhất quán, idempotency cho critical operation, retry an toàn, trạng thái rõ khi timeout; printer lỗi không làm mất sale và phải có thể reprint. Không hard-delete transaction quan trọng. Phân biệt doanh thu, tiền thu, công nợ, giá vốn và lãi gộp; trả/hủy phản ánh đúng.
+- **C14:** Chỉ experiment nguy cơ sắp hết hàng từ tồn hiện tại và tốc độ bán gần đây, có dữ liệu giải thích và xem chi tiết; không khuyến nghị mạnh khi dữ liệu chưa đáng tin. Nhu cầu, value/willingness-to-pay chưa validated; không xây subsystem alert lớn hoặc AI recommendation engine.
+- **C7/C19:** C7 không build trong MVP; chỉ giữ domain sale đủ sạch để sau này ánh xạ sang request của service API HĐĐT hiện có mà không phá cấu trúc giao dịch. C19 chỉ integration thực sự cần cho vòng MVP.
+- **Ranh giới bước này:** Không thiết kế database schema, API contract, UI chi tiết hoặc architecture implementation. Không thêm feature; giữ nguyên Step 1–6 đã APPROVED.
+- **Bước tiếp theo:** Step 8 — MVP User Flows.
+- **Tài liệu:** [`docs/capabilities/mvp-functional-scope-v0.1.md`](docs/capabilities/mvp-functional-scope-v0.1.md)

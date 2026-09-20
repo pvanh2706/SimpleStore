@@ -59,9 +59,21 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Tài liệu: [`docs/product/mvp-scope-v0.1.md`](docs/product/mvp-scope-v0.1.md).
 - Các nội dung Step 1–5 ở trên ghi nhận phạm vi phê duyệt tại từng bước và được giữ nguyên; phạm vi MVP hiện tại được chốt tại Step 6.
 
+### Step 7 — Hoàn thành
+
+- Capability Decomposition / Functional Scope v0.1 — `APPROVED`.
+- Functional scope theo capability, giữ rõ MUST/SHOULD, phạm vi tối thiểu, experiment và integration boundary.
+- Mỗi feature trace tới Capability → JTBD / Pain Point → MVP Outcome; feature không trace được mặc định không đưa vào MVP tới khi chứng minh được lý do.
+- 6 vertical slices: Setup + Product; Purchase → Inventory; Sale → Payment → Print; Return / Void → dữ liệu vẫn đúng; End-of-day → tiền + tồn + lãi gộp; “Hôm nay cửa hàng thế nào?” + 1 attention experiment.
+- C14 chỉ thử nghiệm nguy cơ sắp hết hàng từ tồn hiện tại và tốc độ bán gần đây; nhu cầu/value/willingness-to-pay chưa validated.
+- C7 không build: chỉ giữ domain sale đủ sạch cho việc ánh xạ sang service API HĐĐT hiện có sau này. C19 chỉ integration cần cho vòng MVP.
+- Chưa thiết kế database schema, API contract, UI chi tiết hoặc architecture implementation; không thêm feature.
+- Nội dung Step 1–6 đã APPROVED được giữ nguyên.
+- Tài liệu: [`docs/capabilities/mvp-functional-scope-v0.1.md`](docs/capabilities/mvp-functional-scope-v0.1.md).
+
 ### Bước tiếp theo
 
-Chưa chốt bước tiếp theo. Tiếp tục theo chỉ đạo của Product Owner trong phạm vi MVP đã duyệt; không tự mở rộng MVP hoặc bắt đầu triển khai ứng dụng trong lần cập nhật tài liệu này.
+**Step 8 — MVP User Flows**.
 
 ## Chưa thuộc phạm vi
 
@@ -72,4 +84,4 @@ Chưa chốt bước tiếp theo. Tiếp tục theo chỉ đạo của Product O
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 6: MVP Scope v0.1 được Product Owner phê duyệt. Step 1–5 giữ nguyên; C14/willingness-to-pay chưa validated và C7 chỉ là integration point trong MVP.
+2026-09-20 — Hoàn thành Step 7: Capability Decomposition / Functional Scope v0.1 được Product Owner phê duyệt; bước tiếp theo là Step 8 — MVP User Flows. Step 1–6 giữ nguyên.

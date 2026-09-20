@@ -44,8 +44,19 @@ C14 — Attention & Decision Support đã được phê duyệt là một phần
 
 Các câu hỏi này không mở lại phạm vi Step 6 và không tự tạo thêm capability hoặc feature:
 
-- Với experiment C14, rule/tín hiệu tối thiểu nào giúp chủ cửa hàng nhận biết việc đáng chú ý, và bằng chứng nào đủ để đánh giá value/willingness-to-pay?
-- Những integration C19 và thiết bị C17 cụ thể nào thực sự cần cho vòng vận hành MVP?
-- Integration point C7 cần chừa dữ liệu và ranh giới trách nhiệm nào để sau này gọi service API HĐĐT riêng của Product Owner? Không xây capability HĐĐT nội bộ và không mặc định phải kết nối service ngay trong MVP.
+- Step 7 đã chọn duy nhất hypothesis C14: nguy cơ sắp hết hàng từ tồn hiện tại và tốc độ bán gần đây. Cửa sổ dữ liệu, ngưỡng và điều kiện dữ liệu đủ tin cậy nào phù hợp cho pilot? Bằng chứng nào đủ để đánh giá value/willingness-to-pay?
+- C17 đã chốt keyboard scanner phổ biến và in bill. Model thiết bị/khổ giấy mục tiêu nào cần hỗ trợ trong pilot? Integration C19 cụ thể nào thực sự cần cho vòng MVP?
+- Step 7 đã chốt C7 chỉ yêu cầu domain sale đủ sạch để sau này ánh xạ sang request của service API HĐĐT hiện có mà không phá cấu trúc giao dịch. Chi tiết ánh xạ chỉ làm rõ ở bước thiết kế phù hợp sau này; không xây capability HĐĐT nội bộ hoặc kết nối service ngay trong MVP.
 
 Phạm vi đã chốt được ghi tại [MVP Scope v0.1](docs/product/mvp-scope-v0.1.md).
+
+### Sau Step 7 — chi tiết còn cần làm rõ
+
+Các câu hỏi dưới đây không mở rộng functional scope đã APPROVED và chưa phải quyết định thiết kế:
+
+- Phương pháp giá vốn nào sẽ được chọn để nhập hàng, bán hàng và trả/hủy phản ánh nhất quán?
+- Cashier bị hạn chế cụ thể thế nào trong từng luồng sửa/hủy/điều chỉnh của MVP?
+- Pilot thực tế có cần nhiều barcode cho một sản phẩm không (SHOULD có điều kiện tại C2)?
+- Template import cố định cuối cùng cần những trường bắt buộc nào? Step 7 đã chốt validation bắt buộc, barcode trùng, kiểu số và báo dòng lỗi; không xây importer tổng quát.
+
+Bước tiếp theo: **Step 8 — MVP User Flows**. Phạm vi tham chiếu: [MVP Functional Scope v0.1](docs/capabilities/mvp-functional-scope-v0.1.md).
