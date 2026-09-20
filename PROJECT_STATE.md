@@ -71,9 +71,22 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Nội dung Step 1–6 đã APPROVED được giữ nguyên.
 - Tài liệu: [`docs/capabilities/mvp-functional-scope-v0.1.md`](docs/capabilities/mvp-functional-scope-v0.1.md).
 
+### Step 8 — Hoàn thành
+
+- MVP User Flows v0.1 — `APPROVED`.
+- 6 flows: Setup + Product; Purchase → Inventory; Sale → Payment → Print; Return / Void; End-of-day Reconciliation; “Hôm nay cửa hàng thế nào?”.
+- Mỗi critical flow có Happy Path, Failure Path và Recovery Path; mô tả User Action → System Behavior → Business Outcome.
+- Transaction Completed bất biến; correction có audit. Complete Sale, Complete Purchase, Create Return, Void Transaction cần identity riêng và idempotency.
+- Timeout kiểm tra operation cũ: Completed trả kết quả cũ; Failed retry an toàn; Processing/Unknown không tùy tiện tạo operation mới.
+- Purchase chỉ Completed khi tồn/giá vốn/công nợ NCC nhất quán. Return không vượt số còn được trả, restock phải do người dùng chọn.
+- Printing là hậu xử lý: print lỗi không rollback sale Completed, phải cho Reprint.
+- Doanh thu khác tiền thu; C14 chỉ signal nguy cơ sắp hết hàng có evidence, chưa validated value/willingness-to-pay.
+- Giữ nguyên Step 1–7; không thêm feature hoặc thiết kế database/API/UI/architecture.
+- Tài liệu: [`docs/ux/mvp-user-flows-v0.1.md`](docs/ux/mvp-user-flows-v0.1.md).
+
 ### Bước tiếp theo
 
-**Step 8 — MVP User Flows**.
+**Step 9 — Domain Model**.
 
 ## Chưa thuộc phạm vi
 
@@ -84,4 +97,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-20 — Hoàn thành Step 7: Capability Decomposition / Functional Scope v0.1 được Product Owner phê duyệt; bước tiếp theo là Step 8 — MVP User Flows. Step 1–6 giữ nguyên.
+2026-09-20 — Hoàn thành Step 8: MVP User Flows v0.1 được Product Owner phê duyệt; bước tiếp theo là Step 9 — Domain Model. Step 1–7 giữ nguyên.

@@ -59,4 +59,14 @@ Các câu hỏi dưới đây không mở rộng functional scope đã APPROVED 
 - Pilot thực tế có cần nhiều barcode cho một sản phẩm không (SHOULD có điều kiện tại C2)?
 - Template import cố định cuối cùng cần những trường bắt buộc nào? Step 7 đã chốt validation bắt buộc, barcode trùng, kiểu số và báo dòng lỗi; không xây importer tổng quát.
 
-Bước tiếp theo: **Step 8 — MVP User Flows**. Phạm vi tham chiếu: [MVP Functional Scope v0.1](docs/capabilities/mvp-functional-scope-v0.1.md).
+Phạm vi functional scope tham chiếu: [MVP Functional Scope v0.1](docs/capabilities/mvp-functional-scope-v0.1.md).
+
+### Sau Step 8 — các quyết định còn cần làm rõ
+
+Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, timeout recovery, Completed bất biến, Purchase consistency, Return validation và Reprint. Các câu hỏi sau không mở lại các nguyên tắc đó:
+
+- Có chốt áp dụng giới hạn chỉ Owner được Void transaction Completed trong pilot không? Step 8 cho phép giới hạn này; chưa suy diễn thành quyền Void cho Cashier.
+- Import áp dụng chính sách nhận toàn bộ file hay từng phần? Dù chọn cách nào, không được có trạng thái import nửa vời mà người dùng không biết; phải báo rõ kết quả để xử lý an toàn.
+- Phương pháp giá vốn, khổ giấy/thiết bị pilot và ngưỡng/cửa sổ dữ liệu C14 vẫn cần làm rõ như các câu hỏi ở trên; ví dụ trong user flows không chốt các lựa chọn này.
+
+Bước tiếp theo: **Step 9 — Domain Model**. Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.

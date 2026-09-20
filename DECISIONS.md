@@ -105,3 +105,21 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Ranh giới bước này:** Không thiết kế database schema, API contract, UI chi tiết hoặc architecture implementation. Không thêm feature; giữ nguyên Step 1–6 đã APPROVED.
 - **Bước tiếp theo:** Step 8 — MVP User Flows.
 - **Tài liệu:** [`docs/capabilities/mvp-functional-scope-v0.1.md`](docs/capabilities/mvp-functional-scope-v0.1.md)
+
+### D-010 — MVP User Flows v0.1
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-20
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Phê duyệt Step 8 gồm 6 user flows end-to-end: Setup + Product; Purchase → Inventory; Sale → Payment → Print; Return / Void; End-of-day Reconciliation; “Hôm nay cửa hàng thế nào?”.
+- **Cấu trúc flow:** User Action → System Behavior → Business Outcome → Failure Path → Recovery Path. Mỗi critical flow có Happy Path, Failure Path và Recovery Path.
+- **Immutability:** Transaction Completed không sửa trực tiếp hoặc hard-delete; correction qua Return / Void / Reverse phù hợp và có audit.
+- **Operation identity và idempotency:** Ít nhất Complete Sale, Complete Purchase, Create Return và Void Transaction phải có identity riêng và retry an toàn; cùng operation không tạo business transaction mới. Đây là yêu cầu hành vi, chưa chốt implementation.
+- **Timeout recovery:** Timeout không đồng nghĩa thất bại. Kiểm tra operation: Completed trả kết quả cũ; Failed cho retry an toàn; Processing/Unknown từ góc nhìn client không được tùy tiện tạo operation mới.
+- **Purchase consistency:** Chỉ Completed khi tồn kho, giá vốn và công nợ NCC nhất quán; không báo thành công khi cập nhật một phần.
+- **Return / Void:** Return không vượt số đã bán trừ số đã trả trước đó; restock tăng tồn, no restock không tăng tồn, hệ thống không tự đoán. Void khác Return và giữ original transaction, Void/reversal transaction, audit reason. MVP có thể giới hạn chỉ Owner Void transaction Completed.
+- **Printing:** Là hậu xử lý; Sale Completed + Print Failed phải hiển thị bán thành công và cho Reprint. Print failure không rollback sale.
+- **Đối soát / hiểu tình hình:** Phân biệt doanh thu và tiền đã thu, xem giao dịch nguồn khi lệch; chỉ gọi lãi gộp/lãi gộp ước tính khi chưa quản lý đầy đủ chi phí. C14 chỉ experiment nguy cơ sắp hết hàng, hiển thị evidence, không recommendation mạnh khi dữ liệu chưa tin cậy; willingness-to-pay chưa validated.
+- **Ranh giới:** Giữ nguyên Step 1–7; không thêm feature, không thiết kế database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation. C7 vẫn chỉ là integration point.
+- **Bước tiếp theo:** Step 9 — Domain Model.
+- **Tài liệu:** [`docs/ux/mvp-user-flows-v0.1.md`](docs/ux/mvp-user-flows-v0.1.md)
