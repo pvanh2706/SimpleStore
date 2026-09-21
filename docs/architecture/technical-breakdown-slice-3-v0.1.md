@@ -345,19 +345,46 @@ InventoryValue = V1
 AverageCost và metadata:
 
 ```text
-if Q1 > 0:
+if Q1 > 0 and V1 >= 0:
     AverageCost = Round(V1 / Q1, 4, MidpointRounding.AwayFromZero)
     HasAverageCost = true
+else if Q1 > 0 and V1 < 0:
+    preserve numeric AverageCost
+    HasAverageCost = false
 else:
+    // Q1 <= 0
     preserve AverageCost
     preserve HasAverageCost
 ```
 
-Khi `Q1 <= 0`, tuyệt đối không divide hoặc recompute AverageCost từ zero/negative quantity. Last known AverageCost, kể cả bằng 0, được giữ nếu `HasAverageCost = true`. `Product.ReferencePurchaseCost` vẫn được Purchase cập nhật theo behavior Slice 2 hiện tại nhưng không tự biến historical Sale cost thành Reliable.
+Khi `Q1 <= 0`, tuyệt đối không divide hoặc recompute AverageCost từ zero/negative quantity. Last known AverageCost, kể cả bằng 0, được giữ nếu `HasAverageCost = true`.
 
-Khi Purchase đưa balance từ âm sang dương, AverageCost được establish/recompute từ current `V1 / Q1`. Nếu InventoryValue chứa residual effect của lịch sử negative stock, giá trị đó là consequence của policy “không retroactive revaluation”; không âm thầm sửa historical movements và không tạo revaluation/variance engine.
+Khi `Q1 > 0` nhưng `V1 < 0`, đây là residual valuation effect của lịch sử negative stock/no-retroactive-revaluation:
 
-Rule này cũng áp dụng an toàn cho `zero → positive` và `positive → positive`. Nó thay thế phép chia vô điều kiện trong existing Slice 2 `ReceivePurchase` khi Slice 3 được triển khai, nhưng không thay đổi Moving Weighted Average decision đã `APPROVED`.
+- giữ `QuantityOnHand = Q1` và `InventoryValue = V1`; không clamp InventoryValue về 0;
+- không tính hoặc persist negative AverageCost;
+- giữ numeric AverageCost cũ nhưng đặt `HasAverageCost = false`, vì giá trị đó không còn authoritative cho balance hiện tại;
+- `Product.ReferencePurchaseCost` vẫn được Purchase cập nhật theo behavior Slice 2;
+- Sale tiếp theo không được dùng numeric AverageCost đã preserve khi `HasAverageCost = false`; nó phải dùng ReferencePurchaseCost với `Estimated`, hoặc numeric 0 với `Unavailable` nếu reference cost null;
+- không sửa historical SaleLine/InventoryMovement, không tạo revaluation movement hoặc accounting variance ledger.
+
+Ví dụ guard bắt buộc:
+
+```text
+Q0 = -10
+V0 = -100
+PurchaseQty = 11
+PurchaseInventoryValue = 11
+
+Q1 = 1
+V1 = -89
+```
+
+Kết quả: quantity = 1, inventory value = -89, không có negative AverageCost authoritative, `HasAverageCost = false`; latest ReferencePurchaseCost trở thành cost fallback `Estimated` cho Sale kế tiếp.
+
+Chỉ khi một Purchase đưa balance về đồng thời `Q1 > 0` và `V1 >= 0`, AverageCost mới được establish/recompute từ current `V1 / Q1` và `HasAverageCost = true`. Trường hợp `V1 = 0` cho AverageCost = 0 hợp lệ và `Reliable`.
+
+Nếu InventoryValue còn residual âm, đó là consequence của policy “không retroactive revaluation”; không âm thầm sửa historical movements. Rule này cũng áp dụng an toàn cho `zero → positive` và `positive → positive`. Nó thay thế phép chia vô điều kiện trong existing Slice 2 `ReceivePurchase` khi Slice 3 được triển khai, nhưng không thay đổi Moving Weighted Average decision đã `APPROVED`.
 
 ## Concurrency semantics
 
@@ -505,7 +532,10 @@ Browser print cancel/failure/unknown không rollback Sale, không gọi Complete
 - cả AverageCost metadata và ReferencePurchaseCost unavailable resolve numeric 0 + `Unavailable`;
 - Purchase transition `negative → still negative`: Q/V cập nhật, AverageCost và known-state preserved;
 - Purchase transition `negative → exactly zero`: không divide-by-zero, AverageCost và known-state preserved;
-- Purchase transition `negative → positive`: AverageCost recompute bằng rounded `V1 / Q1`;
+- `Q0 = -10, V0 = -100`, Purchase `+11 quantity/+11 value`: Q1 = 1, V1 = -89, không persist negative AverageCost, numeric AverageCost preserved nhưng `HasAverageCost = false`;
+- positive quantity + InventoryValue = 0: establish AverageCost = 0 và `HasAverageCost = true`/`Reliable`;
+- Purchase sau đưa balance đang có residual value âm về `Q > 0 && V >= 0`: establish AverageCost bằng rounded `V / Q` và `HasAverageCost = true`;
+- Purchase transition `negative → positive` với resulting value không âm: AverageCost recompute bằng rounded `V1 / Q1`;
 - Purchase transition `zero → positive` và `positive → positive`: Moving Weighted Average theo positive-balance rule;
 - không divide-by-zero hoặc recompute AverageCost từ zero/negative quantity.
 
@@ -523,7 +553,10 @@ Browser print cancel/failure/unknown không rollback Sale, không gọi Complete
 - AllowNegativeStock true permits negative balance;
 - negative → still negative Purchase giữ last known AverageCost/metadata và không divide;
 - negative → zero Purchase giữ last known AverageCost/metadata và không divide-by-zero;
-- negative → positive Purchase recompute AverageCost từ current InventoryValue/positive Quantity;
+- negative quantity/value → positive quantity nhưng value vẫn âm: giữ exact Q/V, không persist negative AverageCost, `HasAverageCost = false`, ReferencePurchaseCost được cập nhật và Sale kế tiếp dùng fallback `Estimated`;
+- positive quantity + value = 0: AverageCost = 0, `HasAverageCost = true`, Sale cost `Reliable`;
+- Purchase sau đưa residual value âm về `Q > 0 && V >= 0`: AverageCost establish từ rounded `V / Q`, `HasAverageCost = true`;
+- negative → positive Purchase với resulting value không âm recompute AverageCost từ current InventoryValue/positive Quantity;
 - zero → positive và positive → positive Purchase cho đúng Q/V/AverageCost;
 - known AverageCost = 0 được dùng cho Sale với `Reliable`;
 - AverageCost unavailable + ReferencePurchaseCost (kể cả 0) dùng fallback với `Estimated`;
