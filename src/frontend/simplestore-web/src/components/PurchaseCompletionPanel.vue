@@ -67,10 +67,12 @@ async function complete() {
     state.value = 'completed'
     emit('completed', result)
   } catch (reason) {
+    const isAmbiguousClientError = reason instanceof ApiError
+      && (reason.status === 408 || reason.problem.code === 'operation-lock-timeout')
     const isDeterministicClientError = reason instanceof ApiError
       && reason.status >= 400
       && reason.status < 500
-      && reason.status !== 408
+      && !isAmbiguousClientError
     if (isDeterministicClientError) {
       state.value = 'validation-failed'
       message.value = reason.message

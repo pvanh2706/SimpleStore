@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 2 — Purchase → Inventory đã được triển khai và kiểm chứng kỹ thuật; CHƯA được Product Owner phê duyệt**
+**Slice 2 — Purchase → Inventory đã được triển khai và kiểm chứng kỹ thuật; implementation đang chờ Product Owner final approval**
 
 ## Primary Persona
 
@@ -15,7 +15,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
 - Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
 - CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
-- Không bắt đầu Slice 3 trước khi Slice 2 được Product Owner review/phê duyệt hoặc có chỉ đạo rõ ràng khác.
+- D-018–D-021 là các business decisions đã `APPROVED`; implementation Slice 2 vẫn đang chờ Product Owner final approval.
+- Không bắt đầu Slice 3 trước khi implementation Slice 2 được Product Owner final approval hoặc có chỉ đạo rõ ràng khác.
 
 ## Tiến độ
 
@@ -138,4 +139,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Slice 2 Purchase → Inventory đã implement và harden kỹ thuật: searchable paginated Purchase pickers, paginated Supplier/Purchase lists, immutable retry snapshot cho OperationId, Supplier update trả debt authoritative, và SQL Server concurrency test trên cùng Draft. Slice 2 vẫn chờ Product Owner phê duyệt. Không triển khai Sale, Return/Void hoặc repayment flow ngoài Slice 2.
+2026-09-21 — Slice 2 Purchase → Inventory đã implement và harden kỹ thuật: searchable paginated Purchase pickers, paginated Supplier/Purchase lists, immutable retry snapshot cho OperationId, Supplier update trả debt authoritative, và SQL Server concurrency test trên cùng Draft. D-018–D-021 đã `APPROVED`; implementation Slice 2 vẫn chờ Product Owner final approval. Không triển khai Sale, Return/Void hoặc repayment flow ngoài Slice 2.

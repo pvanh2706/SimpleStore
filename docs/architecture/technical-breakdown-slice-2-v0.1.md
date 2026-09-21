@@ -1,8 +1,8 @@
 # Technical Breakdown — Slice 2 v0.1
 
 - **Slice:** 2 — Purchase → Inventory
-- **Trạng thái:** `IMPLEMENTED / PENDING PRODUCT OWNER APPROVAL`
-- **Business decisions:** Chưa được Product Owner phê duyệt.
+- **Trạng thái:** `IMPLEMENTED / PENDING PRODUCT OWNER FINAL APPROVAL`
+- **Business decisions:** D-018–D-021 đã được Product Owner `APPROVED`; implementation tổng thể đang chờ final approval.
 
 ## Outcome và ranh giới
 
@@ -56,7 +56,7 @@ Client tạo GUID OperationId. Backend fingerprint normalized PurchaseId và pay
 - Cùng ID nhưng fingerprint khác: `409 idempotency-key-reused`.
 - `GET /api/operations/{operationId}` store-scoped trả status/type/result reference; unknown trả 404 typed ProblemDetails.
 
-Vue snapshot bất biến OperationId + payments ngay khi gửi. Khi network/timeout cho kết quả mơ hồ, UI khóa payments, query operation status và chỉ cho retry đúng cùng ID/payload. Nếu status là Completed sau lost response, UI tải lại Purchase đã commit. Lỗi 4xx xác định (bao gồm `idempotency-key-reused`) được hiển thị trực tiếp và không được suy diễn thành success từ operation status.
+Vue snapshot bất biến OperationId + payments ngay khi gửi. Khi network/timeout hoặc `409 operation-lock-timeout` cho kết quả mơ hồ, UI khóa payments, query operation status và chỉ cho retry đúng cùng ID/payload. Nếu status là Completed sau lost response, UI tải lại Purchase đã commit. Lỗi 4xx xác định (bao gồm `idempotency-key-reused`, validation errors và `purchase-already-completed`) được hiển thị trực tiếp và không được suy diễn thành success từ operation status.
 
 ## Persistence constraints
 
@@ -94,4 +94,4 @@ Migration nằm trong Infrastructure; production không tự migrate khi startup
 - D-013 — Payment & Debt Model.
 - D-014 — transaction/idempotency, inventory ledger/concurrency.
 - D-016 — Store tenancy foundation.
-- D-018–D-021 — các đề xuất đã implement cho Slice 2 lifecycle, precision, unique Product line và Owner-only permission; đang chờ Product Owner phê duyệt.
+- D-018–D-021 — `APPROVED`: Slice 2 lifecycle, precision, unique Product line và Owner-only permission.

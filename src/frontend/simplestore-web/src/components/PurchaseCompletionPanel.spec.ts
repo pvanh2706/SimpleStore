@@ -73,6 +73,34 @@ describe('PurchaseCompletionPanel', () => {
     expect(wrapper.text()).toContain('30 ₫')
   })
 
+  it('treats operation-lock-timeout as ambiguous and retries the exact attempt', async () => {
+    const randomUUID = vi.fn().mockReturnValue('operation-locked')
+    vi.stubGlobal('crypto', { randomUUID })
+    const completePurchase = vi.fn().mockRejectedValue(new ApiError(409, {
+      code: 'operation-lock-timeout', title: 'Thao tác đang được xử lý.',
+    }))
+    const checkOperation = vi.fn().mockResolvedValue(null)
+    const wrapper = mountPanel({ completePurchase, checkOperation })
+    await addPayment(wrapper, '40')
+
+    await wrapper.get('button.btn-primary').trigger('click')
+    await flushPromises()
+
+    expect(checkOperation).toHaveBeenCalledWith('operation-locked')
+    expect(wrapper.get('input[aria-label="Số tiền thanh toán"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('button[aria-label="Xóa thanh toán 1"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Dữ liệu thanh toán đang được khóa')
+
+    await wrapper.get('button.btn-primary').trigger('click')
+    await flushPromises()
+
+    expect(randomUUID).toHaveBeenCalledTimes(1)
+    expect(completePurchase).toHaveBeenCalledTimes(2)
+    expect(checkOperation).toHaveBeenCalledTimes(2)
+    expect(completePurchase.mock.calls[0]).toEqual(['operation-locked', [{ amount: 40, method: 'Cash' }]])
+    expect(completePurchase.mock.calls[1]).toEqual(['operation-locked', [{ amount: 40, method: 'Cash' }]])
+  })
+
   it('does not reinterpret idempotency-key-reused as successful completion', async () => {
     vi.stubGlobal('crypto', { randomUUID: () => 'operation-fixed' })
     const checkOperation = vi.fn().mockResolvedValue({
