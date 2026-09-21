@@ -46,17 +46,25 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
     });
 
     public async Task<(string Email, string Password)> CreateOwnerAsync()
+        => await CreateUserAsync(ApplicationRoles.Owner);
+
+    public async Task<(string Email, string Password)> CreateCashierAsync(Guid storeId)
+        => await CreateUserAsync(ApplicationRoles.Cashier, storeId);
+
+    private async Task<(string Email, string Password)> CreateUserAsync(
+        string role,
+        Guid? storeId = null)
     {
         const string password = "Slice1-Test!2026";
-        var email = $"owner-{Guid.NewGuid():N}@example.test";
+        var email = $"{role.ToLowerInvariant()}-{Guid.NewGuid():N}@example.test";
 
         await using var scope = Services.CreateAsyncScope();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        if (!await roleManager.RoleExistsAsync(ApplicationRoles.Owner))
+        if (!await roleManager.RoleExistsAsync(role))
         {
-            var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(ApplicationRoles.Owner));
+            var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(role));
             Assert.True(roleResult.Succeeded, FormatErrors(roleResult));
         }
 
@@ -66,9 +74,14 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
             Email = email,
             EmailConfirmed = true
         };
+        if (storeId.HasValue)
+        {
+            user.AssignToStore(storeId.Value);
+        }
+
         var userResult = await userManager.CreateAsync(user, password);
         Assert.True(userResult.Succeeded, FormatErrors(userResult));
-        var addRoleResult = await userManager.AddToRoleAsync(user, ApplicationRoles.Owner);
+        var addRoleResult = await userManager.AddToRoleAsync(user, role);
         Assert.True(addRoleResult.Succeeded, FormatErrors(addRoleResult));
 
         return (email, password);

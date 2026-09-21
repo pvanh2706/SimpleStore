@@ -1,6 +1,6 @@
 # SimpleStore
 
-SimpleStore là ứng dụng hỗ trợ chủ cửa hàng tạp hóa nhỏ tại Việt Nam vận hành và hiểu tình hình kinh doanh. Repository hiện có **Slice 1 — Setup + Product** chạy xuyên suốt Vue → API → Application/Domain → EF Core → SQL Server.
+SimpleStore là ứng dụng hỗ trợ chủ cửa hàng tạp hóa nhỏ tại Việt Nam vận hành và hiểu tình hình kinh doanh. Repository hiện có **Slice 1 — Setup + Product** và **Slice 2 — Purchase → Inventory** chạy xuyên suốt Vue → API → Application/Domain → EF Core → SQL Server.
 
 ## Cấu trúc
 
@@ -52,14 +52,15 @@ Slice 1 dùng CSV UTF-8 template cố định: `SKU,Barcode,Name,Unit,SalePrice,
 
 ## E2E
 
-Playwright có một smoke test frontend riêng và một critical Slice 1 flow chạy thật qua Vue → API → SQL Server. Trên Windows có LocalDB, đóng các process đang dùng cổng 7237/5237/4173 rồi chạy:
+Playwright có một smoke test frontend riêng và critical Slice 1/Slice 2 flows chạy thật qua Vue → API → SQL Server. Trên Windows có LocalDB, đóng các process đang dùng cổng 7237/5237/4173 rồi chạy:
 
 ```powershell
 pnpm --dir tests/e2e exec playwright install chromium
 powershell -ExecutionPolicy Bypass -File tests/e2e/run-real-slice1.ps1
+powershell -ExecutionPolicy Bypass -File tests/e2e/run-real-slice2.ps1
 ```
 
-Script tạo database LocalDB và Owner tạm, apply migration, chạy backend/frontend cùng Playwright rồi drop database trong `finally`. Real E2E chưa chạy trong CI vì CI dùng Linux SQL Server service; giữ orchestration Windows-local nhỏ và ổn định thay vì thêm một deployment harness thứ hai.
+Mỗi script tạo database LocalDB và Owner tạm, apply migration, chạy backend/frontend cùng Playwright rồi drop database trong `finally`. Slice 2 smoke xác minh Login → Product → Supplier → Purchase Draft → partial payment → Complete → stock/value/average cost/debt. Real E2E chưa chạy trong CI vì CI dùng Linux SQL Server service; giữ orchestration Windows-local nhỏ và ổn định thay vì thêm một deployment harness thứ hai.
 
 ## Tài liệu
 

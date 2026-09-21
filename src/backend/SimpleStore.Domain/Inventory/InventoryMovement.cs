@@ -14,6 +14,7 @@ public sealed class InventoryMovement
         decimal quantityDelta,
         decimal inventoryValueDelta,
         decimal unitCost,
+        InventoryMovementType movementType,
         string sourceType,
         Guid sourceId,
         Guid performedByUserId,
@@ -26,7 +27,7 @@ public sealed class InventoryMovement
         QuantityDelta = quantityDelta;
         InventoryValueDelta = inventoryValueDelta;
         UnitCost = unitCost;
-        MovementType = InventoryMovementType.OpeningBalance;
+        MovementType = movementType;
         SourceType = sourceType;
         SourceId = sourceId;
         PerformedByUserId = performedByUserId;
@@ -82,8 +83,46 @@ public sealed class InventoryMovement
             openingInventory.Quantity,
             openingInventory.InventoryValue,
             openingInventory.UnitCost!.Value,
+            InventoryMovementType.OpeningBalance,
             sourceType,
             sourceId,
+            performedByUserId,
+            occurredAt);
+    }
+
+    public static InventoryMovement CreatePurchase(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantity,
+        decimal inventoryValue,
+        Guid purchaseLineId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        if (quantity <= 0 || inventoryValue < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-purchase-movement",
+                "Purchase movement quantity and value are invalid.");
+        }
+
+        var effectiveUnitCost = Math.Round(
+            inventoryValue / quantity,
+            4,
+            MidpointRounding.AwayFromZero);
+
+        return new InventoryMovement(
+            Guid.NewGuid(),
+            storeId,
+            warehouseId,
+            productId,
+            quantity,
+            inventoryValue,
+            effectiveUnitCost,
+            InventoryMovementType.Purchase,
+            "PurchaseLine",
+            purchaseLineId,
             performedByUserId,
             occurredAt);
     }

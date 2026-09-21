@@ -49,4 +49,24 @@ public sealed class InventoryBalance
         OpeningInventory openingInventory,
         DateTimeOffset updatedAt) =>
         new(Guid.NewGuid(), storeId, warehouseId, productId, openingInventory, updatedAt);
+
+    public void ReceivePurchase(decimal quantity, decimal inventoryValue, DateTimeOffset updatedAt)
+    {
+        if (quantity <= 0)
+        {
+            throw new DomainRuleException("invalid-purchase-quantity", "Purchase quantity must be greater than zero.");
+        }
+
+        if (inventoryValue < 0)
+        {
+            throw new DomainRuleException("invalid-purchase-value", "Purchase inventory value cannot be negative.");
+        }
+
+        var newQuantity = QuantityOnHand + quantity;
+        var newValue = InventoryValue + inventoryValue;
+        QuantityOnHand = newQuantity;
+        InventoryValue = newValue;
+        AverageCost = Math.Round(newValue / newQuantity, 4, MidpointRounding.AwayFromZero);
+        UpdatedAt = updatedAt;
+    }
 }

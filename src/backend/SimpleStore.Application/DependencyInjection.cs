@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using SimpleStore.Application.ProductImports;
 using SimpleStore.Application.Products;
+using SimpleStore.Application.Purchases;
 using SimpleStore.Application.Stores;
+using SimpleStore.Application.Suppliers;
 
 namespace SimpleStore.Application;
 
@@ -21,6 +23,17 @@ public static class DependencyInjection
         services.AddScoped<GetInventoryMovementsUseCase>();
         services.AddScoped<ValidateProductImportUseCase>();
         services.AddScoped<ConfirmProductImportUseCase>();
+        services.AddScoped<CreateSupplierUseCase>();
+        services.AddScoped<UpdateSupplierUseCase>();
+        services.AddScoped<DeactivateSupplierUseCase>();
+        services.AddScoped<GetSupplierUseCase>();
+        services.AddScoped<GetSuppliersUseCase>();
+        services.AddScoped<CreatePurchaseUseCase>();
+        services.AddScoped<UpdatePurchaseUseCase>();
+        services.AddScoped<GetPurchaseUseCase>();
+        services.AddScoped<GetPurchasesUseCase>();
+        services.AddScoped<CompletePurchaseUseCase>();
+        services.AddScoped<GetOperationStatusUseCase>();
 
         return services;
     }

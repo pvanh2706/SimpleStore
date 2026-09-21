@@ -12,6 +12,11 @@ const router = createRouter({
     { path: '/products/:id', name: 'product-detail', component: () => import('../views/ProductDetailView.vue') },
     { path: '/products/:id/edit', name: 'product-edit', component: () => import('../views/ProductFormView.vue') },
     { path: '/import', name: 'product-import', component: () => import('../views/ProductImportView.vue') },
+    { path: '/suppliers', name: 'suppliers', component: () => import('../views/SupplierListView.vue') },
+    { path: '/purchases', name: 'purchases', component: () => import('../views/PurchaseListView.vue') },
+    { path: '/purchases/new', name: 'purchase-create', component: () => import('../views/PurchaseFormView.vue') },
+    { path: '/purchases/:id', name: 'purchase-detail', component: () => import('../views/PurchaseDetailView.vue') },
+    { path: '/purchases/:id/edit', name: 'purchase-edit', component: () => import('../views/PurchaseFormView.vue') },
   ],
 })
 

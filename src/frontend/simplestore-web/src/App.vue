@@ -19,6 +19,10 @@ async function logout() {
         <nav v-if="auth.session.hasStore" class="flex flex-1 gap-4 text-sm font-semibold">
           <RouterLink class="nav-link" to="/products">Sản phẩm</RouterLink>
           <RouterLink class="nav-link" to="/import">Nhập từ CSV</RouterLink>
+          <template v-if="auth.session.roles.includes('Owner')">
+            <RouterLink class="nav-link" to="/suppliers">Nhà cung cấp</RouterLink>
+            <RouterLink class="nav-link" to="/purchases">Nhập hàng</RouterLink>
+          </template>
         </nav>
         <span class="ml-auto hidden text-sm text-slate-500 sm:inline">{{ auth.session.email }}</span>
         <button class="btn-secondary" type="button" @click="logout">Đăng xuất</button>

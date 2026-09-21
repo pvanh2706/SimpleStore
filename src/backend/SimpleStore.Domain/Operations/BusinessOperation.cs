@@ -1,0 +1,77 @@
+namespace SimpleStore.Domain.Operations;
+
+public sealed class BusinessOperation
+{
+    public const int MaxOperationTypeLength = 64;
+    public const int FingerprintLength = 64;
+
+    private BusinessOperation()
+    {
+    }
+
+    private BusinessOperation(
+        Guid operationId,
+        Guid storeId,
+        string operationType,
+        string requestFingerprint,
+        Guid resultReference,
+        DateTimeOffset createdAt)
+    {
+        OperationId = operationId;
+        StoreId = storeId;
+        OperationType = operationType;
+        RequestFingerprint = requestFingerprint;
+        Status = BusinessOperationStatus.Completed;
+        ResultReference = resultReference;
+        CreatedAt = createdAt;
+        CompletedAt = createdAt;
+    }
+
+    public Guid OperationId { get; private set; }
+
+    public Guid StoreId { get; private set; }
+
+    public string OperationType { get; private set; } = string.Empty;
+
+    public string RequestFingerprint { get; private set; } = string.Empty;
+
+    public BusinessOperationStatus Status { get; private set; }
+
+    public Guid? ResultReference { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    public DateTimeOffset? CompletedAt { get; private set; }
+
+    public static BusinessOperation CompletePurchase(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid purchaseId,
+        DateTimeOffset completedAt)
+    {
+        if (operationId == Guid.Empty)
+        {
+            throw new DomainRuleException("operation-id-required", "OperationId is required.");
+        }
+
+        return new BusinessOperation(
+            operationId,
+            storeId,
+            BusinessOperationTypes.CompletePurchase,
+            requestFingerprint,
+            purchaseId,
+            completedAt);
+    }
+}
+
+public enum BusinessOperationStatus
+{
+    Processing = 1,
+    Completed = 2
+}
+
+public static class BusinessOperationTypes
+{
+    public const string CompletePurchase = "CompletePurchase";
+}

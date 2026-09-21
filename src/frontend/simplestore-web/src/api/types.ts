@@ -100,3 +100,87 @@ export interface ImportConfirmResult {
   importedProductCount: number
   wasAlreadyCompleted: boolean
 }
+
+export interface Supplier {
+  id: string
+  name: string
+  phone: string | null
+  note: string | null
+  isActive: boolean
+  outstandingAmount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SupplierPage {
+  items: Supplier[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
+export interface PurchaseLine {
+  id: string
+  productId: string
+  productName: string
+  productUnit: string
+  quantity: number
+  unitPrice: number
+  lineAmount: number
+}
+
+export interface PurchasePayment {
+  id: string
+  amount: number
+  method: 'Cash' | 'Transfer'
+  paidAt: string
+}
+
+export interface Purchase {
+  id: string
+  supplierId: string
+  supplierName: string
+  status: 'Draft' | 'Completed'
+  lines: PurchaseLine[]
+  payments: PurchasePayment[]
+  totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  createdAt: string
+  updatedAt: string
+  completedAt: string | null
+  wasAlreadyCompleted: boolean
+}
+
+export interface PurchaseListItem {
+  id: string
+  supplierId: string
+  supplierName: string
+  status: 'Draft' | 'Completed'
+  totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  createdAt: string
+  completedAt: string | null
+}
+
+export interface PurchasePage {
+  items: PurchaseListItem[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
+export interface PurchaseWriteInput {
+  supplierId: string
+  lines: Array<{ productId: string; quantity: number; unitPrice: number }>
+}
+
+export interface OperationStatus {
+  operationId: string
+  status: 'Processing' | 'Completed'
+  operationType: string
+  resultReference: string | null
+}

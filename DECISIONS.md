@@ -208,3 +208,37 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Opening inventory:** Opening Qty > 0 cần Opening Cost hợp lệ. Product + InventoryMovement(Type = OpeningBalance) + InventoryBalance ghi atomically; không sửa Product.Stock trực tiếp.
 - **Kiểm chứng:** Retry confirm không duplicate; balance nhất quán movement; isolation hoạt động.
 - **Tài liệu:** [Technical Breakdown Slice 0–1](docs/architecture/technical-breakdown-slice-0-1-v0.1.md).
+
+### D-018 — Slice 2 / Purchase Lifecycle
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Purchase chỉ có lifecycle `Draft → Completed`. Draft được sửa Supplier và PurchaseLines. Completed Purchase bất biến, không direct edit và không hard-delete.
+- **Ranh giới:** Purchase Void/Reverse không triển khai trong Slice 2; thuộc Slice 4.
+- **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).
+
+### D-019 — Slice 2 / Precision & Rounding
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Quantity dùng `decimal(18,3)`, Unit Purchase Price/LineAmount/Money/InventoryValue dùng `decimal(18,2)`, AverageCost dùng `decimal(18,4)`. LineAmount và AverageCost dùng `MidpointRounding.AwayFromZero`; Purchase Total là tổng LineAmount.
+- **Authority:** Backend/domain là nguồn tính authoritative; frontend chỉ preview UX.
+- **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).
+
+### D-020 — Slice 2 / One Product Per Purchase
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Trong một Purchase, một Product chỉ được xuất hiện một lần; duplicate ProductId bị từ chối ở domain/backend và được bảo vệ bằng database unique constraint.
+- **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).
+
+### D-021 — Slice 2 / Supplier & Purchase Permission
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Supplier và Purchase trong Slice 2 là Owner-only. Cashier không được create/update/deactivate Supplier hoặc create/edit/complete Purchase; backend authorization là security boundary.
+- **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).

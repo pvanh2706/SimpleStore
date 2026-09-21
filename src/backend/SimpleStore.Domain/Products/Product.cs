@@ -104,6 +104,19 @@ public sealed class Product
         UpdatedAt = updatedAt;
     }
 
+    public void UpdateReferencePurchaseCost(decimal unitPrice, DateTimeOffset updatedAt)
+    {
+        if (unitPrice < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-reference-purchase-cost",
+                "Reference purchase cost cannot be negative.");
+        }
+
+        ReferencePurchaseCost = unitPrice;
+        UpdatedAt = updatedAt;
+    }
+
     private void SetDetails(
         string sku,
         string? barcode,

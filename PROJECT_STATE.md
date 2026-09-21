@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 1 — Setup + Product đã được triển khai và kiểm chứng**
+**Slice 2 — Purchase → Inventory đã được triển khai và kiểm chứng**
 
 ## Primary Persona
 
@@ -11,10 +11,11 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 ## Phạm vi hiện tại
 
 - Step 1–11 đã APPROVED; kế hoạch triển khai theo vertical slice đã được ghi nhận.
-- Slice 0 Engineering Foundation và Slice 1 Setup + Product đã có backend, frontend, testing và CI theo D-015.
+- Slice 0 Engineering Foundation, Slice 1 Setup + Product và Slice 2 Purchase → Inventory đã có backend, frontend và testing theo D-015.
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
-- Business data Slice 1 được scope theo Store; transaction và SQL constraints bảo vệ atomicity/uniqueness.
-- Bước triển khai tiếp theo theo development plan là Slice 2 — Purchase → Inventory.
+- Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
+- CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
+- Bước triển khai tiếp theo theo development plan là Slice 3 — Sale → Payment → Print.
 
 ## Tiến độ
 
@@ -126,15 +127,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Slice 2 — Purchase → Inventory**, sau khi Product Owner xác nhận bắt đầu slice tiếp theo.
+**Slice 3 — Sale → Payment → Print**, sau khi Product Owner xác nhận bắt đầu slice tiếp theo.
 
 ## Chưa triển khai
 
-- Supplier, Purchase/PurchaseLine và Moving Weighted Average.
-- Sale, Payment, Customer, Return/Void, debt, checkout và receipt printing.
+- Sale, SalePayment, Customer, Return/Void, checkout và receipt printing.
+- Supplier debt repayment sau Purchase và các debt/end-of-day flows của Slice 5.
 - C14, HĐĐT và các capability ngoài Slice 1.
-- Real Slice 1 Playwright flow chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
+- Real Slice 1 và Slice 2 Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Hoàn thành implementation và integrity hardening Slice 1 Setup + Product: Owner login/onboarding, Store + Main Warehouse, Product CRUD-lite/deactivate/search, OpeningBalance + InventoryBalance atomic, composite Store-consistency FK, audit FK, CSV Validate → Preview → Confirm idempotent, Vue flows, SQL Server integration tests và real local Playwright flow. Các quyết định Step 1–11 giữ nguyên; không mở rộng sang Slice 2+.
+2026-09-21 — Hoàn thành Slice 2 Purchase → Inventory: Supplier Owner-only, Purchase Draft → Completed immutable, payment/debt derived, Moving Weighted Average, SQL locking/concurrency, BusinessOperation idempotency/timeout recovery, composite Store constraints, Vue flows, SQL Server integration tests và real local Playwright flow. Không triển khai Sale, Return/Void hoặc repayment flow ngoài Slice 2.

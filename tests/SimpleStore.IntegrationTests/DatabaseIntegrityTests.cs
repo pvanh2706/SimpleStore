@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimpleStore.Application.Products;
 using SimpleStore.Application.Stores;
 using SimpleStore.Domain.Inventory;
+using SimpleStore.Domain.Purchases;
 using Xunit;
 
 namespace SimpleStore.IntegrationTests;
@@ -53,6 +54,42 @@ public sealed class DatabaseIntegrityTests(CustomWebApplicationFactory factory)
             "IntegrityTest",
             Guid.NewGuid(),
             seed.OwnerAId,
+            DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public async Task PurchaseRejectsCrossStoreSupplierAndProduct()
+    {
+        var seed = await SeedTwoStoresAsync();
+        var credentialsA = await factory.CreateOwnerAsync();
+        using var clientA = factory.CreateHttpsClient();
+        await clientA.LoginAsync(credentialsA.Email, credentialsA.Password);
+        var storeA = await clientA.InitializeStoreAsync($"Purchase integrity A {Guid.NewGuid():N}");
+        var supplierA = await clientA.CreateSupplierAsync("Supplier A");
+        var productA = await clientA.CreateProductAsync(name: "Purchase product A");
+        var ownerAId = await factory.WithDbContextAsync(dbContext => dbContext.Stores
+            .Where(store => store.Id == storeA.Id)
+            .Select(store => store.OwnerUserId)
+            .SingleAsync());
+
+        var credentialsB = await factory.CreateOwnerAsync();
+        using var clientB = factory.CreateHttpsClient();
+        await clientB.LoginAsync(credentialsB.Email, credentialsB.Password);
+        _ = await clientB.InitializeStoreAsync($"Purchase integrity B {Guid.NewGuid():N}");
+        var supplierB = await clientB.CreateSupplierAsync("Supplier B");
+        var productB = seed.ProductB;
+
+        await AssertForeignKeyRejectedAsync(Purchase.CreateDraft(
+            storeA.Id,
+            supplierB.Id,
+            ownerAId,
+            [new PurchaseLineInput(productA.Id, 1, 10)],
+            DateTimeOffset.UtcNow));
+        await AssertForeignKeyRejectedAsync(Purchase.CreateDraft(
+            storeA.Id,
+            supplierA.Id,
+            ownerAId,
+            [new PurchaseLineInput(productB.Id, 1, 10)],
             DateTimeOffset.UtcNow));
     }
 
