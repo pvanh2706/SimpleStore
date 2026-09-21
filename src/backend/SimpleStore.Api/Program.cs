@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleStore.Api.ErrorHandling;
@@ -26,6 +27,7 @@ builder.Services.AddAntiforgery(options =>
     options.HeaderName = "X-CSRF-TOKEN";
     options.Cookie.Name = "__Host-SimpleStore.Antiforgery";
     options.Cookie.HttpOnly = true;
+    options.Cookie.Path = "/";
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
@@ -55,6 +57,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapHealthChecks("/health").AllowAnonymous();
+app.MapGet(
+        "/api/security/antiforgery",
+        (HttpContext httpContext, IAntiforgery antiforgery) =>
+        {
+            var tokens = antiforgery.GetAndStoreTokens(httpContext);
+            var requestToken = tokens.RequestToken
+                ?? throw new InvalidOperationException("Antiforgery request token was not generated.");
+
+            httpContext.Response.Headers.CacheControl = "no-store";
+
+            return Results.Ok(new { requestToken });
+        })
+    .AllowAnonymous();
 app.MapControllers();
 
 app.Run();
