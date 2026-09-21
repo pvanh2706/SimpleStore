@@ -17,6 +17,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
                 "[ReferencePurchaseCost] IS NULL OR [ReferencePurchaseCost] >= 0");
         });
         builder.HasKey(product => product.Id);
+        builder.HasAlternateKey(product => new { product.StoreId, product.Id });
         builder.Property(product => product.Sku).HasMaxLength(Product.MaxSkuLength).IsRequired();
         builder.Property(product => product.NormalizedSku).HasMaxLength(Product.MaxSkuLength).IsRequired();
         builder.Property(product => product.Barcode).HasMaxLength(Product.MaxBarcodeLength);

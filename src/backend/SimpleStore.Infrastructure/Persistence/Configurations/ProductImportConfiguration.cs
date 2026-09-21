@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SimpleStore.Domain.ProductImports;
 using SimpleStore.Domain.Stores;
+using SimpleStore.Infrastructure.Identity;
 
 namespace SimpleStore.Infrastructure.Persistence.Configurations;
 
@@ -16,6 +17,10 @@ public sealed class ProductImportConfiguration : IEntityTypeConfiguration<Produc
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(productImport => productImport.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(productImport => productImport.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(productImport => new { productImport.StoreId, productImport.CreatedAt });
         builder.HasMany(productImport => productImport.Rows)

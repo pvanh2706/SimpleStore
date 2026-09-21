@@ -133,8 +133,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Supplier, Purchase/PurchaseLine và Moving Weighted Average.
 - Sale, Payment, Customer, Return/Void, debt, checkout và receipt printing.
 - C14, HĐĐT và các capability ngoài Slice 1.
-- Full E2E orchestration; behavior nghiệp vụ hiện được kiểm chứng bằng integration tests trên SQL Server thật.
+- Real Slice 1 Playwright flow chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Hoàn thành implementation Slice 1 Setup + Product: Owner login/onboarding, Store + Main Warehouse, Product CRUD-lite/deactivate/search, OpeningBalance + InventoryBalance atomic, CSV Validate → Preview → Confirm idempotent, Vue flows và SQL Server integration tests. Các quyết định Step 1–11 giữ nguyên; không mở rộng sang Slice 2+.
+2026-09-21 — Hoàn thành implementation và integrity hardening Slice 1 Setup + Product: Owner login/onboarding, Store + Main Warehouse, Product CRUD-lite/deactivate/search, OpeningBalance + InventoryBalance atomic, composite Store-consistency FK, audit FK, CSV Validate → Preview → Confirm idempotent, Vue flows, SQL Server integration tests và real local Playwright flow. Các quyết định Step 1–11 giữ nguyên; không mở rộng sang Slice 2+.

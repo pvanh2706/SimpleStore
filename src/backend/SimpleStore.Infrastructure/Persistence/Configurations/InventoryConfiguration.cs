@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SimpleStore.Domain.Inventory;
 using SimpleStore.Domain.Products;
 using SimpleStore.Domain.Stores;
+using SimpleStore.Infrastructure.Identity;
 
 namespace SimpleStore.Infrastructure.Persistence.Configurations;
 
@@ -22,11 +23,13 @@ public sealed class InventoryBalanceConfiguration : IEntityTypeConfiguration<Inv
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Warehouse>()
             .WithMany()
-            .HasForeignKey(balance => balance.WarehouseId)
+            .HasForeignKey(balance => new { balance.StoreId, balance.WarehouseId })
+            .HasPrincipalKey(warehouse => new { warehouse.StoreId, warehouse.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Product>()
             .WithMany()
-            .HasForeignKey(balance => balance.ProductId)
+            .HasForeignKey(balance => new { balance.StoreId, balance.ProductId })
+            .HasPrincipalKey(product => new { product.StoreId, product.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(balance => new { balance.StoreId, balance.WarehouseId, balance.ProductId })
             .IsUnique();
@@ -50,11 +53,17 @@ public sealed class InventoryMovementConfiguration : IEntityTypeConfiguration<In
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Warehouse>()
             .WithMany()
-            .HasForeignKey(movement => movement.WarehouseId)
+            .HasForeignKey(movement => new { movement.StoreId, movement.WarehouseId })
+            .HasPrincipalKey(warehouse => new { warehouse.StoreId, warehouse.Id })
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<Product>()
             .WithMany()
-            .HasForeignKey(movement => movement.ProductId)
+            .HasForeignKey(movement => new { movement.StoreId, movement.ProductId })
+            .HasPrincipalKey(product => new { product.StoreId, product.Id })
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(movement => movement.PerformedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(movement => new { movement.StoreId, movement.ProductId, movement.OccurredAt });
         builder.HasIndex(movement => new { movement.SourceType, movement.SourceId });

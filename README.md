@@ -52,7 +52,14 @@ Slice 1 dùng CSV UTF-8 template cố định: `SKU,Barcode,Name,Unit,SalePrice,
 
 ## E2E
 
-Playwright foundation nằm tại `tests/e2e`. Critical Slice 1 flow cần một SQL Server, API đã migrate, development Owner và frontend chạy cùng lúc. CI hiện kiểm chứng behavior bằng integration tests với SQL Server thật; chưa thêm orchestration E2E đầy đủ để tránh dựng deployment harness ngoài phạm vi Slice 1.
+Playwright có một smoke test frontend riêng và một critical Slice 1 flow chạy thật qua Vue → API → SQL Server. Trên Windows có LocalDB, đóng các process đang dùng cổng 7237/5237/4173 rồi chạy:
+
+```powershell
+pnpm --dir tests/e2e exec playwright install chromium
+powershell -ExecutionPolicy Bypass -File tests/e2e/run-real-slice1.ps1
+```
+
+Script tạo database LocalDB và Owner tạm, apply migration, chạy backend/frontend cùng Playwright rồi drop database trong `finally`. Real E2E chưa chạy trong CI vì CI dùng Linux SQL Server service; giữ orchestration Windows-local nhỏ và ổn định thay vì thêm một deployment harness thứ hai.
 
 ## Tài liệu
 
