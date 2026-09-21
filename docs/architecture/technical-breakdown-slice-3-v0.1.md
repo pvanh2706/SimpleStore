@@ -1,11 +1,14 @@
 # Technical Breakdown — Slice 3 v0.1
 
 - **Slice:** 3 — Sale → Payment → Print
-- **Trạng thái:** `PROPOSED / PENDING PRODUCT OWNER APPROVAL`
+- **Trạng thái:** `APPROVED FOR IMPLEMENTATION`
 - **Ngày approval D-023–D-030:** 2026-09-21
+- **Ngày Product Owner final approval:** 2026-09-21
 - **Approved decisions:** D-023–D-030
-- **Approval boundary:** Product Owner đã phê duyệt D-023–D-030 nhưng chưa final-approve toàn bộ Technical Breakdown Slice 3 v0.1.
-- **Ranh giới:** Tài liệu này đề xuất technical direction cho Slice 3; không thay đổi Step 1–11, Architecture v0.1, Domain Model v0.1 hoặc scope MVP đã `APPROVED`.
+- **Approval decision:** D-031 — Slice 3 / Technical Breakdown Approval.
+- **Review:** Negative-stock/inventory-costing hardening đã được review và chấp thuận.
+- **Source of truth:** Tài liệu này là implementation source of truth cho Slice 3.
+- **Ranh giới:** Tài liệu này chốt technical direction cho Slice 3; không thay đổi Step 1–11, Architecture v0.1, Domain Model v0.1 hoặc scope MVP đã `APPROVED`.
 
 ## Outcome
 

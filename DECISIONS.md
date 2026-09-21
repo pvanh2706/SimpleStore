@@ -327,3 +327,14 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Quyết định:** Printing xảy ra sau khi Sale đã Completed. Print failure không rollback Sale, không gọi lại `CompleteSale`, phải hiển thị Sale thành công/in thất bại và cho phép Reprint từ Sale Completed. Slice 3 dùng browser-print/printable receipt boundary, không xây printer orchestration service phức tạp; browser không chứng minh chắc chắn giấy đã in.
 - **Permissions:** Owner và Cashier được checkout/Sale; Cashier được xem Sale cần cho bán hàng và Reprint. Chỉ Owner thay đổi `AllowNegativeStock`. Return/Void authorization thuộc Slice 4.
 - **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-031 — Slice 3 / Technical Breakdown Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner final-approve `Technical Breakdown Slice 3 v0.1` sau vòng review/hardening inventory costing.
+- **Phạm vi:** Technical Breakdown Slice 3 được phép chuyển sang implementation.
+- **Bảo toàn:** D-023–D-030 giữ nguyên `APPROVED`; không thay đổi Slice 2 hoặc các quyết định Step 1–11.
+- **Tiếp theo:** Bắt đầu implementation Slice 3 — Sale → Payment → Print.
+- **Tài liệu:** [Technical Breakdown Slice 3 v0.1](docs/architecture/technical-breakdown-slice-3-v0.1.md).
