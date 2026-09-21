@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 2 — Purchase → Inventory đã được triển khai và kiểm chứng**
+**Slice 2 — Purchase → Inventory đã được triển khai và kiểm chứng kỹ thuật; CHƯA được Product Owner phê duyệt**
 
 ## Primary Persona
 
@@ -15,7 +15,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
 - Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
 - CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
-- Bước triển khai tiếp theo theo development plan là Slice 3 — Sale → Payment → Print.
+- Không bắt đầu Slice 3 trước khi Slice 2 được Product Owner review/phê duyệt hoặc có chỉ đạo rõ ràng khác.
 
 ## Tiến độ
 
@@ -138,4 +138,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Hoàn thành Slice 2 Purchase → Inventory: Supplier Owner-only, Purchase Draft → Completed immutable, payment/debt derived, Moving Weighted Average, SQL locking/concurrency, BusinessOperation idempotency/timeout recovery, composite Store constraints, Vue flows, SQL Server integration tests và real local Playwright flow. Không triển khai Sale, Return/Void hoặc repayment flow ngoài Slice 2.
+2026-09-21 — Slice 2 Purchase → Inventory đã implement và harden kỹ thuật: searchable paginated Purchase pickers, paginated Supplier/Purchase lists, immutable retry snapshot cho OperationId, Supplier update trả debt authoritative, và SQL Server concurrency test trên cùng Draft. Slice 2 vẫn chờ Product Owner phê duyệt. Không triển khai Sale, Return/Void hoặc repayment flow ngoài Slice 2.

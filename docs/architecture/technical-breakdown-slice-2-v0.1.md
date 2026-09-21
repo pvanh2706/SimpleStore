@@ -1,8 +1,8 @@
 # Technical Breakdown — Slice 2 v0.1
 
 - **Slice:** 2 — Purchase → Inventory
-- **Trạng thái:** `APPROVED / IMPLEMENTED`
-- **Người phê duyệt business decisions:** Product Owner
+- **Trạng thái:** `IMPLEMENTED / PENDING PRODUCT OWNER APPROVAL`
+- **Business decisions:** Chưa được Product Owner phê duyệt.
 
 ## Outcome và ranh giới
 
@@ -56,7 +56,7 @@ Client tạo GUID OperationId. Backend fingerprint normalized PurchaseId và pay
 - Cùng ID nhưng fingerprint khác: `409 idempotency-key-reused`.
 - `GET /api/operations/{operationId}` store-scoped trả status/type/result reference; unknown trả 404 typed ProblemDetails.
 
-Vue giữ cùng OperationId khi network result mơ hồ, query operation status và cho retry cùng ID.
+Vue snapshot bất biến OperationId + payments ngay khi gửi. Khi network/timeout cho kết quả mơ hồ, UI khóa payments, query operation status và chỉ cho retry đúng cùng ID/payload. Nếu status là Completed sau lost response, UI tải lại Purchase đã commit. Lỗi 4xx xác định (bao gồm `idempotency-key-reused`) được hiển thị trực tiếp và không được suy diễn thành success từ operation status.
 
 ## Persistence constraints
 
@@ -77,7 +77,9 @@ Migration nằm trong Infrastructure; production không tự migrate khi startup
 - Owner-only Purchase create/update/list/detail/complete.
 - Owner-only operation status.
 - API không nhận StoreId để scope; backend resolve từ authenticated user.
-- Vue có Supplier list/editor, Purchase list, Draft editor, completion payment review và completed detail.
+- Vue có Supplier list/editor và Purchase list phân trang phía server (`pageSize=20`). Filter/search reset về trang 1 và được giữ khi đổi trang.
+- Purchase Draft editor tìm Supplier theo tên/điện thoại và Product theo tên/SKU/barcode qua API search phân trang; không tải toàn bộ catalog. Reference hiện có của Draft được giữ riêng để edit vẫn hiển thị đúng ngoài page tìm kiếm hiện tại.
+- Vue có completion payment review và completed detail với recovery semantics như phần idempotency ở trên.
 
 ## Verification direction
 
@@ -92,4 +94,4 @@ Migration nằm trong Infrastructure; production không tự migrate khi startup
 - D-013 — Payment & Debt Model.
 - D-014 — transaction/idempotency, inventory ledger/concurrency.
 - D-016 — Store tenancy foundation.
-- D-018–D-021 — Slice 2 lifecycle, precision, unique Product line và Owner-only permission.
+- D-018–D-021 — các đề xuất đã implement cho Slice 2 lifecycle, precision, unique Product line và Owner-only permission; đang chờ Product Owner phê duyệt.

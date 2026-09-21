@@ -53,7 +53,11 @@ public sealed class UpdateSupplierUseCase(
             cancellationToken);
         supplier.Update(command.Name, command.Phone, command.Note, timeProvider.GetUtcNow());
         await repository.SaveChangesAsync(cancellationToken);
-        return SupplierUseCaseSupport.ToResult(supplier, 0);
+        var outstanding = await repository.GetSupplierOutstandingAsync(
+            storeId,
+            supplierId,
+            cancellationToken);
+        return SupplierUseCaseSupport.ToResult(supplier, outstanding);
     }
 }
 

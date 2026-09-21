@@ -149,6 +149,37 @@ public sealed class Slice2IntegrationTests(CustomWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task UpdatingSupplierReturnsAuthoritativeOutstandingAmount()
+    {
+        var (client, _, _) = await CreateOwnerContextAsync("Supplier update debt");
+        using (client)
+        {
+            var supplier = await client.CreateSupplierAsync("Supplier with debt");
+            var product = await client.CreateProductAsync(name: "Debt product");
+            var draft = await client.CreatePurchaseAsync(supplier.Id, (product.Id, 3, 100));
+            _ = await client.CompletePurchaseAsync(draft.Id, Guid.NewGuid(), (75, "Cash"));
+
+            using var update = await client.PutWithAntiforgeryAsync(
+                $"/api/suppliers/{supplier.Id}",
+                JsonContent.Create(new
+                {
+                    name = "Supplier with debt updated",
+                    phone = "0909111222",
+                    note = "Updated"
+                }));
+            update.EnsureSuccessStatusCode();
+            var updated = await update.Content.ReadFromJsonAsync<SupplierResult>();
+
+            Assert.NotNull(updated);
+            Assert.Equal(225, updated.OutstandingAmount);
+            var detail = await client.GetFromJsonAsync<SupplierResult>(
+                $"/api/suppliers/{supplier.Id}");
+            Assert.NotNull(detail);
+            Assert.Equal(updated.OutstandingAmount, detail.OutstandingAmount);
+        }
+    }
+
+    [Fact]
     public async Task PaymentsSupportOneOrManyAndRejectOverpayment()
     {
         var (client, _, _) = await CreateOwnerContextAsync("Payments");
@@ -347,6 +378,63 @@ public sealed class Slice2IntegrationTests(CustomWebApplicationFactory factory)
         Assert.Equal(1, counts.Payments);
         Assert.Equal(1, counts.Movements);
         Assert.Equal(5, counts.Quantity);
+    }
+
+    [Fact]
+    public async Task ConcurrentDifferentOperationIdsCompleteDraftOnlyOnceWithoutPartialEffects()
+    {
+        var credentials = await factory.CreateOwnerAsync();
+        using var setupClient = factory.CreateHttpsClient();
+        await setupClient.LoginAsync(credentials.Email, credentials.Password);
+        _ = await setupClient.InitializeStoreAsync("Purchase concurrency");
+        var supplier = await setupClient.CreateSupplierAsync();
+        var product = await setupClient.CreateProductAsync();
+        var purchase = await setupClient.CreatePurchaseAsync(supplier.Id, (product.Id, 5, 100));
+        var operationA = Guid.NewGuid();
+        var operationB = Guid.NewGuid();
+
+        using var clientA = factory.CreateHttpsClient();
+        using var clientB = factory.CreateHttpsClient();
+        await clientA.LoginAsync(credentials.Email, credentials.Password);
+        await clientB.LoginAsync(credentials.Email, credentials.Password);
+        var responses = await Task.WhenAll(
+            clientA.PostWithAntiforgeryAsync(
+                $"/api/purchases/{purchase.Id}/complete",
+                CompletionContent(operationA, (100, "Cash"))),
+            clientB.PostWithAntiforgeryAsync(
+                $"/api/purchases/{purchase.Id}/complete",
+                CompletionContent(operationB, (100, "Cash"))));
+        using var responseA = responses[0];
+        using var responseB = responses[1];
+
+        var successful = Assert.Single(responses, response => response.IsSuccessStatusCode);
+        var rejected = Assert.Single(responses, response => !response.IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, rejected.StatusCode);
+        var rejectionCode = await ReadCodeAsync(rejected);
+        Assert.True(
+            rejectionCode is "purchase-already-completed" or "concurrent-update",
+            $"Unexpected rejection code: {rejectionCode}");
+        var result = await successful.Content.ReadFromJsonAsync<PurchaseResult>();
+        Assert.NotNull(result);
+        Assert.Equal("Completed", result.Status);
+
+        var state = await factory.WithDbContextAsync(async dbContext => new
+        {
+            PurchaseStatus = await dbContext.Purchases.Where(item => item.Id == purchase.Id)
+                .Select(item => item.Status).SingleAsync(),
+            Operations = await dbContext.BusinessOperations.CountAsync(item =>
+                item.OperationId == operationA || item.OperationId == operationB),
+            Payments = await dbContext.PurchasePayments.CountAsync(item => item.PurchaseId == purchase.Id),
+            Movements = await dbContext.InventoryMovements.CountAsync(item =>
+                item.ProductId == product.Id && item.MovementType == InventoryMovementType.Purchase),
+            Quantity = await dbContext.InventoryBalances.Where(item => item.ProductId == product.Id)
+                .Select(item => item.QuantityOnHand).SingleAsync()
+        });
+        Assert.Equal(PurchaseStatus.Completed, state.PurchaseStatus);
+        Assert.Equal(1, state.Operations);
+        Assert.Equal(1, state.Payments);
+        Assert.Equal(1, state.Movements);
+        Assert.Equal(5, state.Quantity);
     }
 
     private async Task<(HttpClient Client, Guid StoreId, string Email)> CreateOwnerContextAsync(
