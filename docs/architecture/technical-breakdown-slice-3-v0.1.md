@@ -1,10 +1,11 @@
 # Technical Breakdown — Slice 3 v0.1
 
 - **Slice:** 3 — Sale → Payment → Print
-- **Trạng thái:** `APPROVED FOR IMPLEMENTATION`
-- **Ngày Product Owner approval:** 2026-09-21
+- **Trạng thái:** `PROPOSED / PENDING PRODUCT OWNER APPROVAL`
+- **Ngày approval D-023–D-030:** 2026-09-21
 - **Approved decisions:** D-023–D-030
-- **Ranh giới:** Tài liệu này chốt technical direction cho Slice 3; không thay đổi Step 1–11, Architecture v0.1, Domain Model v0.1 hoặc scope MVP đã `APPROVED`.
+- **Approval boundary:** Product Owner đã phê duyệt D-023–D-030 nhưng chưa final-approve toàn bộ Technical Breakdown Slice 3 v0.1.
+- **Ranh giới:** Tài liệu này đề xuất technical direction cho Slice 3; không thay đổi Step 1–11, Architecture v0.1, Domain Model v0.1 hoặc scope MVP đã `APPROVED`.
 
 ## Outcome
 
@@ -114,13 +115,29 @@ SaleLine phải đủ để:
 
 Cost snapshot cần phân biệt tối thiểu:
 
-- `Reliable`: có last known AverageCost authoritative;
+- `Reliable`: có last known AverageCost authoritative, kể cả khi giá trị bằng 0;
 - `Estimated`: dùng `Product.ReferencePurchaseCost` fallback;
 - `Unavailable`: không có cost source đáng tin.
 
-Không dùng điều kiện `AverageCost > 0` như tín hiệu duy nhất rằng cost có hay không, vì zero có thể là cost hợp lệ. Implementation phải dựa trên cost source/history hoặc metadata rõ ràng.
+`InventoryBalance` cần explicit metadata/state để phân biệt AverageCost đã được thiết lập với numeric default. Direction tối thiểu là persisted `HasAverageCost` boolean; implementation có thể dùng representation tương đương nếu giữ đúng semantics. Không dùng `AverageCost > 0` để suy ra cost có tồn tại, vì zero có thể là cost hợp lệ.
 
-Nếu không có cost source, Sale vẫn có thể hoàn tất khi policy cho phép; technical representation có thể dùng numeric zero để tương thích ledger hiện tại nhưng phải lưu `CostReliability = Unavailable`. Reporting không được diễn giải trường hợp này thành hàng có giá vốn chắc chắn bằng zero hoặc gross profit đáng tin. Không cập nhật lại SaleLine khi Purchase xảy ra sau.
+Cost resolution cho Sale:
+
+```text
+if HasAverageCost:
+    UnitCostAtSale = AverageCost
+    CostReliability = Reliable
+else if Product.ReferencePurchaseCost exists:
+    UnitCostAtSale = Product.ReferencePurchaseCost
+    CostReliability = Estimated
+else:
+    UnitCostAtSale = 0
+    CostReliability = Unavailable
+```
+
+`ReferencePurchaseCost = 0` vẫn là một fallback tồn tại và cho `Estimated`; nó khác với null/unavailable. Numeric `UnitCostAtSale = 0` ở nhánh cuối chỉ là technical representation, không tự động có nghĩa reliable zero cost.
+
+Nếu không có cost source, Sale vẫn có thể hoàn tất khi policy cho phép và phải lưu `CostReliability = Unavailable`. Reporting không được diễn giải trường hợp này thành hàng có giá vốn chắc chắn bằng zero hoặc gross profit đáng tin. Không cập nhật lại SaleLine khi Purchase xảy ra sau.
 
 ### SalePayment
 
@@ -161,6 +178,7 @@ Tái sử dụng BusinessOperation foundation hiện có với operation type `C
 Migration Slice 3 dự kiến chỉ tạo/thay đổi schema cần cho scope trên:
 
 - add `Store.AllowNegativeStock` với default `false` và setting audit table;
+- add explicit AverageCost-known metadata trên InventoryBalance, direction tối thiểu `HasAverageCost`;
 - Customers;
 - Sales;
 - SaleLines;
@@ -182,6 +200,8 @@ Database constraints/index direction:
 - indexes cho Sale list theo Store/completed time, Customer lookup và source/reference lookup;
 - check constraints: quantity > 0, unit sale price >= 0, line amount >= 0, total >= 0, payment amount > 0, cost snapshot >= 0;
 - Store scope không đến từ request body và không dựa vào frontend filter.
+
+Migration/backfill `HasAverageCost` không được dựa vào `AverageCost > 0`. Với dữ liệu pre-Slice 3 hiện tại, balance dương được tạo bởi OpeningBalance/Purchase là evidence đã có AverageCost kể cả cost bằng 0; balance chưa từng có cost giữ trạng thái false. Migration phải được review cùng dữ liệu/ledger hiện có thay vì đoán từ numeric cost.
 
 Migration thuộc Infrastructure, phải được review để không recreate/drop business tables ngoài ý muốn. Production không tự migrate khi startup.
 
@@ -289,11 +309,52 @@ Nếu có shortage:
 
 - Không cần Owner approve từng Sale.
 - Balance được phép âm và movement vẫn ghi đầy đủ.
-- UnitCostAtSale ưu tiên last known AverageCost; nếu không có thì dùng ReferencePurchaseCost; nếu vẫn không có thì đánh dấu Unavailable.
+- UnitCostAtSale dùng explicit `HasAverageCost`/equivalent state theo rule Reliable → Estimated → Unavailable ở trên; known AverageCost bằng 0 vẫn được ưu tiên và là Reliable.
 - InventoryMovement quantity/value delta âm theo resolved cost basis và cùng rounding convention.
 - SaleLine giữ snapshot và reliability state; Purchase sau không sửa historical SaleLine hoặc Sale movement.
 
-InventoryBalance logic phải xử lý an toàn khi quantity trước/sau transaction bằng hoặc nhỏ hơn zero: không chia cho zero và không retroactively revalue Sale cũ. InventoryValue tiếp tục giải thích được từ tổng movement; last known usable cost được giữ cho lần bán tiếp theo theo D-028.
+Khi Sale làm `QuantityOnHand` âm:
+
+- không recompute AverageCost từ negative InventoryValue/Quantity;
+- giữ nguyên last known AverageCost và `HasAverageCost` state;
+- InventoryValue vẫn thay đổi theo InventoryMovement value delta;
+- Sale âm tiếp theo tiếp tục resolve cost theo thứ tự known AverageCost → ReferencePurchaseCost → Unavailable;
+- không retroactively revalue SaleLine hoặc historical InventoryMovement.
+
+### Purchase balance transition sau negative stock
+
+Slice 3 đưa negative inventory vào hệ thống nên phải harden behavior `InventoryBalance.ReceivePurchase` đã có từ Slice 2. Với:
+
+```text
+Q0 = QuantityOnHand trước Purchase
+V0 = InventoryValue trước Purchase
+Q1 = Q0 + PurchaseQty
+V1 = V0 + PurchaseInventoryValue
+```
+
+Luôn cập nhật:
+
+```text
+QuantityOnHand = Q1
+InventoryValue = V1
+```
+
+AverageCost và metadata:
+
+```text
+if Q1 > 0:
+    AverageCost = Round(V1 / Q1, 4, MidpointRounding.AwayFromZero)
+    HasAverageCost = true
+else:
+    preserve AverageCost
+    preserve HasAverageCost
+```
+
+Khi `Q1 <= 0`, tuyệt đối không divide hoặc recompute AverageCost từ zero/negative quantity. Last known AverageCost, kể cả bằng 0, được giữ nếu `HasAverageCost = true`. `Product.ReferencePurchaseCost` vẫn được Purchase cập nhật theo behavior Slice 2 hiện tại nhưng không tự biến historical Sale cost thành Reliable.
+
+Khi Purchase đưa balance từ âm sang dương, AverageCost được establish/recompute từ current `V1 / Q1`. Nếu InventoryValue chứa residual effect của lịch sử negative stock, giá trị đó là consequence của policy “không retroactive revaluation”; không âm thầm sửa historical movements và không tạo revaluation/variance engine.
+
+Rule này cũng áp dụng an toàn cho `zero → positive` và `positive → positive`. Nó thay thế phép chia vô điều kiện trong existing Slice 2 `ReceivePurchase` khi Slice 3 được triển khai, nhưng không thay đổi Moving Weighted Average decision đã `APPROVED`.
 
 ## Concurrency semantics
 
@@ -344,7 +405,8 @@ Route naming có thể điều chỉnh theo conventions hiện tại; conceptual
 - `GET /api/sales?page=...&pageSize=...`
 - `GET /api/sales/{id}`
 - `GET /api/operations/{operationId}`
-- Owner-only GET/PUT endpoint cho `AllowNegativeStock`.
+- store operational setting/checkout-context read endpoint cho `AllowNegativeStock`, accessible với Owner/Cashier trong cùng Store;
+- Owner-only update endpoint cho `AllowNegativeStock`.
 
 API controllers là thin HTTP boundary; Application use cases điều phối; Domain giữ invariants; Infrastructure chứa EF/SQL locking. Không cần MediatR, generic tenant framework, accounting ledger hoặc printer service.
 
@@ -352,7 +414,9 @@ Authorization:
 
 - Owner và Cashier: Product search cần cho checkout, CompleteSale, Sale detail/list cần cho flow và Reprint.
 - Customer create/search cần cho credit Sale; store-scoped backend authorization bắt buộc.
-- Owner only: read/update negative-stock policy nếu UI setting chỉ dành Owner; update luôn Owner-only.
+- Owner: read và update `AllowNegativeStock`.
+- Cashier: read policy cần cho checkout UX nhưng không được update.
+- Backend `CompleteSale` luôn đọc/enforce authoritative Store policy trong transaction, không tin policy value phía frontend.
 - Cashier Store A không đọc/complete/reprint dữ liệu Store B.
 
 ## UI direction
@@ -433,11 +497,18 @@ Browser print cancel/failure/unknown không rollback Sale, không gọi Complete
 - credit Sale requires Customer; fully paid Customer optional;
 - Completed immutable;
 - negative-stock allowed/disallowed cost behavior;
-- no divide-by-zero around zero/negative balance transitions.
+- known AverageCost = 0 vẫn resolve `Reliable`;
+- AverageCost unavailable + ReferencePurchaseCost = 0 hoặc dương resolve `Estimated`;
+- cả AverageCost metadata và ReferencePurchaseCost unavailable resolve numeric 0 + `Unavailable`;
+- Purchase transition `negative → still negative`: Q/V cập nhật, AverageCost và known-state preserved;
+- Purchase transition `negative → exactly zero`: không divide-by-zero, AverageCost và known-state preserved;
+- Purchase transition `negative → positive`: AverageCost recompute bằng rounded `V1 / Q1`;
+- Purchase transition `zero → positive` và `positive → positive`: Moving Weighted Average theo positive-balance rule;
+- không divide-by-zero hoặc recompute AverageCost từ zero/negative quantity.
 
 ### SQL Server integration tests
 
-- Owner/Cashier authorization và Owner-only setting update;
+- Owner/Cashier authorization; cả hai read policy cho operational UX, Cashier update bị forbidden và Owner update thành công;
 - Store isolation cho Sale/Customer/operation status;
 - cross-store Product/Customer rejected ở application và database constraints;
 - CompleteSale creates one Completed Sale atomically;
@@ -447,13 +518,20 @@ Browser print cancel/failure/unknown không rollback Sale, không gọi Complete
 - multiple Payments, paid/outstanding và credit Customer rule;
 - AllowNegativeStock false returns product shortage details with no partial effect;
 - AllowNegativeStock true permits negative balance;
+- negative → still negative Purchase giữ last known AverageCost/metadata và không divide;
+- negative → zero Purchase giữ last known AverageCost/metadata và không divide-by-zero;
+- negative → positive Purchase recompute AverageCost từ current InventoryValue/positive Quantity;
+- zero → positive và positive → positive Purchase cho đúng Q/V/AverageCost;
+- known AverageCost = 0 được dùng cho Sale với `Reliable`;
+- AverageCost unavailable + ReferencePurchaseCost (kể cả 0) dùng fallback với `Estimated`;
+- cả hai cost source unavailable tạo SaleLine `Unavailable` và không báo gross profit đáng tin;
 - setting change audit;
 - same OperationId exact retry returns same Sale;
 - same ID/different payload conflicts;
 - concurrent same OperationId creates one logical completion;
 - concurrent different OperationIds against same Cart intention obey stock policy and have no partial loser effects;
 - concurrent Sales on same Product with last unit;
-- concurrent Sale + Purchase on same Product with final balance/value/movements consistent;
+- concurrent Sale + Purchase on same Product có final quantity/value/AverageCost phù hợp transaction order thực tế, không lost update;
 - multiple Products lock deterministic order;
 - transaction rollback when any line/payment/customer/inventory validation fails.
 

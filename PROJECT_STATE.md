@@ -20,7 +20,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-018–D-021 là các business decisions đã `APPROVED` và không thay đổi.
 - CI backend/frontend đã pass tại commit hardening cuối `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`.
 - D-023–D-030 — Slice 3 lifecycle, price snapshot, payment/credit, Customer boundary, inventory/cost, negative stock, idempotency và printing/permissions — đã được Product Owner `APPROVED` ngày 2026-09-21.
-- Technical Breakdown Slice 3 v0.1 đã được tạo với trạng thái `APPROVED FOR IMPLEMENTATION`; production implementation chưa bắt đầu.
+- Technical Breakdown Slice 3 v0.1 đang ở trạng thái `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; production implementation chưa bắt đầu.
 
 ## Tiến độ
 
@@ -143,4 +143,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Product Owner `APPROVED` D-023–D-030 cho Slice 3 — Sale → Payment → Print. Technical Breakdown Slice 3 v0.1 đã được tạo docs-only; Slice 0 completed, Slice 1 completed, Slice 2 `APPROVED / COMPLETED`, và Slice 3 production implementation chưa bắt đầu. Bước tiếp theo là review/xác nhận technical breakdown trước implementation.
+2026-09-21 — Product Owner `APPROVED` D-023–D-030 cho Slice 3 — Sale → Payment → Print. Technical Breakdown Slice 3 v0.1 đã được harden sau review nhưng vẫn `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; Slice 0 completed, Slice 1 completed, Slice 2 `APPROVED / COMPLETED`, và Slice 3 production implementation chưa bắt đầu. Bước tiếp theo là Product Owner final review/approval technical breakdown trước implementation.
