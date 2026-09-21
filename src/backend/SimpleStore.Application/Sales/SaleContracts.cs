@@ -26,7 +26,7 @@ public sealed record SalePaymentResult(
     Guid Id,
     decimal Amount,
     string Method,
-    DateTimeOffset PaidAt);
+    DateTimeOffset OccurredAt);
 
 public sealed record SaleCustomerResult(Guid Id, string Name, string? Phone);
 
@@ -42,6 +42,7 @@ public sealed record SaleResult(
     decimal TotalAmount,
     decimal PaidAmount,
     decimal OutstandingAmount,
+    DateTimeOffset CreatedAt,
     DateTimeOffset CompletedAt,
     bool WasAlreadyCompleted = false);
 

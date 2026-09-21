@@ -33,7 +33,7 @@ public sealed class SalePayment
         SaleId = saleId;
         Amount = input.Amount;
         Method = input.Method;
-        PaidAt = paidAt;
+        OccurredAt = paidAt;
         PerformedByUserId = performedByUserId;
     }
 
@@ -42,7 +42,7 @@ public sealed class SalePayment
     public Guid SaleId { get; private set; }
     public decimal Amount { get; private set; }
     public PaymentMethod Method { get; private set; }
-    public DateTimeOffset PaidAt { get; private set; }
+    public DateTimeOffset OccurredAt { get; private set; }
     public Guid PerformedByUserId { get; private set; }
 
     internal static SalePayment Create(

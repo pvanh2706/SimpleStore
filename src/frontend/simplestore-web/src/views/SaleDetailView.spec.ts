@@ -13,7 +13,7 @@ vi.mock('vue-router', () => ({
 const sale: Sale = {
   id: 'sale-1', status: 'Completed', storeName: 'Store', warehouseId: 'warehouse-1', customer: null,
   cashierDisplayName: 'cashier@test', lines: [], payments: [], totalAmount: 0, paidAmount: 0,
-  outstandingAmount: 0, completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
+  outstandingAmount: 0, createdAt: '2026-09-21T12:00:00Z', completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
 }
 
 describe('SaleDetailView', () => {

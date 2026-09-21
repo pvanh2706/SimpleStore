@@ -219,7 +219,7 @@ export interface SalePayment {
   id: string
   amount: number
   method: 'Cash' | 'Transfer'
-  paidAt: string
+  occurredAt: string
 }
 
 export interface Sale {
@@ -234,6 +234,7 @@ export interface Sale {
   totalAmount: number
   paidAmount: number
   outstandingAmount: number
+  createdAt: string
   completedAt: string
   wasAlreadyCompleted: boolean
 }

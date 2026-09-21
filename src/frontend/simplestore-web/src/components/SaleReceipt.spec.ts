@@ -6,9 +6,9 @@ import type { Sale } from '../api/types'
 const sale: Sale = {
   id: 'sale-1', status: 'Completed', storeName: 'Simple Store', warehouseId: 'warehouse-1',
   customer: null, cashierDisplayName: 'cashier@test', totalAmount: 12000, paidAmount: 12000,
-  outstandingAmount: 0, completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
+  outstandingAmount: 0, createdAt: '2026-09-21T12:00:00Z', completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
   lines: [{ id: 'line-1', productId: 'product-1', productName: 'Coffee', productSku: 'CF', productUnit: 'pack', quantity: 1, unitSalePrice: 12000, lineAmount: 12000, unitCostAtSale: 8000, costReliability: 'Reliable' }],
-  payments: [{ id: 'payment-1', amount: 12000, method: 'Cash', paidAt: '2026-09-21T12:00:00Z' }],
+  payments: [{ id: 'payment-1', amount: 12000, method: 'Cash', occurredAt: '2026-09-21T12:00:00Z' }],
 }
 
 describe('SaleReceipt', () => {

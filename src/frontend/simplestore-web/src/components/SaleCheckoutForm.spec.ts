@@ -15,7 +15,7 @@ const customerPage: CustomerPage = { items: [], page: 1, pageSize: 20, totalCoun
 const sale: Sale = {
   id: 'sale-1', status: 'Completed', storeName: 'Store', warehouseId: 'warehouse-1', customer: null,
   cashierDisplayName: 'cashier@test', lines: [], payments: [], totalAmount: 12000, paidAmount: 12000,
-  outstandingAmount: 0, completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
+  outstandingAmount: 0, createdAt: '2026-09-21T12:00:00Z', completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
 }
 
 function mountForm(overrides: Record<string, unknown> = {}) {
@@ -76,6 +76,8 @@ describe('SaleCheckoutForm', () => {
     expect(vm.total).toBe(24000)
     expect(vm.paid).toBe(10000)
     expect(vm.outstanding).toBe(14000)
+    await wrapper.get('[aria-label="Xóa Coffee"]').trigger('click')
+    expect((wrapper.vm as unknown as { cart: unknown[] }).cart).toHaveLength(0)
   })
 
   it('requires a customer for credit and allows searching and selecting one', async () => {

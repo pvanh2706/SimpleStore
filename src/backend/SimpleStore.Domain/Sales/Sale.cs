@@ -23,6 +23,7 @@ public sealed class Sale
         CustomerId = customerId;
         CompletedByUserId = completedByUserId;
         Status = SaleStatus.Completed;
+        CreatedAt = completedAt;
         CompletedAt = completedAt;
     }
 
@@ -32,6 +33,7 @@ public sealed class Sale
     public Guid? CustomerId { get; private set; }
     public Guid CompletedByUserId { get; private set; }
     public SaleStatus Status { get; private set; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset CompletedAt { get; private set; }
     public decimal TotalAmount { get; private set; }
     public IReadOnlyCollection<SaleLine> Lines => _lines;

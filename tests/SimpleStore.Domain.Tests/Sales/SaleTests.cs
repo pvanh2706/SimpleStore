@@ -19,10 +19,32 @@ public sealed class SaleTests
             Guid.NewGuid());
 
         Assert.Equal(SaleStatus.Completed, sale.Status);
+        Assert.Equal(Now, sale.CreatedAt);
+        Assert.Equal(Now, sale.CompletedAt);
         Assert.Equal(21.01m, sale.TotalAmount);
         Assert.Equal(15, sale.PaidAmount);
         Assert.Equal(6.01m, sale.OutstandingAmount);
         Assert.Equal(1.01m, sale.Lines.First().LineAmount);
+        Assert.All(sale.Payments, payment => Assert.Equal(Now, payment.OccurredAt));
+    }
+
+    [Fact]
+    public void CompletedSaleExposesNoPublicMutationSurface()
+    {
+        var sale = Complete(
+            [Line(Guid.NewGuid(), 1, 100)],
+            [new SalePaymentInput(100, PaymentMethod.Cash)],
+            null);
+
+        Assert.Equal(SaleStatus.Completed, sale.Status);
+        Assert.All(
+            typeof(Sale).GetProperties(),
+            property => Assert.False(property.SetMethod?.IsPublic ?? false));
+        Assert.DoesNotContain(typeof(Sale).GetMethods(), method =>
+            method.IsPublic
+            && method.DeclaringType == typeof(Sale)
+            && method.Name is not nameof(Sale.Complete)
+            && !method.IsSpecialName);
     }
 
     [Fact]

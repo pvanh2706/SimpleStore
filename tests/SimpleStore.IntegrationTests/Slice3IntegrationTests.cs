@@ -80,6 +80,20 @@ public sealed class Slice3IntegrationTests(CustomWebApplicationFactory factory)
         using var cashier = factory.CreateHttpsClient();
         await cashier.LoginAsync(cashierCredentials.Email, cashierCredentials.Password);
         var operationId = Guid.NewGuid();
+        using (var priceUpdate = await owner.PutWithAntiforgeryAsync(
+            $"/api/products/{product.Id}",
+            JsonContent.Create(new
+            {
+                sku = product.Sku,
+                barcode = product.Barcode,
+                name = product.Name,
+                unit = product.Unit,
+                salePrice = 15_000,
+                referencePurchaseCost = product.ReferencePurchaseCost
+            })))
+        {
+            priceUpdate.EnsureSuccessStatusCode();
+        }
 
         var completed = await cashier.CompleteSaleAsync(
             operationId,
@@ -95,10 +109,10 @@ public sealed class Slice3IntegrationTests(CustomWebApplicationFactory factory)
             (4_000, "Transfer"));
 
         Assert.Equal("Completed", completed.Status);
-        Assert.Equal(24_000, completed.TotalAmount);
+        Assert.Equal(30_000, completed.TotalAmount);
         Assert.Equal(14_000, completed.PaidAmount);
-        Assert.Equal(10_000, completed.OutstandingAmount);
-        Assert.Equal(12_000, Assert.Single(completed.Lines).UnitSalePrice);
+        Assert.Equal(16_000, completed.OutstandingAmount);
+        Assert.Equal(15_000, Assert.Single(completed.Lines).UnitSalePrice);
         Assert.Equal(8_000, Assert.Single(completed.Lines).UnitCostAtSale);
         Assert.Equal("Reliable", Assert.Single(completed.Lines).CostReliability);
         Assert.True(retry.WasAlreadyCompleted);
@@ -144,7 +158,7 @@ public sealed class Slice3IntegrationTests(CustomWebApplicationFactory factory)
             update.EnsureSuccessStatusCode();
         }
         var historical = await cashier.GetFromJsonAsync<SaleResult>($"/api/sales/{completed.Id}");
-        Assert.Equal(12_000, Assert.Single(historical!.Lines).UnitSalePrice);
+        Assert.Equal(15_000, Assert.Single(historical!.Lines).UnitSalePrice);
 
         var operation = await cashier.GetFromJsonAsync<OperationStatusResult>(
             $"/api/operations/{operationId}");
@@ -481,6 +495,47 @@ public sealed class Slice3IntegrationTests(CustomWebApplicationFactory factory)
         Assert.True(state.Balance.InventoryValue is 225m or 250m);
         Assert.Equal(1, state.SaleMovements);
         Assert.Equal(1, state.PurchaseMovements);
+    }
+
+    [Fact]
+    public async Task MultipleProductSalesUseDeterministicLockOrder()
+    {
+        var context = await CreateOwnerContextAsync("Multi-product locks");
+        using var setupClient = context.Client;
+        var productA = await setupClient.CreateProductAsync(name: "Lock A", openingQuantity: 2, openingCost: 10);
+        var productB = await setupClient.CreateProductAsync(name: "Lock B", openingQuantity: 2, openingCost: 20);
+        using var clientA = factory.CreateHttpsClient();
+        using var clientB = factory.CreateHttpsClient();
+        await clientA.LoginAsync(context.Credentials.Email, context.Credentials.Password);
+        await clientB.LoginAsync(context.Credentials.Email, context.Credentials.Password);
+
+        var results = await Task.WhenAll(
+            clientA.CompleteSaleAsync(
+                Guid.NewGuid(),
+                null,
+                [(productA.Id, 1), (productB.Id, 1)],
+                (24_000, "Cash")),
+            clientB.CompleteSaleAsync(
+                Guid.NewGuid(),
+                null,
+                [(productB.Id, 1), (productA.Id, 1)],
+                (24_000, "Transfer")));
+
+        Assert.All(results, sale => Assert.Equal("Completed", sale.Status));
+        var state = await factory.WithDbContextAsync(async dbContext => new
+        {
+            Quantities = await dbContext.InventoryBalances
+                .Where(item => item.ProductId == productA.Id || item.ProductId == productB.Id)
+                .Select(item => item.QuantityOnHand)
+                .ToArrayAsync(),
+            Sales = await dbContext.Sales.CountAsync(item => item.StoreId == context.StoreId),
+            Movements = await dbContext.InventoryMovements.CountAsync(item =>
+                (item.ProductId == productA.Id || item.ProductId == productB.Id)
+                && item.MovementType == InventoryMovementType.Sale)
+        });
+        Assert.All(state.Quantities, quantity => Assert.Equal(0, quantity));
+        Assert.Equal(2, state.Sales);
+        Assert.Equal(4, state.Movements);
     }
 
     private async Task<OwnerContext> CreateOwnerContextAsync(string storeName)

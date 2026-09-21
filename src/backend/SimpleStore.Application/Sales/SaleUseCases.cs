@@ -335,10 +335,11 @@ internal static class SaleUseCaseSupport
                 payment.Id,
                 payment.Amount,
                 payment.Method.ToString(),
-                payment.PaidAt)).ToArray(),
+                payment.OccurredAt)).ToArray(),
             sale.TotalAmount,
             sale.PaidAmount,
             sale.OutstandingAmount,
+            sale.CreatedAt,
             sale.CompletedAt,
             wasAlreadyCompleted);
 }
