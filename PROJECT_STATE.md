@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 3 — Sale → Payment → Print: Technical Breakdown `APPROVED`; ready for implementation**
+**Slice 3 — Sale → Payment → Print: `IMPLEMENTED / TECHNICALLY VERIFIED — PENDING PRODUCT OWNER FINAL APPROVAL`**
 
 ## Primary Persona
 
@@ -22,7 +22,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-023–D-030 — Slice 3 lifecycle, price snapshot, payment/credit, Customer boundary, inventory/cost, negative stock, idempotency và printing/permissions — đã được Product Owner `APPROVED` ngày 2026-09-21.
 - D-031 — Technical Breakdown Slice 3 Approval — đã được Product Owner `APPROVED` ngày 2026-09-21.
 - Technical Breakdown Slice 3 v0.1 là `APPROVED FOR IMPLEMENTATION`; negative-stock/inventory-costing hardening đã được review và chấp thuận.
-- Production implementation Slice 3 chưa bắt đầu trong commit ghi nhận approval này.
+- Slice 3 đã implement vertical flow Vue → API → SQL Server: Customer tối thiểu, checkout, actual payments/credit, CompleteSale atomic/idempotent, inventory/cost snapshot, negative-stock setting/audit, Sale list/detail và browser print/reprint.
+- Technical Breakdown vẫn là `APPROVED FOR IMPLEMENTATION`; trạng thái implementation Slice 3 đang chờ Product Owner final approval, không suy diễn thành approval mới.
 
 ## Tiến độ
 
@@ -134,15 +135,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Bắt đầu implementation Slice 3 — Sale → Payment → Print** theo Technical Breakdown Slice 3 v0.1 đã `APPROVED FOR IMPLEMENTATION`.
+**Product Owner review/final approval cho implementation Slice 3 — Sale → Payment → Print.** Không bắt đầu Slice 4 trong thay đổi này.
 
 ## Chưa triển khai
 
-- Sale, SalePayment, Customer, Return/Void, checkout và receipt printing.
+- Return/Void và mọi functionality của Slice 4.
 - Supplier debt repayment sau Purchase và các debt/end-of-day flows của Slice 5.
 - C14, HĐĐT và các capability ngoài Slice 1.
-- Real Slice 1 và Slice 2 Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
+- Real Slice 1, Slice 2 và Slice 3 Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Product Owner final-approved Technical Breakdown Slice 3 v0.1 sau review/hardening inventory costing; D-031 được ghi nhận `APPROVED`. Slice 0 completed, Slice 1 completed, Slice 2 `APPROVED / COMPLETED`, D-023–D-030 giữ nguyên `APPROVED`, và Slice 3 production implementation chưa bắt đầu trong commit này. Bước tiếp theo là implementation Slice 3.
+2026-09-21 — Slice 3 production implementation hoàn tất và đã được verify kỹ thuật bằng domain tests, SQL Server integration tests, frontend build/Vitest và real local Playwright flow Owner setup → Cashier Sale → inventory decrease → print/reprint. D-023–D-031 giữ nguyên `APPROVED`; implementation Slice 3 đang `PENDING PRODUCT OWNER FINAL APPROVAL`. Không bắt đầu Slice 4.

@@ -4,6 +4,8 @@ using SimpleStore.Application.Products;
 using SimpleStore.Application.Purchases;
 using SimpleStore.Application.Stores;
 using SimpleStore.Application.Suppliers;
+using SimpleStore.Application.Customers;
+using SimpleStore.Application.Sales;
 
 namespace SimpleStore.Application;
 
@@ -34,6 +36,14 @@ public static class DependencyInjection
         services.AddScoped<GetPurchasesUseCase>();
         services.AddScoped<CompletePurchaseUseCase>();
         services.AddScoped<GetOperationStatusUseCase>();
+        services.AddScoped<CreateCustomerUseCase>();
+        services.AddScoped<GetCustomerUseCase>();
+        services.AddScoped<GetCustomersUseCase>();
+        services.AddScoped<CompleteSaleUseCase>();
+        services.AddScoped<GetSaleUseCase>();
+        services.AddScoped<GetSalesUseCase>();
+        services.AddScoped<GetStoreOperationalSettingsUseCase>();
+        services.AddScoped<UpdateNegativeStockPolicyUseCase>();
 
         return services;
     }

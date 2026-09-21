@@ -6,6 +6,8 @@ namespace SimpleStore.Application.Stores;
 
 public sealed record StoreResult(Guid Id, string Name, Guid MainWarehouseId, string MainWarehouseName);
 
+public sealed record StoreOperationalSettingsResult(bool AllowNegativeStock);
+
 public sealed class InitializeStoreUseCase(
     ICurrentUser currentUser,
     ISlice1Repository repository,
@@ -84,6 +86,53 @@ public sealed class InitializeStoreUseCase(
                 "Main warehouse was not found.");
 
         return new StoreResult(store.Id, store.Name, warehouse.Id, warehouse.Name);
+    }
+}
+
+public sealed class GetStoreOperationalSettingsUseCase(
+    ICurrentUser currentUser,
+    ISlice1Repository slice1Repository,
+    ISlice3Repository repository)
+{
+    public async Task<StoreOperationalSettingsResult> ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(
+            currentUser,
+            slice1Repository,
+            cancellationToken);
+        var store = await repository.GetStoreAsync(storeId, cancellationToken)
+            ?? throw new ApplicationNotFoundException("store-not-found", "Store was not found.");
+        return new StoreOperationalSettingsResult(store.AllowNegativeStock);
+    }
+}
+
+public sealed class UpdateNegativeStockPolicyUseCase(
+    ICurrentUser currentUser,
+    ISlice1Repository slice1Repository,
+    ISlice3Repository repository,
+    TimeProvider timeProvider)
+{
+    public async Task<StoreOperationalSettingsResult> ExecuteAsync(
+        bool allowNegativeStock,
+        CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserGuard.GetRequiredUserId(currentUser);
+        var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(
+            currentUser,
+            slice1Repository,
+            cancellationToken);
+        var store = await repository.GetStoreAsync(storeId, cancellationToken)
+            ?? throw new ApplicationNotFoundException("store-not-found", "Store was not found.");
+        if (store.AllowNegativeStock != allowNegativeStock)
+        {
+            repository.AddNegativeStockSettingAudit(store.ChangeNegativeStockPolicy(
+                allowNegativeStock,
+                userId,
+                timeProvider.GetUtcNow()));
+            await repository.SaveChangesAsync(cancellationToken);
+        }
+
+        return new StoreOperationalSettingsResult(store.AllowNegativeStock);
     }
 }
 

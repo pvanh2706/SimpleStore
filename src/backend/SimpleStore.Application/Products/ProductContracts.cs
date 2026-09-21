@@ -22,6 +22,7 @@ public sealed record ProductResult(
     decimal QuantityOnHand,
     decimal InventoryValue,
     decimal AverageCost,
+    bool HasAverageCost,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -48,6 +49,7 @@ public sealed record InventoryBalanceResult(
     decimal QuantityOnHand,
     decimal InventoryValue,
     decimal AverageCost,
+    bool HasAverageCost,
     DateTimeOffset UpdatedAt);
 
 public sealed record InventoryMovementResult(

@@ -17,11 +17,14 @@ async function logout() {
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-5 px-5 py-4">
         <RouterLink class="text-xl font-black tracking-tight text-emerald-800" to="/products">SimpleStore</RouterLink>
         <nav v-if="auth.session.hasStore" class="flex flex-1 gap-4 text-sm font-semibold">
+          <RouterLink class="nav-link" to="/sales/new">Bán hàng</RouterLink>
+          <RouterLink class="nav-link" to="/sales">Đơn bán</RouterLink>
           <RouterLink class="nav-link" to="/products">Sản phẩm</RouterLink>
-          <RouterLink class="nav-link" to="/import">Nhập từ CSV</RouterLink>
           <template v-if="auth.session.roles.includes('Owner')">
+            <RouterLink class="nav-link" to="/import">Nhập từ CSV</RouterLink>
             <RouterLink class="nav-link" to="/suppliers">Nhà cung cấp</RouterLink>
             <RouterLink class="nav-link" to="/purchases">Nhập hàng</RouterLink>
+            <RouterLink class="nav-link" to="/settings/operations">Thiết lập</RouterLink>
           </template>
         </nav>
         <span class="ml-auto hidden text-sm text-slate-500 sm:inline">{{ auth.session.email }}</span>

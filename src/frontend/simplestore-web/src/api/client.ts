@@ -3,6 +3,7 @@ export interface ProblemDetails {
   status?: number
   code?: string
   errors?: Array<{ message: string }>
+  shortages?: Array<{ productId: string; shortageQuantity: number }>
 }
 
 export class ApiError extends Error {

@@ -3,5 +3,6 @@ namespace SimpleStore.Domain.Inventory;
 public enum InventoryMovementType
 {
     OpeningBalance = 1,
-    Purchase = 2
+    Purchase = 2,
+    Sale = 3
 }

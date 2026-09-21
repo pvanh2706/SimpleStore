@@ -63,6 +63,27 @@ public sealed class BusinessOperation
             purchaseId,
             completedAt);
     }
+
+    public static BusinessOperation CompleteSale(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid saleId,
+        DateTimeOffset completedAt)
+    {
+        if (operationId == Guid.Empty)
+        {
+            throw new DomainRuleException("operation-id-required", "OperationId is required.");
+        }
+
+        return new BusinessOperation(
+            operationId,
+            storeId,
+            BusinessOperationTypes.CompleteSale,
+            requestFingerprint,
+            saleId,
+            completedAt);
+    }
 }
 
 public enum BusinessOperationStatus
@@ -74,4 +95,5 @@ public enum BusinessOperationStatus
 public static class BusinessOperationTypes
 {
     public const string CompletePurchase = "CompletePurchase";
+    public const string CompleteSale = "CompleteSale";
 }

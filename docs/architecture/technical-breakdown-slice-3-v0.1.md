@@ -2,6 +2,7 @@
 
 - **Slice:** 3 — Sale → Payment → Print
 - **Trạng thái:** `APPROVED FOR IMPLEMENTATION`
+- **Implementation status:** `IMPLEMENTED / TECHNICALLY VERIFIED — PENDING PRODUCT OWNER FINAL APPROVAL`
 - **Ngày approval D-023–D-030:** 2026-09-21
 - **Ngày Product Owner final approval:** 2026-09-21
 - **Approved decisions:** D-023–D-030
@@ -643,4 +644,4 @@ Slice 3 chỉ được đề nghị approval implementation khi:
 - D-016 — Store tenancy foundation.
 - D-023–D-030 — `APPROVED`: Slice 3 Sale lifecycle, pricing, payment/customer, inventory/cost, negative stock, idempotency, printing và permissions.
 
-Slice 0–2 giữ nguyên trạng thái. Tài liệu này không bắt đầu implementation Slice 3 và không thay đổi business decisions đã `APPROVED`.
+Slice 0–2 giữ nguyên trạng thái. Slice 3 đã được implement theo breakdown này và verify bằng domain tests, SQL Server integration tests, frontend tests cùng real local Playwright flow; implementation vẫn chờ Product Owner final approval. Tài liệu không thay đổi business decisions đã `APPROVED` và không bắt đầu Slice 4.

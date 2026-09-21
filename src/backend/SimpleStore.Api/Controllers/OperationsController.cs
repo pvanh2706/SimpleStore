@@ -6,7 +6,7 @@ using SimpleStore.Infrastructure.Identity;
 namespace SimpleStore.Api.Controllers;
 
 [ApiController]
-[Authorize(Roles = ApplicationRoles.Owner)]
+[Authorize(Roles = $"{ApplicationRoles.Owner},{ApplicationRoles.Cashier}")]
 [Route("api/operations")]
 public sealed class OperationsController(GetOperationStatusUseCase getOperationStatus) : ControllerBase
 {

@@ -49,7 +49,56 @@ public static partial class DevelopmentOwnerSeeder
             EnsureSucceeded(roleResult, "assign the Owner role");
         }
 
+        await SeedDevelopmentCashierAsync(configuration, owner, roleManager, userManager, logger);
+
         LogSeeded(logger, email);
+    }
+
+    private static async Task SeedDevelopmentCashierAsync(
+        IConfiguration configuration,
+        ApplicationUser owner,
+        RoleManager<IdentityRole<Guid>> roleManager,
+        UserManager<ApplicationUser> userManager,
+        ILogger logger)
+    {
+        var cashierEmail = configuration["DevelopmentCashier:Email"]?.Trim();
+        var cashierPassword = configuration["DevelopmentCashier:Password"];
+        if (string.IsNullOrWhiteSpace(cashierEmail)
+            || string.IsNullOrWhiteSpace(cashierPassword)
+            || !owner.StoreId.HasValue)
+        {
+            return;
+        }
+
+        if (!await roleManager.RoleExistsAsync(ApplicationRoles.Cashier))
+        {
+            var roleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(ApplicationRoles.Cashier));
+            EnsureSucceeded(roleResult, "create the Cashier role");
+        }
+
+        var cashier = await userManager.FindByEmailAsync(cashierEmail);
+        if (cashier is null)
+        {
+            cashier = new ApplicationUser
+            {
+                UserName = cashierEmail,
+                Email = cashierEmail,
+                EmailConfirmed = true
+            };
+            cashier.AssignToStore(owner.StoreId.Value);
+            EnsureSucceeded(
+                await userManager.CreateAsync(cashier, cashierPassword),
+                "create the development Cashier");
+        }
+
+        if (!await userManager.IsInRoleAsync(cashier, ApplicationRoles.Cashier))
+        {
+            EnsureSucceeded(
+                await userManager.AddToRoleAsync(cashier, ApplicationRoles.Cashier),
+                "assign the Cashier role");
+        }
+
+        LogCashierSeeded(logger, cashierEmail);
     }
 
     private static void EnsureSucceeded(IdentityResult result, string action)
@@ -72,4 +121,10 @@ public static partial class DevelopmentOwnerSeeder
         Level = LogLevel.Information,
         Message = "Development Owner account is ready for {Email}.")]
     private static partial void LogSeeded(ILogger logger, string email);
+
+    [LoggerMessage(
+        EventId = 12,
+        Level = LogLevel.Information,
+        Message = "Development Cashier account is ready for {Email}.")]
+    private static partial void LogCashierSeeded(ILogger logger, string email);
 }

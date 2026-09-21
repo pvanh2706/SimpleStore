@@ -6,6 +6,8 @@ using SimpleStore.Domain.Inventory;
 using SimpleStore.Domain.Products;
 using SimpleStore.Domain.Operations;
 using SimpleStore.Domain.Purchases;
+using SimpleStore.Domain.Customers;
+using SimpleStore.Domain.Sales;
 using SimpleStore.Domain.Stores;
 using SimpleStore.Domain.Suppliers;
 using SimpleStore.Infrastructure.Identity;
@@ -39,6 +41,17 @@ public sealed class ApplicationDbContext(
     public DbSet<PurchasePayment> PurchasePayments => Set<PurchasePayment>();
 
     public DbSet<BusinessOperation> BusinessOperations => Set<BusinessOperation>();
+
+    public DbSet<Customer> Customers => Set<Customer>();
+
+    public DbSet<Sale> Sales => Set<Sale>();
+
+    public DbSet<SaleLine> SaleLines => Set<SaleLine>();
+
+    public DbSet<SalePayment> SalePayments => Set<SalePayment>();
+
+    public DbSet<NegativeStockSettingAudit> NegativeStockSettingAudits =>
+        Set<NegativeStockSettingAudit>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

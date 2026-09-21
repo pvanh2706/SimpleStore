@@ -55,6 +55,10 @@ public sealed partial class GlobalExceptionHandler(
                 StatusCodes.Status404NotFound,
                 notFound.Code,
                 notFound.Message),
+            InsufficientStockException stock => CreateProblem(
+                StatusCodes.Status409Conflict,
+                "insufficient-stock",
+                stock.Message),
             _ => new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
@@ -66,6 +70,11 @@ public sealed partial class GlobalExceptionHandler(
         if (exception is ApplicationValidationException validationException)
         {
             problem.Extensions["errors"] = validationException.Errors;
+        }
+
+        if (exception is InsufficientStockException stockException)
+        {
+            problem.Extensions["shortages"] = stockException.Shortages;
         }
 
         return problem;

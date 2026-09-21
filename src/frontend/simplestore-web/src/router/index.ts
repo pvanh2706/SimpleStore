@@ -17,6 +17,10 @@ const router = createRouter({
     { path: '/purchases/new', name: 'purchase-create', component: () => import('../views/PurchaseFormView.vue') },
     { path: '/purchases/:id', name: 'purchase-detail', component: () => import('../views/PurchaseDetailView.vue') },
     { path: '/purchases/:id/edit', name: 'purchase-edit', component: () => import('../views/PurchaseFormView.vue') },
+    { path: '/sales', name: 'sales', component: () => import('../views/SaleListView.vue') },
+    { path: '/sales/new', name: 'sale-checkout', component: () => import('../views/SaleCheckoutView.vue') },
+    { path: '/sales/:id', name: 'sale-detail', component: () => import('../views/SaleDetailView.vue') },
+    { path: '/settings/operations', name: 'operational-settings', component: () => import('../views/OperationalSettingsView.vue') },
   ],
 })
 

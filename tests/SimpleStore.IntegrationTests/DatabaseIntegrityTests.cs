@@ -4,6 +4,8 @@ using SimpleStore.Application.Products;
 using SimpleStore.Application.Stores;
 using SimpleStore.Domain.Inventory;
 using SimpleStore.Domain.Purchases;
+using SimpleStore.Domain.Customers;
+using SimpleStore.Domain.Sales;
 using Xunit;
 
 namespace SimpleStore.IntegrationTests;
@@ -93,6 +95,43 @@ public sealed class DatabaseIntegrityTests(CustomWebApplicationFactory factory)
             DateTimeOffset.UtcNow));
     }
 
+    [Fact]
+    public async Task SaleRejectsCrossStoreProductCustomerAndWarehouse()
+    {
+        var seed = await SeedTwoStoresAsync();
+        var customerB = Customer.Create(
+            seed.StoreB.Id,
+            "Store B customer",
+            null,
+            DateTimeOffset.UtcNow);
+        await factory.WithDbContextAsync(async dbContext =>
+        {
+            dbContext.Customers.Add(customerB);
+            await dbContext.SaveChangesAsync();
+            return true;
+        });
+
+        await AssertForeignKeyRejectedAsync(CreateSale(
+            seed.StoreA.Id,
+            seed.StoreA.MainWarehouseId,
+            null,
+            seed.OwnerAId,
+            seed.ProductB.Id));
+        await AssertForeignKeyRejectedAsync(CreateSale(
+            seed.StoreA.Id,
+            seed.StoreA.MainWarehouseId,
+            customerB.Id,
+            seed.OwnerAId,
+            seed.ProductA.Id,
+            paid: false));
+        await AssertForeignKeyRejectedAsync(CreateSale(
+            seed.StoreA.Id,
+            seed.StoreB.MainWarehouseId,
+            null,
+            seed.OwnerAId,
+            seed.ProductA.Id));
+    }
+
     private async Task AssertForeignKeyRejectedAsync(object entity)
     {
         var exception = await Assert.ThrowsAsync<DbUpdateException>(() =>
@@ -129,6 +168,30 @@ public sealed class DatabaseIntegrityTests(CustomWebApplicationFactory factory)
 
         return new IntegritySeed(storeA, storeB, productA, productB, ownerAId);
     }
+
+    private static Sale CreateSale(
+        Guid storeId,
+        Guid warehouseId,
+        Guid? customerId,
+        Guid userId,
+        Guid productId,
+        bool paid = true) =>
+        Sale.Complete(
+            storeId,
+            warehouseId,
+            customerId,
+            userId,
+            [new SaleLineInput(
+                productId,
+                "Product",
+                "SKU",
+                "unit",
+                1,
+                10,
+                5,
+                CostReliability.Reliable)],
+            paid ? [new SalePaymentInput(10, PaymentMethod.Cash)] : [],
+            DateTimeOffset.UtcNow);
 
     private sealed record IntegritySeed(
         StoreResult StoreA,

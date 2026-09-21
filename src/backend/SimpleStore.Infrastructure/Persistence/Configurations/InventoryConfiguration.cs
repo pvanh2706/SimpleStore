@@ -16,6 +16,7 @@ public sealed class InventoryBalanceConfiguration : IEntityTypeConfiguration<Inv
         builder.Property(balance => balance.QuantityOnHand).HasPrecision(18, 3);
         builder.Property(balance => balance.InventoryValue).HasPrecision(18, 2);
         builder.Property(balance => balance.AverageCost).HasPrecision(18, 4);
+        builder.Property(balance => balance.HasAverageCost).HasDefaultValue(false);
         builder.Property(balance => balance.RowVersion).IsRowVersion();
         builder.HasOne<Store>()
             .WithMany()

@@ -11,6 +11,7 @@ public sealed class Store
         Id = id;
         OwnerUserId = ownerUserId;
         Name = name;
+        AllowNegativeStock = false;
         CreatedAt = createdAt;
     }
 
@@ -19,6 +20,8 @@ public sealed class Store
     public Guid OwnerUserId { get; private set; }
 
     public string Name { get; private set; } = string.Empty;
+
+    public bool AllowNegativeStock { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -38,5 +41,25 @@ public sealed class Store
         }
 
         return new Store(Guid.NewGuid(), ownerUserId, normalizedName, createdAt);
+    }
+
+    public NegativeStockSettingAudit ChangeNegativeStockPolicy(
+        bool allowNegativeStock,
+        Guid changedByUserId,
+        DateTimeOffset changedAt)
+    {
+        if (changedByUserId == Guid.Empty)
+        {
+            throw new DomainRuleException("user-required", "The user changing the setting is required.");
+        }
+
+        var audit = NegativeStockSettingAudit.Create(
+            Id,
+            AllowNegativeStock,
+            allowNegativeStock,
+            changedByUserId,
+            changedAt);
+        AllowNegativeStock = allowNegativeStock;
+        return audit;
     }
 }

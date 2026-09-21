@@ -25,6 +25,7 @@ export interface Product {
   quantityOnHand: number
   inventoryValue: number
   averageCost: number
+  hasAverageCost: boolean
   createdAt: string
   updatedAt: string
 }
@@ -183,4 +184,79 @@ export interface OperationStatus {
   status: 'Processing' | 'Completed'
   operationType: string
   resultReference: string | null
+}
+
+export interface Customer {
+  id: string
+  name: string
+  phone: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CustomerPage {
+  items: Customer[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
+export interface SaleLine {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  productUnit: string
+  quantity: number
+  unitSalePrice: number
+  lineAmount: number
+  unitCostAtSale: number
+  costReliability: 'Reliable' | 'Estimated' | 'Unavailable'
+}
+
+export interface SalePayment {
+  id: string
+  amount: number
+  method: 'Cash' | 'Transfer'
+  paidAt: string
+}
+
+export interface Sale {
+  id: string
+  status: 'Completed'
+  storeName: string
+  warehouseId: string
+  customer: Customer | null
+  cashierDisplayName: string
+  lines: SaleLine[]
+  payments: SalePayment[]
+  totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  completedAt: string
+  wasAlreadyCompleted: boolean
+}
+
+export interface SaleListItem {
+  id: string
+  status: 'Completed'
+  customerName: string | null
+  cashierDisplayName: string
+  totalAmount: number
+  paidAmount: number
+  outstandingAmount: number
+  completedAt: string
+}
+
+export interface SalePage {
+  items: SaleListItem[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+}
+
+export interface StoreOperationalSettings {
+  allowNegativeStock: boolean
 }

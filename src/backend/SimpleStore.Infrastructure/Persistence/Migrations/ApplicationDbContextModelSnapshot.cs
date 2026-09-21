@@ -153,6 +153,39 @@ namespace SimpleStore.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SimpleStore.Domain.Customers.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId", "Name");
+
+                    b.HasIndex("StoreId", "Phone");
+
+                    b.ToTable("Customers", (string)null);
+                });
+
             modelBuilder.Entity("SimpleStore.Domain.Inventory.InventoryBalance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -162,6 +195,11 @@ namespace SimpleStore.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("AverageCost")
                         .HasPrecision(18, 4)
                         .HasColumnType("decimal(18,4)");
+
+                    b.Property<bool>("HasAverageCost")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<decimal>("InventoryValue")
                         .HasPrecision(18, 2)
@@ -611,11 +649,203 @@ namespace SimpleStore.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SimpleStore.Domain.Sales.Sale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CompletedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CompletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompletedByUserId");
+
+                    b.HasIndex("StoreId", "CompletedAt");
+
+                    b.HasIndex("StoreId", "WarehouseId");
+
+                    b.HasIndex("StoreId", "CustomerId", "CompletedAt");
+
+                    b.ToTable("Sales", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Sales_TotalAmount", "[TotalAmount] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Sales.SaleLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CostReliability")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<decimal>("LineAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("ProductSku")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ProductUnit")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitCostAtSale")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("UnitSalePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SaleId", "ProductId")
+                        .IsUnique();
+
+                    b.HasIndex("StoreId", "ProductId");
+
+                    b.HasIndex("StoreId", "SaleId");
+
+                    b.ToTable("SaleLines", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SaleLines_LineAmount", "[LineAmount] >= 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_Quantity", "[Quantity] > 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_UnitCostAtSale", "[UnitCostAtSale] >= 0");
+
+                            t.HasCheckConstraint("CK_SaleLines_UnitSalePrice", "[UnitSalePrice] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Sales.SalePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTimeOffset>("PaidAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("PerformedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerformedByUserId");
+
+                    b.HasIndex("StoreId", "SaleId");
+
+                    b.ToTable("SalePayments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SalePayments_Amount", "[Amount] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Stores.NegativeStockSettingAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("NewValue")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("OldValue")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("StoreId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedByUserId");
+
+                    b.HasIndex("StoreId", "ChangedAt");
+
+                    b.ToTable("NegativeStockSettingAudits", (string)null);
+                });
+
             modelBuilder.Entity("SimpleStore.Domain.Stores.Store", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AllowNegativeStock")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -833,6 +1063,15 @@ namespace SimpleStore.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SimpleStore.Domain.Customers.Customer", b =>
+                {
+                    b.HasOne("SimpleStore.Domain.Stores.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SimpleStore.Domain.Inventory.InventoryBalance", b =>
                 {
                     b.HasOne("SimpleStore.Domain.Stores.Store", null)
@@ -982,6 +1221,82 @@ namespace SimpleStore.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SimpleStore.Domain.Sales.Sale", b =>
+                {
+                    b.HasOne("SimpleStore.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CompletedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleStore.Domain.Stores.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleStore.Domain.Customers.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId", "CustomerId")
+                        .HasPrincipalKey("StoreId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SimpleStore.Domain.Stores.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId", "WarehouseId")
+                        .HasPrincipalKey("StoreId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Sales.SaleLine", b =>
+                {
+                    b.HasOne("SimpleStore.Domain.Products.Product", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId", "ProductId")
+                        .HasPrincipalKey("StoreId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleStore.Domain.Sales.Sale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("StoreId", "SaleId")
+                        .HasPrincipalKey("StoreId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Sales.SalePayment", b =>
+                {
+                    b.HasOne("SimpleStore.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("PerformedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleStore.Domain.Sales.Sale", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("StoreId", "SaleId")
+                        .HasPrincipalKey("StoreId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Stores.NegativeStockSettingAudit", b =>
+                {
+                    b.HasOne("SimpleStore.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SimpleStore.Domain.Stores.Store", null)
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SimpleStore.Domain.Stores.Store", b =>
                 {
                     b.HasOne("SimpleStore.Infrastructure.Identity.ApplicationUser", null)
@@ -1023,6 +1338,13 @@ namespace SimpleStore.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("SimpleStore.Domain.Purchases.Purchase", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("SimpleStore.Domain.Sales.Sale", b =>
                 {
                     b.Navigation("Lines");
 

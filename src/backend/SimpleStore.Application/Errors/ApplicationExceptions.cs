@@ -26,5 +26,13 @@ public sealed class ApplicationNotFoundException(string code, string message) : 
     public string Code { get; } = code;
 }
 
+public sealed record StockShortage(Guid ProductId, decimal ShortageQuantity);
+
+public sealed class InsufficientStockException(IReadOnlyCollection<StockShortage> shortages)
+    : Exception("There is not enough stock to complete the sale.")
+{
+    public IReadOnlyCollection<StockShortage> Shortages { get; } = shortages;
+}
+
 public sealed class UniqueConstraintException(string message, Exception innerException)
     : Exception(message, innerException);

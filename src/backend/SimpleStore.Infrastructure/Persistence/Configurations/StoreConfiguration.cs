@@ -12,11 +12,31 @@ public sealed class StoreConfiguration : IEntityTypeConfiguration<Store>
         builder.ToTable("Stores");
         builder.HasKey(store => store.Id);
         builder.Property(store => store.Name).HasMaxLength(120).IsRequired();
+        builder.Property(store => store.AllowNegativeStock).HasDefaultValue(false);
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(store => store.OwnerUserId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(store => store.OwnerUserId).IsUnique();
+    }
+}
+
+public sealed class NegativeStockSettingAuditConfiguration
+    : IEntityTypeConfiguration<NegativeStockSettingAudit>
+{
+    public void Configure(EntityTypeBuilder<NegativeStockSettingAudit> builder)
+    {
+        builder.ToTable("NegativeStockSettingAudits");
+        builder.HasKey(audit => audit.Id);
+        builder.HasOne<Store>()
+            .WithMany()
+            .HasForeignKey(audit => audit.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(audit => audit.ChangedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(audit => new { audit.StoreId, audit.ChangedAt });
     }
 }
 

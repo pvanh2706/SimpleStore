@@ -126,4 +126,37 @@ public sealed class InventoryMovement
             performedByUserId,
             occurredAt);
     }
+
+    public static InventoryMovement CreateSale(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantity,
+        decimal inventoryValue,
+        decimal unitCost,
+        Guid saleLineId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        if (quantity <= 0 || inventoryValue < 0 || unitCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-sale-movement",
+                "Sale movement quantity and value are invalid.");
+        }
+
+        return new InventoryMovement(
+            Guid.NewGuid(),
+            storeId,
+            warehouseId,
+            productId,
+            -quantity,
+            -inventoryValue,
+            unitCost,
+            InventoryMovementType.Sale,
+            "SaleLine",
+            saleLineId,
+            performedByUserId,
+            occurredAt);
+    }
 }

@@ -152,27 +152,12 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
         Guid warehouseId,
         IReadOnlyCollection<Guid> orderedProductIds,
         CancellationToken cancellationToken)
-    {
-        var result = new Dictionary<Guid, InventoryBalance>();
-        foreach (var productId in orderedProductIds)
-        {
-            var balance = await dbContext.InventoryBalances
-                .FromSqlInterpolated($"""
-                    SELECT *
-                    FROM [InventoryBalances] WITH (UPDLOCK, HOLDLOCK)
-                    WHERE [StoreId] = {storeId}
-                      AND [WarehouseId] = {warehouseId}
-                      AND [ProductId] = {productId}
-                    """)
-                .SingleOrDefaultAsync(cancellationToken);
-            if (balance is not null)
-            {
-                result.Add(productId, balance);
-            }
-        }
-
-        return result;
-    }
+        => await InventoryBalanceLock.AcquireAsync(
+            dbContext,
+            storeId,
+            warehouseId,
+            orderedProductIds,
+            cancellationToken);
 
     public async Task AcquireOperationLockAsync(
         Guid operationId,

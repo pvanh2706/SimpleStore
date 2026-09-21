@@ -26,6 +26,7 @@ public static class DependencyInjection
                 sql => sql.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
         services.AddScoped<ISlice1Repository, Slice1Repository>();
         services.AddScoped<ISlice2Repository, Slice2Repository>();
+        services.AddScoped<ISlice3Repository, Slice3Repository>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>

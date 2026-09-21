@@ -258,6 +258,7 @@ public sealed class GetInventoryBalanceUseCase(
             balance.QuantityOnHand,
             balance.InventoryValue,
             balance.AverageCost,
+            balance.HasAverageCost,
             balance.UpdatedAt);
     }
 }
@@ -390,6 +391,7 @@ internal static class ProductUseCaseSupport
             balance.QuantityOnHand,
             balance.InventoryValue,
             balance.AverageCost,
+            balance.HasAverageCost,
             product.CreatedAt,
             product.UpdatedAt);
 }

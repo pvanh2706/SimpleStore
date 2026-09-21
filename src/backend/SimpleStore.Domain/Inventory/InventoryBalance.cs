@@ -21,6 +21,7 @@ public sealed class InventoryBalance
         QuantityOnHand = openingInventory.Quantity;
         InventoryValue = openingInventory.InventoryValue;
         AverageCost = openingInventory.AverageCost;
+        HasAverageCost = openingInventory.HasStock;
         UpdatedAt = updatedAt;
     }
 
@@ -37,6 +38,8 @@ public sealed class InventoryBalance
     public decimal InventoryValue { get; private set; }
 
     public decimal AverageCost { get; private set; }
+
+    public bool HasAverageCost { get; private set; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
 
@@ -66,7 +69,47 @@ public sealed class InventoryBalance
         var newValue = InventoryValue + inventoryValue;
         QuantityOnHand = newQuantity;
         InventoryValue = newValue;
-        AverageCost = Math.Round(newValue / newQuantity, 4, MidpointRounding.AwayFromZero);
+        if (newQuantity > 0 && newValue >= 0)
+        {
+            AverageCost = Math.Round(newValue / newQuantity, 4, MidpointRounding.AwayFromZero);
+            HasAverageCost = true;
+        }
+        else if (newQuantity > 0)
+        {
+            HasAverageCost = false;
+        }
+
+        UpdatedAt = updatedAt;
+    }
+
+    public SaleCost ResolveSaleCost(decimal? referencePurchaseCost)
+    {
+        if (HasAverageCost)
+        {
+            return new SaleCost(AverageCost, CostReliability.Reliable);
+        }
+
+        return referencePurchaseCost.HasValue
+            ? new SaleCost(referencePurchaseCost.Value, CostReliability.Estimated)
+            : new SaleCost(0, CostReliability.Unavailable);
+    }
+
+    public void IssueSale(decimal quantity, decimal inventoryValue, DateTimeOffset updatedAt)
+    {
+        if (quantity <= 0)
+        {
+            throw new DomainRuleException("invalid-sale-quantity", "Sale quantity must be greater than zero.");
+        }
+
+        if (inventoryValue < 0)
+        {
+            throw new DomainRuleException("invalid-sale-value", "Sale inventory value cannot be negative.");
+        }
+
+        QuantityOnHand -= quantity;
+        InventoryValue -= inventoryValue;
         UpdatedAt = updatedAt;
     }
 }
+
+public sealed record SaleCost(decimal UnitCost, CostReliability Reliability);
