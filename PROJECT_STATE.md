@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 3 — Sale → Payment → Print: `APPROVED / COMPLETED`**
+**Slice 4 — Return / Void / Recovery: Technical Breakdown `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; production implementation `NOT STARTED`**
 
 ## Primary Persona
 
@@ -13,7 +13,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Step 1–11 đã APPROVED; kế hoạch triển khai theo vertical slice đã được ghi nhận.
 - Slice 0 — Engineering Foundation: completed.
 - Slice 1 — Setup + Product: completed.
-- Slice 2 — Purchase → Inventory: `APPROVED / completed` ngày 2026-09-21 sau các vòng review và hardening.
+- Slice 2 — Purchase → Inventory: `APPROVED / COMPLETED` ngày 2026-09-21 sau các vòng review và hardening.
 - Slice 3 — Sale → Payment → Print: `APPROVED / COMPLETED` ngày 2026-09-22 sau implementation và technical review end-to-end.
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
 - Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
@@ -26,6 +26,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Technical Breakdown Slice 3 v0.1 là `APPROVED FOR IMPLEMENTATION`; negative-stock/inventory-costing hardening đã được review và chấp thuận.
 - Slice 3 đã implement và được approval end-to-end: Customer tối thiểu; Sale, SaleLine và SalePayment; checkout và authoritative pricing; credit Sale; inventory deduction và InventoryMovement; cost snapshot với reliability `Reliable` / `Estimated` / `Unavailable`; negative-stock policy; `HasAverageCost` và negative residual InventoryValue guard; CompleteSale atomic/idempotent; shared deterministic Sale/Purchase locking; browser print/reprint; Owner/Cashier authorization.
 - Implementation đã được technical review. CI backend/frontend tại commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e` (GitHub Actions run `35627192222`) đã pass: backend build, 39 domain tests, 43 SQL Server integration tests, frontend build, 12 frontend test files và 32 frontend tests. Real Slice 3 Playwright flow đã chạy local; CI không chạy real E2E này.
+- D-033–D-040 — Slice 4 permissions, Return lifecycle/quantity/refund/restock, Sale Void, safe Purchase Void và correction idempotency/concurrency/audit — đã được Product Owner `APPROVED` ngày 2026-09-22.
+- Technical Breakdown Slice 4 v0.1 đang `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; tài liệu này chưa phải approval để implementation và Slice 4 production code chưa bắt đầu.
 
 ## Tiến độ
 
@@ -137,7 +139,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Design/technical breakdown cho Slice 4 — Return / Void.** Slice 4 chưa bắt đầu implementation trong thay đổi này.
+**Review và Product Owner final approval cho Technical Breakdown Slice 4 v0.1.** Không bắt đầu Slice 4 implementation trước approval này.
 
 ## Chưa triển khai
 
@@ -148,4 +150,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Product Owner final-approve Slice 3 — Sale → Payment → Print sau implementation và technical review. Slice 3 chuyển thành `APPROVED / COMPLETED`; D-023–D-031 giữ nguyên `APPROVED` và D-032 ghi nhận approval implementation. Bước tiếp theo là design/technical breakdown Slice 4 — Return / Void; Slice 4 chưa bắt đầu implementation.
+2026-09-22 — Product Owner approve D-033–D-040 cho Slice 4 — Return / Void / Recovery. Technical Breakdown Slice 4 v0.1 được tạo ở trạng thái `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; production implementation `NOT STARTED`. Slice 0–1 completed, Slice 2–3 `APPROVED / COMPLETED`; bước tiếp theo là review/final approval Technical Breakdown Slice 4.

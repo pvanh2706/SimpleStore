@@ -349,3 +349,85 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn:** D-023–D-031 giữ nguyên `APPROVED`; không thay đổi business decisions đã được phê duyệt và không bắt đầu Slice 4.
 - **Verification:** Latest verified implementation commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e`; GitHub Actions run `35627192222` pass backend/frontend. Real Slice 3 Playwright flow đã chạy local và không được suy diễn là đã chạy trong CI.
 - **Tài liệu:** [Technical Breakdown Slice 3 v0.1](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-033 — Slice 4 / Return and Void Permission
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Trong MVP Slice 4, chỉ Owner được Create Return, Void Completed Sale và Void Completed Purchase. Cashier tiếp tục được xem Sale và thông tin operational đã được phép ở Slice 3 nhưng không được thực hiện correction mutation.
+- **Boundary:** Backend là authorization boundary; không xây permission matrix tổng quát.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-034 — Slice 4 / Return Lifecycle
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Không persist Return Draft. `CreateReturn` tạo Return trực tiếp ở trạng thái `Completed`; Completed Return immutable. Return tham chiếu OriginalSale và mỗi ReturnLine tham chiếu OriginalSaleLine. Form Return phía frontend chỉ là interaction state.
+- **Bảo toàn lịch sử:** Không hard-delete Sale, Return hoặc ReturnLine.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-035 — Slice 4 / Return Quantity and Concurrent Correction
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** `ReturnableQuantity = OriginalSoldQuantity - cumulative PreviouslyReturnedQuantity`; mỗi requested quantity phải lớn hơn 0 và không vượt quantity còn return được. Cho phép partial Return và nhiều Return cho cùng SaleLine nhưng không được vượt tổng quantity đã bán.
+- **Concurrency:** Concurrent Returns trên cùng Sale phải được serialize/control. Return và Sale Void trên cùng OriginalSale cũng mutually exclusive/serialized.
+- **Exclusion:** Sale đã Void không được Return; Sale đã có bất kỳ Completed Return không được Void.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-036 — Slice 4 / Return Financial Effect and Refund
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Return value dùng historical `OriginalSaleLine.UnitSalePrice` và quantity, không dùng Product.SalePrice hiện tại. Return giảm customer obligation trước; refund chỉ là tiền thực tế phải trả lại sau khi tính nghĩa vụ còn lại.
+- **Công thức:** `NetCashHeldBeforeRefund = OriginalCollected - PreviousRefunds`; `NetSaleObligation = OriginalSaleTotal - CumulativeReturnedValue`; `RefundDueNow = max(0, NetCashHeldBeforeRefund - NetSaleObligation)`; sau refund, `Outstanding = max(0, NetSaleObligation - NetCashHeld)`.
+- **Refund:** Khi `RefundDueNow > 0`, Owner chọn Cash hoặc Transfer; backend tính authoritative amount. Khi bằng 0, không tạo RefundPayment. Không tạo refund debt payable trong MVP.
+- **Rounding:** Mỗi ReturnLine được round 2 chữ số `AwayFromZero`, bị cap bởi remaining financial value; lần return exact remaining quantity dùng exact remaining financial value để đóng residual. Cumulative returned value không vượt OriginalSaleLine.LineAmount.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-037 — Slice 4 / Restock and Historical Cost Basis
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Mỗi ReturnLine bắt buộc Owner chọn `Restock` hoặc `NoRestock`; hệ thống không tự đoán. Restock tăng quantity/value và tạo positive InventoryMovement theo `OriginalSaleLine.UnitCostAtSale`; NoRestock không mutate inventory hoặc tạo receive movement nhưng vẫn lưu original cost basis.
+- **Valuation:** Return Restock dùng cùng inbound Q/V/`HasAverageCost` safety rule đã duyệt: chỉ establish AverageCost khi `Q1 > 0 && V1 >= 0`; khi `Q1 > 0 && V1 < 0` giữ numeric AverageCost và đặt `HasAverageCost = false`; khi `Q1 <= 0` giữ AverageCost và known-state. Không persist negative authoritative AverageCost và không retroactively revalue Sale.
+- **Rounding:** Cumulative restocked inventory value không vượt historical inventory value đã issue cho OriginalSaleLine; partial restock xử lý residual deterministic tương tự revenue return.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-038 — Slice 4 / Sale Void
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Sale Void là correction khi original transaction không nên tồn tại theo business intent, khác Return. Chỉ Owner được Void; Reason bắt buộc; tạo explicit SaleVoid/reversal record với original, reason, actor và timestamp; không xóa hoặc biến Sale gốc thành editable transaction.
+- **Guards:** Không double Void; không Void Sale đã có Completed Return; không Return trên Sale đã Void.
+- **Inventory:** Đảo toàn bộ Sale inventory effect bằng positive reversal InventoryMovement và original `UnitCostAtSale`; cập nhật balance bằng inbound valuation safety rule.
+- **Financial:** Không tạo fake RefundPayment. Original SalePayments giữ nguyên historical facts; read projections loại active obligation/revenue/collection contribution của Sale đã Void.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-039 — Slice 4 / Purchase Void Limitation and Reversal Basis
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Completed Purchase immutable. Owner chỉ được direct Void khi hệ thống chứng minh costing reversal an toàn; không hỗ trợ arbitrary retroactive Purchase Void, historical revaluation hoặc costing replay.
+- **Reversal basis:** Từ Slice 4, CompletePurchase lưu technical/audit pre-mutation basis tối thiểu cho mỗi line/Product gồm QuantityBefore, InventoryValueBefore, AverageCostBefore và HasAverageCostBefore trong cùng transaction. Khi Void an toàn, tạo typed PurchaseVoid/reversal, reversal InventoryMovement và restore exact pre-Purchase balance; original Purchase được giữ.
+- **Legacy/dependency:** Legacy Purchase thiếu trustworthy basis chỉ được Void khi chứng minh được pre-state và dependency không mơ hồ; nếu không thì reject. Dependency check dựa trên persisted movement/audit ordering, không chỉ so current quantity/value. Một line không an toàn làm reject toàn bộ multi-line Purchase Void.
+- **Financial:** Supplier obligation/payment effects được reversed trong derived projections; không tạo fake actual Payment. Supplier-return workflow ngoài Slice 4.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-040 — Slice 4 / Idempotency, Concurrency and Audit
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** `CreateReturn` và typed Sale/Purchase Void operations dùng client-generated OperationId với cùng idempotency/recovery semantics Slice 2–3: exact fingerprint retry trả result cũ; reused ID với payload khác bị reject; ambiguous result kiểm tra và retry exact immutable attempt; không tạo ID mới khi operation cũ còn ambiguous.
+- **Atomicity:** Return/lines/refund/restock movements/balances/operation; SaleVoid/reversal effects/operation; hoặc PurchaseVoid/exact balance restore/reversal effects/operation phải commit/rollback atomically, không partial correction.
+- **Serialization:** Sale correction applock `SimpleStore:SaleCorrection:{SaleId}` serialize Return/Return, Return/SaleVoid và SaleVoid/SaleVoid. Purchase Void dùng `SimpleStore:PurchaseCorrection:{PurchaseId}`. Inventory mutation tiếp tục dùng shared `UPDLOCK, HOLDLOCK` theo deterministic ProductId order.
+- **Audit:** Lưu actor, timestamp, operation type, original transaction, return/reversal transaction và mandatory Void reason. Không xây generic audit/correction framework.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
