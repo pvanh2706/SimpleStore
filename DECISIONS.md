@@ -338,3 +338,14 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn:** D-023–D-030 giữ nguyên `APPROVED`; không thay đổi Slice 2 hoặc các quyết định Step 1–11.
 - **Tiếp theo:** Bắt đầu implementation Slice 3 — Sale → Payment → Print.
 - **Tài liệu:** [Technical Breakdown Slice 3 v0.1](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-032 — Slice 3 Implementation Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner final-approve implementation `Slice 3 — Sale → Payment → Print` sau review implementation, migration, concurrency, idempotency, costing, frontend recovery, print/reprint và CI.
+- **Implementation boundary:** Sale Completed immutable; backend authoritative pricing; credit Sale yêu cầu Customer; Payment là actual money received; CompleteSale atomic/idempotent; inventory mutation dùng shared deterministic locking với Purchase; negative stock theo Store policy; cost reliability dùng explicit known-state; printing là hậu xử lý; Reprint không tạo Sale mới hoặc inventory effect mới.
+- **Bảo toàn:** D-023–D-031 giữ nguyên `APPROVED`; không thay đổi business decisions đã được phê duyệt và không bắt đầu Slice 4.
+- **Verification:** Latest verified implementation commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e`; GitHub Actions run `35627192222` pass backend/frontend. Real Slice 3 Playwright flow đã chạy local và không được suy diễn là đã chạy trong CI.
+- **Tài liệu:** [Technical Breakdown Slice 3 v0.1](docs/architecture/technical-breakdown-slice-3-v0.1.md).

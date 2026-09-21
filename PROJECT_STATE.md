@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 3 — Sale → Payment → Print: `IMPLEMENTED / TECHNICALLY VERIFIED — PENDING PRODUCT OWNER FINAL APPROVAL`**
+**Slice 3 — Sale → Payment → Print: `APPROVED / COMPLETED`**
 
 ## Primary Persona
 
@@ -14,6 +14,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Slice 0 — Engineering Foundation: completed.
 - Slice 1 — Setup + Product: completed.
 - Slice 2 — Purchase → Inventory: `APPROVED / completed` ngày 2026-09-21 sau các vòng review và hardening.
+- Slice 3 — Sale → Payment → Print: `APPROVED / COMPLETED` ngày 2026-09-22 sau implementation và technical review end-to-end.
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
 - Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
 - CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
@@ -21,9 +22,10 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - CI backend/frontend đã pass tại commit hardening cuối `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`.
 - D-023–D-030 — Slice 3 lifecycle, price snapshot, payment/credit, Customer boundary, inventory/cost, negative stock, idempotency và printing/permissions — đã được Product Owner `APPROVED` ngày 2026-09-21.
 - D-031 — Technical Breakdown Slice 3 Approval — đã được Product Owner `APPROVED` ngày 2026-09-21.
+- D-032 — Slice 3 Implementation Approval — đã được Product Owner `APPROVED` ngày 2026-09-22.
 - Technical Breakdown Slice 3 v0.1 là `APPROVED FOR IMPLEMENTATION`; negative-stock/inventory-costing hardening đã được review và chấp thuận.
-- Slice 3 đã implement vertical flow Vue → API → SQL Server: Customer tối thiểu, checkout, actual payments/credit, CompleteSale atomic/idempotent, inventory/cost snapshot, negative-stock setting/audit, Sale list/detail và browser print/reprint.
-- Technical Breakdown vẫn là `APPROVED FOR IMPLEMENTATION`; trạng thái implementation Slice 3 đang chờ Product Owner final approval, không suy diễn thành approval mới.
+- Slice 3 đã implement và được approval end-to-end: Customer tối thiểu; Sale, SaleLine và SalePayment; checkout và authoritative pricing; credit Sale; inventory deduction và InventoryMovement; cost snapshot với reliability `Reliable` / `Estimated` / `Unavailable`; negative-stock policy; `HasAverageCost` và negative residual InventoryValue guard; CompleteSale atomic/idempotent; shared deterministic Sale/Purchase locking; browser print/reprint; Owner/Cashier authorization.
+- Implementation đã được technical review. CI backend/frontend tại commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e` (GitHub Actions run `35627192222`) đã pass: backend build, 39 domain tests, 43 SQL Server integration tests, frontend build, 12 frontend test files và 32 frontend tests. Real Slice 3 Playwright flow đã chạy local; CI không chạy real E2E này.
 
 ## Tiến độ
 
@@ -135,7 +137,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review/final approval cho implementation Slice 3 — Sale → Payment → Print.** Không bắt đầu Slice 4 trong thay đổi này.
+**Design/technical breakdown cho Slice 4 — Return / Void.** Slice 4 chưa bắt đầu implementation trong thay đổi này.
 
 ## Chưa triển khai
 
@@ -146,4 +148,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Slice 3 production implementation hoàn tất và đã được verify kỹ thuật bằng domain tests, SQL Server integration tests, frontend build/Vitest và real local Playwright flow Owner setup → Cashier Sale → inventory decrease → print/reprint. D-023–D-031 giữ nguyên `APPROVED`; implementation Slice 3 đang `PENDING PRODUCT OWNER FINAL APPROVAL`. Không bắt đầu Slice 4.
+2026-09-22 — Product Owner final-approve Slice 3 — Sale → Payment → Print sau implementation và technical review. Slice 3 chuyển thành `APPROVED / COMPLETED`; D-023–D-031 giữ nguyên `APPROVED` và D-032 ghi nhận approval implementation. Bước tiếp theo là design/technical breakdown Slice 4 — Return / Void; Slice 4 chưa bắt đầu implementation.

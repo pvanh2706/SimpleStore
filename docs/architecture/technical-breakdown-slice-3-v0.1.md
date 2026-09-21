@@ -2,11 +2,14 @@
 
 - **Slice:** 3 — Sale → Payment → Print
 - **Trạng thái:** `APPROVED FOR IMPLEMENTATION`
-- **Implementation status:** `IMPLEMENTED / TECHNICALLY VERIFIED — PENDING PRODUCT OWNER FINAL APPROVAL`
+- **Implementation status:** `APPROVED / COMPLETED`
 - **Ngày approval D-023–D-030:** 2026-09-21
-- **Ngày Product Owner final approval:** 2026-09-21
+- **Ngày Product Owner approval Technical Breakdown:** 2026-09-21
+- **Ngày Product Owner final approval implementation:** 2026-09-22
 - **Approved decisions:** D-023–D-030
 - **Approval decision:** D-031 — Slice 3 / Technical Breakdown Approval.
+- **Implementation approval decision:** D-032 — Slice 3 Implementation Approval.
+- **Latest verified implementation:** commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e`; GitHub Actions run `35627192222` pass backend/frontend.
 - **Review:** Negative-stock/inventory-costing hardening đã được review và chấp thuận.
 - **Source of truth:** Tài liệu này là implementation source of truth cho Slice 3.
 - **Ranh giới:** Tài liệu này chốt technical direction cho Slice 3; không thay đổi Step 1–11, Architecture v0.1, Domain Model v0.1 hoặc scope MVP đã `APPROVED`.
@@ -644,4 +647,4 @@ Slice 3 chỉ được đề nghị approval implementation khi:
 - D-016 — Store tenancy foundation.
 - D-023–D-030 — `APPROVED`: Slice 3 Sale lifecycle, pricing, payment/customer, inventory/cost, negative stock, idempotency, printing và permissions.
 
-Slice 0–2 giữ nguyên trạng thái. Slice 3 đã được implement theo breakdown này và verify bằng domain tests, SQL Server integration tests, frontend tests cùng real local Playwright flow; implementation vẫn chờ Product Owner final approval. Tài liệu không thay đổi business decisions đã `APPROVED` và không bắt đầu Slice 4.
+Slice 0–2 giữ nguyên trạng thái. Slice 3 đã được implement theo breakdown này, verify bằng backend build, 39 domain tests, 43 SQL Server integration tests, frontend build, 12 frontend test files với 32 frontend tests, và được Product Owner final-approve ngày 2026-09-22. Real local Playwright flow đã chạy riêng; GitHub Actions không chạy real E2E này. Tài liệu không thay đổi business decisions đã `APPROVED` và không bắt đầu Slice 4.
