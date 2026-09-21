@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using SimpleStore.Application.Errors;
+using SimpleStore.Domain;
 
 namespace SimpleStore.Api.ErrorHandling;
 
@@ -18,19 +20,67 @@ public sealed partial class GlobalExceptionHandler(
             httpContext.Request.Method,
             httpContext.Request.Path);
 
-        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        var problem = MapProblem(exception);
+        httpContext.Response.StatusCode = problem.Status!.Value;
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
             HttpContext = httpContext,
-            ProblemDetails = new ProblemDetails
+            ProblemDetails = problem,
+            Exception = exception
+        });
+    }
+
+    private static ProblemDetails MapProblem(Exception exception)
+    {
+        var problem = exception switch
+        {
+            ApplicationValidationException validation => CreateProblem(
+                StatusCodes.Status400BadRequest,
+                validation.Code,
+                validation.Message),
+            DomainRuleException domain => CreateProblem(
+                StatusCodes.Status400BadRequest,
+                domain.Code,
+                domain.Message),
+            ApplicationConflictException conflict => CreateProblem(
+                StatusCodes.Status409Conflict,
+                conflict.Code,
+                conflict.Message),
+            UniqueConstraintException => CreateProblem(
+                StatusCodes.Status409Conflict,
+                "unique-constraint-conflict",
+                "The requested value already exists."),
+            ApplicationNotFoundException notFound => CreateProblem(
+                StatusCodes.Status404NotFound,
+                notFound.Code,
+                notFound.Message),
+            _ => new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
                 Title = "An unexpected error occurred.",
                 Type = "https://www.rfc-editor.org/rfc/rfc9110#section-15.6.1"
-            },
-            Exception = exception
-        });
+            }
+        };
+
+        if (exception is ApplicationValidationException validationException)
+        {
+            problem.Extensions["errors"] = validationException.Errors;
+        }
+
+        return problem;
+    }
+
+    private static ProblemDetails CreateProblem(int status, string code, string title)
+    {
+        var problem = new ProblemDetails
+        {
+            Status = status,
+            Title = title,
+            Type = $"https://simplestore/errors/{code}"
+        };
+        problem.Extensions["code"] = code;
+        return problem;
     }
 
     [LoggerMessage(

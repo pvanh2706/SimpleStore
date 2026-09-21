@@ -3,11 +3,15 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleStore.Api.ErrorHandling;
+using SimpleStore.Api.Security;
+using SimpleStore.Application;
+using SimpleStore.Application.Abstractions;
 using SimpleStore.Infrastructure;
+using SimpleStore.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers(options =>
+builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
 });
@@ -37,9 +41,17 @@ builder.Services.AddAuthorization(options =>
         .RequireAuthenticatedUser()
         .Build();
 });
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.SeedDevelopmentOwnerAsync(builder.Configuration, app.Logger);
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages(async statusCodeContext =>

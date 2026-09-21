@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 0 — Engineering Foundation đã được triển khai và kiểm chứng**
+**Slice 1 — Setup + Product đã được triển khai và kiểm chứng**
 
 ## Primary Persona
 
@@ -11,9 +11,10 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 ## Phạm vi hiện tại
 
 - Step 1–11 đã APPROVED; kế hoạch triển khai theo vertical slice đã được ghi nhận.
-- Slice 0 Engineering Foundation đã có backend, frontend, testing và CI foundation theo D-015.
-- Migration hiện tại chỉ tạo ASP.NET Core Identity schema; chưa có domain table của Slice 1.
-- Bước triển khai tiếp theo là Slice 1 — Setup + Product.
+- Slice 0 Engineering Foundation và Slice 1 Setup + Product đã có backend, frontend, testing và CI theo D-015.
+- Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
+- Business data Slice 1 được scope theo Store; transaction và SQL constraints bảo vệ atomicity/uniqueness.
+- Bước triển khai tiếp theo theo development plan là Slice 2 — Purchase → Inventory.
 
 ## Tiến độ
 
@@ -125,17 +126,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Ready to begin implementation — Slice 0 Engineering Foundation**
+**Slice 2 — Purchase → Inventory**, sau khi Product Owner xác nhận bắt đầu slice tiếp theo.
 
-Sau đó: **Slice 1 — Setup + Product**.
+## Chưa triển khai
 
-## Chưa triển khai trong lần cập nhật tài liệu này
-
-- Phát triển frontend.
-- Phát triển backend.
-- Thiết kế hoặc triển khai database.
-- Viết source code ứng dụng.
+- Supplier, Purchase/PurchaseLine và Moving Weighted Average.
+- Sale, Payment, Customer, Return/Void, debt, checkout và receipt printing.
+- C14, HĐĐT và các capability ngoài Slice 1.
+- Full E2E orchestration; behavior nghiệp vụ hiện được kiểm chứng bằng integration tests trên SQL Server thật.
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Hoàn thành implementation Slice 0 Engineering Foundation: .NET/Vue solution skeleton, SQL Server + Identity/EF migration foundation, secure cookie direction, ProblemDetails, health/OpenAPI, test foundations và CI. Chưa triển khai business functionality của Slice 1. Các quyết định Step 1–11 giữ nguyên.
+2026-09-21 — Hoàn thành implementation Slice 1 Setup + Product: Owner login/onboarding, Store + Main Warehouse, Product CRUD-lite/deactivate/search, OpeningBalance + InventoryBalance atomic, CSV Validate → Preview → Confirm idempotent, Vue flows và SQL Server integration tests. Các quyết định Step 1–11 giữ nguyên; không mở rộng sang Slice 2+.

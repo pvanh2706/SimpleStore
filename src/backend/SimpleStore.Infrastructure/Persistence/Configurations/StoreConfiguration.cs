@@ -1,0 +1,34 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SimpleStore.Domain.Stores;
+
+namespace SimpleStore.Infrastructure.Persistence.Configurations;
+
+public sealed class StoreConfiguration : IEntityTypeConfiguration<Store>
+{
+    public void Configure(EntityTypeBuilder<Store> builder)
+    {
+        builder.ToTable("Stores");
+        builder.HasKey(store => store.Id);
+        builder.Property(store => store.Name).HasMaxLength(120).IsRequired();
+        builder.HasIndex(store => store.OwnerUserId).IsUnique();
+    }
+}
+
+public sealed class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
+{
+    public void Configure(EntityTypeBuilder<Warehouse> builder)
+    {
+        builder.ToTable("Warehouses");
+        builder.HasKey(warehouse => warehouse.Id);
+        builder.Property(warehouse => warehouse.Name).HasMaxLength(120).IsRequired();
+        builder.HasOne<Store>()
+            .WithMany()
+            .HasForeignKey(warehouse => warehouse.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(warehouse => warehouse.StoreId);
+        builder.HasIndex(warehouse => warehouse.StoreId)
+            .IsUnique()
+            .HasFilter("[IsMain] = 1");
+    }
+}

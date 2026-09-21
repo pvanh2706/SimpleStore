@@ -7,7 +7,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: 'https://127.0.0.1:4173',
+    ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,7 +19,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm --dir ../../src/frontend/simplestore-web dev --host 127.0.0.1 --port 4173',
-    url: 'http://127.0.0.1:4173',
+    url: 'https://127.0.0.1:4173',
+    ignoreHTTPSErrors: true,
     reuseExistingServer: !process.env.CI,
   },
 })

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SimpleStore.Application.Abstractions;
 using SimpleStore.Infrastructure.Identity;
 using SimpleStore.Infrastructure.Persistence;
 
@@ -23,6 +24,7 @@ public static class DependencyInjection
             options.UseSqlServer(
                 connectionString,
                 sql => sql.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+        services.AddScoped<ISlice1Repository, Slice1Repository>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
