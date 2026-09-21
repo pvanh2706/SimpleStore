@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 2 — Purchase → Inventory: `APPROVED / COMPLETED`**
+**Slice 3 — Sale → Payment → Print: technical decisions `APPROVED`; implementation chưa bắt đầu**
 
 ## Primary Persona
 
@@ -19,7 +19,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
 - D-018–D-021 là các business decisions đã `APPROVED` và không thay đổi.
 - CI backend/frontend đã pass tại commit hardening cuối `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`.
-- Bước implementation tiếp theo là Slice 3 — Sale → Payment → Print; Slice 3 chưa bắt đầu implementation.
+- D-023–D-030 — Slice 3 lifecycle, price snapshot, payment/credit, Customer boundary, inventory/cost, negative stock, idempotency và printing/permissions — đã được Product Owner `APPROVED` ngày 2026-09-21.
+- Technical Breakdown Slice 3 v0.1 đã được tạo với trạng thái `APPROVED FOR IMPLEMENTATION`; production implementation chưa bắt đầu.
 
 ## Tiến độ
 
@@ -131,7 +132,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Slice 3 — Sale → Payment → Print**. Đây là bước implementation tiếp theo và chưa bắt đầu.
+**Review/xác nhận Technical Breakdown Slice 3 v0.1 trước khi bắt đầu implementation Slice 3 — Sale → Payment → Print.** Slice 3 production implementation chưa bắt đầu.
 
 ## Chưa triển khai
 
@@ -142,4 +143,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Product Owner chính thức `APPROVED` Slice 2 Purchase → Inventory sau khi implementation được review và harden. CI backend/frontend pass tại commit `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`. D-018–D-021 tiếp tục giữ nguyên `APPROVED`. Slice 3 là bước tiếp theo nhưng chưa bắt đầu implementation.
+2026-09-21 — Product Owner `APPROVED` D-023–D-030 cho Slice 3 — Sale → Payment → Print. Technical Breakdown Slice 3 v0.1 đã được tạo docs-only; Slice 0 completed, Slice 1 completed, Slice 2 `APPROVED / COMPLETED`, và Slice 3 production implementation chưa bắt đầu. Bước tiếp theo là review/xác nhận technical breakdown trước implementation.

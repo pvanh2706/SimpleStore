@@ -253,3 +253,77 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn quyết định:** D-018–D-021 giữ nguyên `APPROVED`; không thay đổi business scope, architecture hoặc các business decisions đã phê duyệt.
 - **Tiếp theo:** Slice 3 — Sale → Payment → Print là bước implementation tiếp theo và chưa bắt đầu.
 - **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).
+
+### D-023 — Slice 3 / Sale Lifecycle
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Không persist Sale Draft. Cart là transient interaction state phía frontend; chỉ `CompleteSale` thành công mới tạo Sale trực tiếp ở trạng thái `Completed`. Completed Sale immutable và không hard-delete.
+- **Lý do:** Không tạo Sale Draft rác khi Cashier bỏ dở giỏ hàng và giữ rõ `Cart ≠ Sale`; Sale chỉ tồn tại như một business fact sau completion thành công.
+- **Ranh giới:** Correction, Return và Void thuộc Slice 4.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-024 — Slice 3 / Sale Price Snapshot
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Backend/domain là authority cho giá bán. `CompleteSale` dùng `Product.SalePrice` hiện hành tại thời điểm complete; `SaleLine` snapshot giá bán và lịch sử không đổi khi Product đổi giá sau này. Frontend chỉ preview và không gửi authoritative SalePrice.
+- **Ranh giới:** Slice 3 chưa implement discount vì discount là SHOULD, không phải MUST.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-025 — Slice 3 / Sale Payment and Credit Sale
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Sale cho phép nhiều Payment, Slice 3 chỉ hỗ trợ `Cash` và `Transfer`. Payment là tiền thực thu; tổng Payment phải từ 0 đến Sale Total. Tendered cash/change không được model thành Payment vượt Total.
+- **Debt:** `Outstanding = Sale.Total − sum(SalePayments)`; outstanding không phải field được chỉnh tùy ý.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-026 — Slice 3 / Minimal Customer Boundary
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Customer optional nếu Sale thanh toán đủ và bắt buộc nếu còn outstanding. Customer trong Slice 3 chỉ là identity tối thiểu gồm Id, StoreId, Name và Phone optional để xác định khoản nợ thuộc về ai.
+- **Ranh giới:** Không CRM, loyalty, segmentation, credit limit, statement phức tạp hoặc workflow thu nợ sau. Customer debt repayment thuộc Slice 5; Slice 3 chỉ tạo dữ liệu Sale/Customer đủ sạch để tiếp tục mà không sửa lại Sale model.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-027 — Slice 3 / Inventory and Cost on Sale
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** `CompleteSale` atomically tạo Sale/SaleLines/actual Payments, giảm InventoryBalance, tạo InventoryMovement âm, snapshot `UnitCostAtSale` và ghi BusinessOperation result. SaleLine giữ cost snapshot lịch sử.
+- **Concurrency:** Mutation cùng Product + Warehouse phải được serialize/control theo architecture đã duyệt; Sale nhiều Product khóa theo deterministic ProductId order. Concurrent Sale/Purchase cùng Product không được lost update.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-028 — Slice 3 / Negative Stock
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Giữ nguyên Architecture Decision C. Store có `AllowNegativeStock`, mặc định `false`; chỉ Owner thay đổi và thay đổi phải audit được.
+- **Khi tắt:** `CompleteSale` làm âm tồn bị reject toàn bộ, không partial state; response cho biết Product thiếu và số lượng thiếu; backend enforce.
+- **Khi bật:** Sale được Completed, InventoryMovement vẫn đầy đủ và balance có thể âm. Cost basis ưu tiên last known AverageCost, fallback ReferencePurchaseCost; nếu vẫn không có cost đáng tin thì Sale vẫn theo policy nhưng cost/profit phải thể hiện không đủ tin cậy hoặc estimated. Không retroactive revaluation khi Purchase xảy ra sau.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-029 — Slice 3 / CompleteSale Idempotency
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** `CompleteSale` dùng client-generated OperationId. ID mới tạo operation mới; cùng ID và fingerprint đã Completed trả Sale cũ; cùng ID nhưng payload khác bị reject `idempotency-key-reused`. Sale, lines, payments, inventory effects và BusinessOperation commit atomically.
+- **Frontend recovery:** Immutable attempt snapshot; double-click không tạo operation thứ hai. Network timeout, HTTP 408 và ambiguous `operation-lock-timeout` giữ nguyên OperationId/payload, kiểm tra status và retry exact attempt. Completed recovery phải load Sale authoritative; không tạo ID mới khi operation cũ còn ambiguous.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
+
+### D-030 — Slice 3 / Printing Boundary and Permissions
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Printing xảy ra sau khi Sale đã Completed. Print failure không rollback Sale, không gọi lại `CompleteSale`, phải hiển thị Sale thành công/in thất bại và cho phép Reprint từ Sale Completed. Slice 3 dùng browser-print/printable receipt boundary, không xây printer orchestration service phức tạp; browser không chứng minh chắc chắn giấy đã in.
+- **Permissions:** Owner và Cashier được checkout/Sale; Cashier được xem Sale cần cho bán hàng và Reprint. Chỉ Owner thay đổi `AllowNegativeStock`. Return/Void authorization thuộc Slice 4.
+- **Tài liệu:** [Technical Breakdown Slice 3](docs/architecture/technical-breakdown-slice-3-v0.1.md).
