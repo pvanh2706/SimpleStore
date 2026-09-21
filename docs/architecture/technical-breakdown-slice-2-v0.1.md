@@ -1,8 +1,10 @@
 # Technical Breakdown — Slice 2 v0.1
 
 - **Slice:** 2 — Purchase → Inventory
-- **Trạng thái:** `IMPLEMENTED / PENDING PRODUCT OWNER FINAL APPROVAL`
-- **Business decisions:** D-018–D-021 đã được Product Owner `APPROVED`; implementation tổng thể đang chờ final approval.
+- **Trạng thái:** `APPROVED / IMPLEMENTED`
+- **Ngày Product Owner approval:** 2026-09-21
+- **Business decisions:** D-018–D-021 giữ nguyên `APPROVED`.
+- **Verification:** Implementation đã qua các vòng review và hardening; CI backend/frontend pass tại commit `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`.
 
 ## Outcome và ranh giới
 

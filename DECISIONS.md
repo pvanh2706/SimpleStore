@@ -242,3 +242,14 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Người phê duyệt:** Product Owner
 - **Quyết định:** Supplier và Purchase trong Slice 2 là Owner-only. Cashier không được create/update/deactivate Supplier hoặc create/edit/complete Purchase; backend authorization là security boundary.
 - **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).
+
+### D-022 — Slice 2 / Implementation Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-21
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Phê duyệt implementation Slice 2 — Purchase → Inventory sau các vòng review và hardening. Slice 2 được ghi nhận `APPROVED / IMPLEMENTED`.
+- **Verification:** CI backend/frontend pass tại commit hardening cuối `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`.
+- **Bảo toàn quyết định:** D-018–D-021 giữ nguyên `APPROVED`; không thay đổi business scope, architecture hoặc các business decisions đã phê duyệt.
+- **Tiếp theo:** Slice 3 — Sale → Payment → Print là bước implementation tiếp theo và chưa bắt đầu.
+- **Tài liệu:** [Technical Breakdown Slice 2](docs/architecture/technical-breakdown-slice-2-v0.1.md).

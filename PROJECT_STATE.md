@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 2 — Purchase → Inventory đã được triển khai và kiểm chứng kỹ thuật; implementation đang chờ Product Owner final approval**
+**Slice 2 — Purchase → Inventory: `APPROVED / COMPLETED`**
 
 ## Primary Persona
 
@@ -11,12 +11,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 ## Phạm vi hiện tại
 
 - Step 1–11 đã APPROVED; kế hoạch triển khai theo vertical slice đã được ghi nhận.
-- Slice 0 Engineering Foundation, Slice 1 Setup + Product và Slice 2 Purchase → Inventory đã có backend, frontend và testing theo D-015.
+- Slice 0 — Engineering Foundation: completed.
+- Slice 1 — Setup + Product: completed.
+- Slice 2 — Purchase → Inventory: `APPROVED / completed` ngày 2026-09-21 sau các vòng review và hardening.
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
 - Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
 - CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
-- D-018–D-021 là các business decisions đã `APPROVED`; implementation Slice 2 vẫn đang chờ Product Owner final approval.
-- Không bắt đầu Slice 3 trước khi implementation Slice 2 được Product Owner final approval hoặc có chỉ đạo rõ ràng khác.
+- D-018–D-021 là các business decisions đã `APPROVED` và không thay đổi.
+- CI backend/frontend đã pass tại commit hardening cuối `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`.
+- Bước implementation tiếp theo là Slice 3 — Sale → Payment → Print; Slice 3 chưa bắt đầu implementation.
 
 ## Tiến độ
 
@@ -128,7 +131,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Slice 3 — Sale → Payment → Print**, sau khi Product Owner xác nhận bắt đầu slice tiếp theo.
+**Slice 3 — Sale → Payment → Print**. Đây là bước implementation tiếp theo và chưa bắt đầu.
 
 ## Chưa triển khai
 
@@ -139,4 +142,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-21 — Slice 2 Purchase → Inventory đã implement và harden kỹ thuật: searchable paginated Purchase pickers, paginated Supplier/Purchase lists, immutable retry snapshot cho OperationId, Supplier update trả debt authoritative, và SQL Server concurrency test trên cùng Draft. D-018–D-021 đã `APPROVED`; implementation Slice 2 vẫn chờ Product Owner final approval. Không triển khai Sale, Return/Void hoặc repayment flow ngoài Slice 2.
+2026-09-21 — Product Owner chính thức `APPROVED` Slice 2 Purchase → Inventory sau khi implementation được review và harden. CI backend/frontend pass tại commit `f68c8a111a5538be8e51cf8ff0e323e7ce2f41c0`. D-018–D-021 tiếp tục giữ nguyên `APPROVED`. Slice 3 là bước tiếp theo nhưng chưa bắt đầu implementation.
