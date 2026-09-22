@@ -7,9 +7,11 @@ using SimpleStore.Application.Errors;
 using SimpleStore.Application.Stores;
 using SimpleStore.Application.Suppliers;
 using SimpleStore.Domain.Customers;
+using SimpleStore.Domain.Corrections;
 using SimpleStore.Domain.Inventory;
 using SimpleStore.Domain.Operations;
 using SimpleStore.Domain.Purchases;
+using SimpleStore.Domain.Returns;
 using SimpleStore.Domain.Sales;
 
 namespace SimpleStore.Application.Sales;
@@ -18,6 +20,7 @@ public sealed class CompleteSaleUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
     ISlice3Repository repository,
+    ISlice4Repository correctionRepository,
     TimeProvider timeProvider)
 {
     public async Task<SaleResult> ExecuteAsync(
@@ -210,7 +213,12 @@ public sealed class CompleteSaleUseCase(
         }
 
         var cashier = await repository.GetUserDisplayNameAsync(sale.CompletedByUserId, cancellationToken);
-        return SaleUseCaseSupport.ToResult(sale, store.Name, customer, cashier, wasAlreadyCompleted);
+        var returns = await correctionRepository.GetReturnsForSaleAsync(
+            sale.StoreId, sale.Id, cancellationToken);
+        var saleVoid = await correctionRepository.GetSaleVoidAsync(
+            sale.StoreId, sale.Id, cancellationToken);
+        return SaleUseCaseSupport.ToResult(
+            sale, store.Name, customer, cashier, wasAlreadyCompleted, returns, saleVoid);
     }
 
     private static SalePaymentInput ToDomainPayment(SalePaymentCommand command)
@@ -251,7 +259,8 @@ public sealed class CompleteSaleUseCase(
 public sealed class GetSaleUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
-    ISlice3Repository repository)
+    ISlice3Repository repository,
+    ISlice4Repository slice4Repository)
 {
     public async Task<SaleResult> ExecuteAsync(Guid saleId, CancellationToken cancellationToken)
     {
@@ -267,7 +276,9 @@ public sealed class GetSaleUseCase(
             ? await repository.GetCustomerAsync(storeId, sale.CustomerId.Value, cancellationToken)
             : null;
         var cashier = await repository.GetUserDisplayNameAsync(sale.CompletedByUserId, cancellationToken);
-        return SaleUseCaseSupport.ToResult(sale, store.Name, customer, cashier);
+        var returns = await slice4Repository.GetReturnsForSaleAsync(storeId, saleId, cancellationToken);
+        var saleVoid = await slice4Repository.GetSaleVoidAsync(storeId, saleId, cancellationToken);
+        return SaleUseCaseSupport.ToResult(sale, store.Name, customer, cashier, false, returns, saleVoid);
     }
 }
 
@@ -294,8 +305,17 @@ public sealed class GetSalesUseCase(
             item.CashierDisplayName,
             item.Sale.TotalAmount,
             item.Sale.PaidAmount,
-            item.Sale.OutstandingAmount,
-            item.Sale.CompletedAt)).ToArray();
+            item.IsVoided ? 0 : Math.Max(0,
+                item.Sale.TotalAmount - item.TotalReturnedAmount
+                - (item.Sale.PaidAmount - item.TotalRefundedAmount)),
+            item.Sale.CompletedAt,
+            item.Sale.TotalAmount,
+            item.TotalReturnedAmount,
+            item.IsVoided ? 0 : item.Sale.TotalAmount - item.TotalReturnedAmount,
+            item.Sale.PaidAmount,
+            item.TotalRefundedAmount,
+            item.IsVoided ? 0 : item.Sale.PaidAmount - item.TotalRefundedAmount,
+            item.IsVoided)).ToArray();
         return new SaleListResult(
             items,
             page,
@@ -312,8 +332,17 @@ internal static class SaleUseCaseSupport
         string storeName,
         Customer? customer,
         string cashierDisplayName,
-        bool wasAlreadyCompleted = false) =>
-        new(
+        bool wasAlreadyCompleted = false,
+        IReadOnlyList<CustomerReturn>? returns = null,
+        SaleVoid? saleVoid = null)
+    {
+        returns ??= [];
+        var totalReturned = returns.Sum(item => item.TotalReturnAmount);
+        var totalRefunded = returns.SelectMany(item => item.RefundPayments).Sum(item => item.Amount);
+        var isVoided = saleVoid is not null;
+        var netSale = isVoided ? 0 : sale.TotalAmount - totalReturned;
+        var netCollected = isVoided ? 0 : sale.PaidAmount - totalRefunded;
+        return new(
             sale.Id,
             sale.Status.ToString(),
             storeName,
@@ -338,8 +367,24 @@ internal static class SaleUseCaseSupport
                 payment.OccurredAt)).ToArray(),
             sale.TotalAmount,
             sale.PaidAmount,
-            sale.OutstandingAmount,
+            isVoided ? 0 : Math.Max(0, netSale - netCollected),
             sale.CreatedAt,
             sale.CompletedAt,
-            wasAlreadyCompleted);
+            wasAlreadyCompleted,
+            sale.TotalAmount,
+            totalReturned,
+            netSale,
+            sale.PaidAmount,
+            totalRefunded,
+            netCollected,
+            isVoided,
+            saleVoid is null ? null : new SaleVoidInfoResult(
+                saleVoid.Id, saleVoid.Reason, saleVoid.VoidedByUserId, saleVoid.VoidedAt),
+            returns.Select(item => new SaleReturnSummaryResult(
+                item.Id,
+                item.TotalReturnAmount,
+                item.RefundPayments.Sum(payment => payment.Amount),
+                item.CompletedByUserId,
+                item.CompletedAt)).ToArray());
+    }
 }

@@ -23,6 +23,7 @@ public sealed record ProductResult(
     decimal InventoryValue,
     decimal AverageCost,
     bool HasAverageCost,
+    long ReferencePurchaseCostRevision,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 

@@ -392,6 +392,7 @@ internal static class ProductUseCaseSupport
             balance.InventoryValue,
             balance.AverageCost,
             balance.HasAverageCost,
+            product.ReferencePurchaseCostRevision,
             product.CreatedAt,
             product.UpdatedAt);
 }

@@ -43,6 +43,8 @@ public sealed class InventoryMovementConfiguration : IEntityTypeConfiguration<In
     {
         builder.ToTable("InventoryMovements");
         builder.HasKey(movement => movement.Id);
+        builder.HasAlternateKey(movement => new { movement.StoreId, movement.Id });
+        builder.Property(movement => movement.LedgerSequence).UseIdentityColumn();
         builder.Property(movement => movement.QuantityDelta).HasPrecision(18, 3);
         builder.Property(movement => movement.InventoryValueDelta).HasPrecision(18, 2);
         builder.Property(movement => movement.UnitCost).HasPrecision(18, 4);
@@ -67,6 +69,13 @@ public sealed class InventoryMovementConfiguration : IEntityTypeConfiguration<In
             .HasForeignKey(movement => movement.PerformedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(movement => new { movement.StoreId, movement.ProductId, movement.OccurredAt });
+        builder.HasIndex(movement => new
+        {
+            movement.StoreId,
+            movement.WarehouseId,
+            movement.ProductId,
+            movement.LedgerSequence
+        });
         builder.HasIndex(movement => new { movement.SourceType, movement.SourceId });
     }
 }

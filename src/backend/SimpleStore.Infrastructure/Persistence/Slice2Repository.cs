@@ -1,7 +1,6 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using SimpleStore.Application.Abstractions;
 using SimpleStore.Application.Errors;
 using SimpleStore.Domain.Inventory;
@@ -9,6 +8,7 @@ using SimpleStore.Domain.Operations;
 using SimpleStore.Domain.Products;
 using SimpleStore.Domain.Purchases;
 using SimpleStore.Domain.Stores;
+using SimpleStore.Domain.Corrections;
 using SimpleStore.Domain.Suppliers;
 
 namespace SimpleStore.Infrastructure.Persistence;
@@ -41,7 +41,9 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
         await dbContext.Purchases
             .Where(purchase => purchase.StoreId == storeId
                 && purchase.SupplierId == supplierId
-                && purchase.Status == PurchaseStatus.Completed)
+                && purchase.Status == PurchaseStatus.Completed
+                && !dbContext.PurchaseVoids.Any(voided => voided.StoreId == storeId
+                    && voided.OriginalPurchaseId == purchase.Id))
             .SumAsync(
                 purchase => purchase.TotalAmount
                     - purchase.Payments.Sum(payment => payment.Amount),
@@ -80,7 +82,9 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
                 dbContext.Purchases
                     .Where(purchase => purchase.StoreId == storeId
                         && purchase.SupplierId == supplier.Id
-                        && purchase.Status == PurchaseStatus.Completed)
+                        && purchase.Status == PurchaseStatus.Completed
+                        && !dbContext.PurchaseVoids.Any(voided => voided.StoreId == storeId
+                            && voided.OriginalPurchaseId == purchase.Id))
                     .Sum(purchase => purchase.TotalAmount
                         - purchase.Payments.Sum(payment => payment.Amount))))
             .ToArrayAsync(cancellationToken);
@@ -99,6 +103,14 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
             .SingleOrDefaultAsync(
                 purchase => purchase.StoreId == storeId && purchase.Id == purchaseId,
                 cancellationToken);
+
+    public Task<PurchaseVoid?> GetPurchaseVoidAsync(
+        Guid storeId,
+        Guid purchaseId,
+        CancellationToken cancellationToken) =>
+        dbContext.PurchaseVoids.AsNoTracking().SingleOrDefaultAsync(
+            item => item.StoreId == storeId && item.OriginalPurchaseId == purchaseId,
+            cancellationToken);
 
     public async Task<PurchaseSearchPage> SearchPurchasesAsync(
         Guid storeId,
@@ -123,7 +135,9 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
                 select new PurchaseSearchItem(
                     purchase,
                     supplier.Name,
-                    purchase.Payments.Sum(payment => payment.Amount)))
+                    purchase.Payments.Sum(payment => payment.Amount),
+                    dbContext.PurchaseVoids.Any(voided => voided.StoreId == storeId
+                        && voided.OriginalPurchaseId == purchase.Id)))
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToArrayAsync(cancellationToken);
@@ -159,41 +173,10 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
             orderedProductIds,
             cancellationToken);
 
-    public async Task AcquireOperationLockAsync(
+    public Task AcquireOperationLockAsync(
         Guid operationId,
-        CancellationToken cancellationToken)
-    {
-        var transaction = dbContext.Database.CurrentTransaction
-            ?? throw new InvalidOperationException("An active database transaction is required.");
-        var connection = dbContext.Database.GetDbConnection();
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction.GetDbTransaction();
-        command.CommandText = """
-            DECLARE @result int;
-            EXEC @result = sys.sp_getapplock
-                @Resource = @resource,
-                @LockMode = 'Exclusive',
-                @LockOwner = 'Transaction',
-                @LockTimeout = 15000;
-            SELECT @result;
-            """;
-        command.Parameters.Add(new SqlParameter(
-            "@resource",
-            SqlDbType.NVarChar,
-            255)
-        {
-            Value = $"SimpleStore:CompletePurchase:{operationId:N}"
-        });
-        var result = Convert.ToInt32(
-            await command.ExecuteScalarAsync(cancellationToken),
-            System.Globalization.CultureInfo.InvariantCulture);
-        if (result < 0)
-        {
-            throw new ApplicationConflictException(
-                "operation-lock-timeout",
-                "The operation is already being processed. Check its status and retry.");
-        }
-    }
+        CancellationToken cancellationToken) =>
+        ApplicationLock.AcquireBusinessOperationAsync(dbContext, operationId, cancellationToken);
 
     public Task<BusinessOperation?> GetOperationAsync(
         Guid storeId,
@@ -218,6 +201,9 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
 
     public void AddInventoryMovement(InventoryMovement movement) =>
         dbContext.InventoryMovements.Add(movement);
+
+    public void AddPurchaseLineReversalBasis(PurchaseLineReversalBasis basis) =>
+        dbContext.PurchaseLineReversalBases.Add(basis);
 
     public void AddBusinessOperation(BusinessOperation operation) =>
         dbContext.BusinessOperations.Add(operation);

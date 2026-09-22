@@ -84,6 +84,52 @@ public sealed class BusinessOperation
             saleId,
             completedAt);
     }
+
+    public static BusinessOperation CreateReturn(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid returnId,
+        DateTimeOffset completedAt) =>
+        Complete(operationId, storeId, BusinessOperationTypes.CreateReturn, requestFingerprint, returnId, completedAt);
+
+    public static BusinessOperation VoidSale(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid saleVoidId,
+        DateTimeOffset completedAt) =>
+        Complete(operationId, storeId, BusinessOperationTypes.VoidSale, requestFingerprint, saleVoidId, completedAt);
+
+    public static BusinessOperation VoidPurchase(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid purchaseVoidId,
+        DateTimeOffset completedAt) =>
+        Complete(operationId, storeId, BusinessOperationTypes.VoidPurchase, requestFingerprint, purchaseVoidId, completedAt);
+
+    private static BusinessOperation Complete(
+        Guid operationId,
+        Guid storeId,
+        string operationType,
+        string requestFingerprint,
+        Guid resultReference,
+        DateTimeOffset completedAt)
+    {
+        if (operationId == Guid.Empty)
+        {
+            throw new DomainRuleException("operation-id-required", "OperationId is required.");
+        }
+
+        return new BusinessOperation(
+            operationId,
+            storeId,
+            operationType,
+            requestFingerprint,
+            resultReference,
+            completedAt);
+    }
 }
 
 public enum BusinessOperationStatus
@@ -96,4 +142,7 @@ public static class BusinessOperationTypes
 {
     public const string CompletePurchase = "CompletePurchase";
     public const string CompleteSale = "CompleteSale";
+    public const string CreateReturn = "CreateReturn";
+    public const string VoidSale = "VoidSale";
+    public const string VoidPurchase = "VoidPurchase";
 }

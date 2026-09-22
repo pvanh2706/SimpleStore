@@ -27,6 +27,12 @@ public sealed record PurchasePaymentResult(
     string Method,
     DateTimeOffset PaidAt);
 
+public sealed record PurchaseVoidInfoResult(
+    Guid Id,
+    string Reason,
+    Guid VoidedByUserId,
+    DateTimeOffset VoidedAt);
+
 public sealed record PurchaseResult(
     Guid Id,
     Guid SupplierId,
@@ -40,7 +46,9 @@ public sealed record PurchaseResult(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     DateTimeOffset? CompletedAt,
-    bool WasAlreadyCompleted = false);
+    bool WasAlreadyCompleted = false,
+    bool IsVoided = false,
+    PurchaseVoidInfoResult? Void = null);
 
 public sealed record PurchaseListItemResult(
     Guid Id,
@@ -51,7 +59,8 @@ public sealed record PurchaseListItemResult(
     decimal PaidAmount,
     decimal OutstandingAmount,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? CompletedAt);
+    DateTimeOffset? CompletedAt,
+    bool IsVoided = false);
 
 public sealed record PurchaseListResult(
     IReadOnlyList<PurchaseListItemResult> Items,

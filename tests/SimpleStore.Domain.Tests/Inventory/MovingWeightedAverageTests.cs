@@ -83,6 +83,20 @@ public sealed class MovingWeightedAverageTests
         Assert.True(balance.HasAverageCost);
     }
 
+    [Fact]
+    public void ReturnAndVoidInboundUsesSameNegativeResidualGuardAsPurchase()
+    {
+        var balance = CreateKnownBalance(10, 10);
+        balance.IssueSale(20, 200, DateTimeOffset.UtcNow);
+
+        balance.ReceiveInbound(11, 11, DateTimeOffset.UtcNow);
+
+        Assert.Equal(1, balance.QuantityOnHand);
+        Assert.Equal(-89, balance.InventoryValue);
+        Assert.Equal(10, balance.AverageCost);
+        Assert.False(balance.HasAverageCost);
+    }
+
     [Theory]
     [InlineData(5, 50, 0, 0)]
     [InlineData(10, 100, -5, -50)]

@@ -26,6 +26,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.Unit).HasMaxLength(Product.MaxUnitLength).IsRequired();
         builder.Property(product => product.SalePrice).HasPrecision(18, 2);
         builder.Property(product => product.ReferencePurchaseCost).HasPrecision(18, 2);
+        builder.Property(product => product.ReferencePurchaseCostRevision).HasDefaultValue(0L);
         builder.Property(product => product.RowVersion).IsRowVersion();
         builder.HasOne<Store>()
             .WithMany()

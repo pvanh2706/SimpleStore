@@ -55,6 +55,9 @@ public sealed record CustomerSearchPage(IReadOnlyList<Customer> Items, int Total
 public sealed record SaleSearchItem(
     Sale Sale,
     string? CustomerName,
-    string CashierDisplayName);
+    string CashierDisplayName,
+    decimal TotalReturnedAmount,
+    decimal TotalRefundedAmount,
+    bool IsVoided);
 
 public sealed record SaleSearchPage(IReadOnlyList<SaleSearchItem> Items, int TotalCount);

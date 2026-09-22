@@ -6,10 +6,10 @@
 - **Ngày Product Owner final approval:** 2026-09-22
 - **Approved business/technical decisions:** D-033–D-040
 - **Approval decision:** D-041 — Slice 4 / Technical Breakdown Approval
-- **Implementation status:** `NOT STARTED`
+- **Implementation status:** backend/domain/persistence Stage 4A `IMPLEMENTED / TECHNICALLY VERIFIED — PENDING REVIEW`; frontend Stage 4B `NOT STARTED`; Slice 4 overall `PENDING PRODUCT OWNER APPROVAL`
 - **Review:** Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được Product Owner review và chấp thuận.
 - **Source of truth hiện hành:** Tài liệu này là implementation source of truth cho Slice 4, cùng Architecture v0.1, Domain Model v0.1, Development Plan v0.1 và các decision `APPROVED` trong `DECISIONS.md`.
-- **Ranh giới:** Approval cho phép chuyển sang implementation; production implementation chưa bắt đầu trong commit approval này và không thay đổi Step 1–11 hoặc Slice 0–3 đã approved.
+- **Ranh giới:** Stage 4A chỉ triển khai backend/domain/persistence/API và SQL Server tests; Vue correction UI/recovery/E2E thuộc Stage 4B chưa bắt đầu. Slice 4 chưa completed và không thay đổi Step 1–11 hoặc Slice 0–3 đã approved.
 
 ## Outcome
 

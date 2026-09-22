@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SimpleStore.Application.Purchases;
 using SimpleStore.Domain.Purchases;
 using SimpleStore.Infrastructure.Identity;
+using SimpleStore.Application.Corrections;
 
 namespace SimpleStore.Api.Controllers;
 
@@ -14,7 +15,8 @@ public sealed class PurchasesController(
     UpdatePurchaseUseCase updatePurchase,
     GetPurchaseUseCase getPurchase,
     GetPurchasesUseCase getPurchases,
-    CompletePurchaseUseCase completePurchase) : ControllerBase
+    CompletePurchaseUseCase completePurchase,
+    VoidPurchaseUseCase voidPurchase) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<PurchaseListResult>> List(
@@ -52,6 +54,16 @@ public sealed class PurchasesController(
         CompletePurchaseRequest request,
         CancellationToken cancellationToken) =>
         Ok(await completePurchase.ExecuteAsync(purchaseId, request.ToCommand(), cancellationToken));
+
+    [HttpPost("{purchaseId:guid}/void")]
+    public async Task<ActionResult<PurchaseVoidResult>> Void(
+        Guid purchaseId,
+        VoidPurchaseRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await voidPurchase.ExecuteAsync(
+            purchaseId,
+            new VoidTransactionCommand(request.OperationId, request.Reason),
+            cancellationToken));
 }
 
 public sealed record PurchaseLineRequest(Guid ProductId, decimal Quantity, decimal UnitPrice);
@@ -82,3 +94,5 @@ public sealed record CompletePurchaseRequest(
                 payment.Amount,
                 payment.Method)).ToArray());
 }
+
+public sealed record VoidPurchaseRequest(Guid OperationId, string Reason);

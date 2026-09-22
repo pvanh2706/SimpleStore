@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 4 — Return / Void / Recovery: Technical Breakdown `APPROVED FOR IMPLEMENTATION`; ready for implementation; production implementation `NOT STARTED`**
+**Slice 4 — Return / Void / Recovery: backend/domain/persistence Stage 4A `IMPLEMENTED / TECHNICALLY VERIFIED — PENDING REVIEW`; frontend Stage 4B `NOT STARTED`; Slice 4 overall `PENDING PRODUCT OWNER APPROVAL`**
 
 ## Primary Persona
 
@@ -28,7 +28,9 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Implementation đã được technical review. CI backend/frontend tại commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e` (GitHub Actions run `35627192222`) đã pass: backend build, 39 domain tests, 43 SQL Server integration tests, frontend build, 12 frontend test files và 32 frontend tests. Real Slice 3 Playwright flow đã chạy local; CI không chạy real E2E này.
 - D-033–D-040 — Slice 4 permissions, Return lifecycle/quantity/refund/restock, Sale Void, safe Purchase Void và correction idempotency/concurrency/audit — đã được Product Owner `APPROVED` ngày 2026-09-22.
 - D-041 — Technical Breakdown Slice 4 Approval — đã được Product Owner `APPROVED` ngày 2026-09-22.
-- Technical Breakdown Slice 4 v0.1 là `APPROVED FOR IMPLEMENTATION`; Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được review và chấp thuận. Production implementation Slice 4 vẫn `NOT STARTED`.
+- Technical Breakdown Slice 4 v0.1 giữ nguyên `APPROVED FOR IMPLEMENTATION`; Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được review và chấp thuận.
+- Slice 4 Stage 4A đã implement và technical-verify backend/domain/persistence/API cho immutable Completed Return, obligation-first refund, Restock/NoRestock, Sale Void, safe Purchase Void, correction recovery/idempotency, shared SQL locking, `LedgerSequence`, `ReferencePurchaseCostRevision` và trustworthy `PurchaseLineReversalBasis`.
+- Slice 4 frontend Stage 4B chưa bắt đầu; Slice 4 tổng thể vẫn chờ Product Owner review/approval và chưa được đánh dấu completed.
 
 ## Tiến độ
 
@@ -140,15 +142,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Implementation Slice 4 — Return / Void / Recovery theo Technical Breakdown Slice 4 v0.1 đã approved.** Slice 5 chưa bắt đầu.
+**Product Owner review Stage 4A; sau đó mới bắt đầu frontend Stage 4B theo Technical Breakdown Slice 4 v0.1 đã approved.** Slice 5 chưa bắt đầu.
 
 ## Chưa triển khai
 
-- Return/Void và mọi functionality của Slice 4.
+- Vue Return/Void screens, frontend correction recovery, frontend Slice 4 tests và real Slice 4 Playwright flow của Stage 4B.
 - Supplier debt repayment sau Purchase và các debt/end-of-day flows của Slice 5.
 - C14, HĐĐT và các capability ngoài Slice 1.
 - Real Slice 1, Slice 2 và Slice 3 Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Product Owner final-approve Technical Breakdown Slice 4 v0.1 sau review/hardening Purchase Void evidence. D-033–D-040 giữ nguyên `APPROVED`; D-041 được thêm ở trạng thái `APPROVED`. Slice 0–1 completed, Slice 2–3 `APPROVED / COMPLETED`; Slice 4 ready for implementation nhưng production implementation vẫn `NOT STARTED`. Bước tiếp theo là implementation Slice 4; không bắt đầu Slice 5.
+2026-09-22 — Slice 4 backend/domain/persistence Stage 4A đã được implement và technical-verify; frontend Stage 4B vẫn `NOT STARTED`; Slice 4 tổng thể `PENDING PRODUCT OWNER APPROVAL`. D-033–D-041 giữ nguyên `APPROVED`; không thêm implementation approval decision và không bắt đầu Slice 5.

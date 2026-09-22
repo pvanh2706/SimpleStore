@@ -4,6 +4,7 @@ using SimpleStore.Domain.Products;
 using SimpleStore.Domain.Purchases;
 using SimpleStore.Domain.Stores;
 using SimpleStore.Domain.Suppliers;
+using SimpleStore.Domain.Corrections;
 
 namespace SimpleStore.Application.Abstractions;
 
@@ -31,6 +32,8 @@ public interface ISlice2Repository
     void AddSupplier(Supplier supplier);
 
     Task<Purchase?> GetPurchaseAsync(Guid storeId, Guid purchaseId, CancellationToken cancellationToken);
+
+    Task<PurchaseVoid?> GetPurchaseVoidAsync(Guid storeId, Guid purchaseId, CancellationToken cancellationToken);
 
     Task<PurchaseSearchPage> SearchPurchasesAsync(
         Guid storeId,
@@ -72,6 +75,8 @@ public interface ISlice2Repository
 
     void AddInventoryMovement(InventoryMovement movement);
 
+    void AddPurchaseLineReversalBasis(PurchaseLineReversalBasis basis);
+
     void AddBusinessOperation(BusinessOperation operation);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
@@ -88,6 +93,7 @@ public sealed record SupplierSearchPage(IReadOnlyList<SupplierSearchItem> Items,
 public sealed record PurchaseSearchItem(
     Purchase Purchase,
     string SupplierName,
-    decimal PaidAmount);
+    decimal PaidAmount,
+    bool IsVoided);
 
 public sealed record PurchaseSearchPage(IReadOnlyList<PurchaseSearchItem> Items, int TotalCount);

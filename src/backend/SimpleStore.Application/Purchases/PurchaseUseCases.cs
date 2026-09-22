@@ -6,6 +6,7 @@ using SimpleStore.Application.Errors;
 using SimpleStore.Application.Stores;
 using SimpleStore.Application.Suppliers;
 using SimpleStore.Domain.Inventory;
+using SimpleStore.Domain.Corrections;
 using SimpleStore.Domain.Operations;
 using SimpleStore.Domain.Products;
 using SimpleStore.Domain.Purchases;
@@ -159,9 +160,10 @@ public sealed class GetPurchasesUseCase(
             item.Purchase.Status.ToString(),
             item.Purchase.TotalAmount,
             item.PaidAmount,
-            item.Purchase.TotalAmount - item.PaidAmount,
+            item.IsVoided ? 0 : item.Purchase.TotalAmount - item.PaidAmount,
             item.Purchase.CreatedAt,
-            item.Purchase.CompletedAt)).ToArray();
+            item.Purchase.CompletedAt,
+            item.IsVoided)).ToArray();
         return new PurchaseListResult(
             items,
             page,
@@ -294,9 +296,13 @@ public sealed class CompletePurchaseUseCase(
                 foreach (var line in purchase.Lines.OrderBy(line => line.ProductId))
                 {
                     var balance = balances[line.ProductId];
-                    balance.ReceivePurchase(line.Quantity, line.LineAmount, now);
-                    products[line.ProductId].UpdateReferencePurchaseCost(line.UnitPrice, now);
-                    repository.AddInventoryMovement(InventoryMovement.CreatePurchase(
+                    var product = products[line.ProductId];
+                    var quantityBefore = balance.QuantityOnHand;
+                    var inventoryValueBefore = balance.InventoryValue;
+                    var averageCostBefore = balance.AverageCost;
+                    var hasAverageCostBefore = balance.HasAverageCost;
+                    var referencePurchaseCostBefore = product.ReferencePurchaseCost;
+                    var movement = InventoryMovement.CreatePurchase(
                         storeId,
                         warehouse.Id,
                         line.ProductId,
@@ -304,6 +310,24 @@ public sealed class CompletePurchaseUseCase(
                         line.LineAmount,
                         line.Id,
                         userId,
+                        now);
+                    balance.ReceivePurchase(line.Quantity, line.LineAmount, now);
+                    product.UpdateReferencePurchaseCost(line.UnitPrice, now);
+                    repository.AddInventoryMovement(movement);
+                    repository.AddPurchaseLineReversalBasis(PurchaseLineReversalBasis.Capture(
+                        storeId,
+                        purchase.Id,
+                        line.Id,
+                        line.ProductId,
+                        warehouse.Id,
+                        quantityBefore,
+                        inventoryValueBefore,
+                        averageCostBefore,
+                        hasAverageCostBefore,
+                        referencePurchaseCostBefore,
+                        line.UnitPrice,
+                        product.ReferencePurchaseCostRevision,
+                        movement.Id,
                         now));
                 }
 
@@ -454,14 +478,16 @@ internal static class PurchaseUseCaseSupport
             storeId,
             purchase.Lines.Select(line => line.ProductId).ToArray(),
             cancellationToken);
-        return ToResult(purchase, supplier.Name, products, wasAlreadyCompleted);
+        var purchaseVoid = await repository.GetPurchaseVoidAsync(storeId, purchase.Id, cancellationToken);
+        return ToResult(purchase, supplier.Name, products, wasAlreadyCompleted, purchaseVoid);
     }
 
     public static PurchaseResult ToResult(
         Purchase purchase,
         string supplierName,
         IReadOnlyDictionary<Guid, Product> products,
-        bool wasAlreadyCompleted = false) =>
+        bool wasAlreadyCompleted = false,
+        PurchaseVoid? purchaseVoid = null) =>
         new(
             purchase.Id,
             purchase.SupplierId,
@@ -482,9 +508,15 @@ internal static class PurchaseUseCaseSupport
                 payment.PaidAt)).ToArray(),
             purchase.TotalAmount,
             purchase.PaidAmount,
-            purchase.OutstandingAmount,
+            purchaseVoid is null ? purchase.OutstandingAmount : 0,
             purchase.CreatedAt,
             purchase.UpdatedAt,
             purchase.CompletedAt,
-            wasAlreadyCompleted);
+            wasAlreadyCompleted,
+            purchaseVoid is not null,
+            purchaseVoid is null ? null : new PurchaseVoidInfoResult(
+                purchaseVoid.Id,
+                purchaseVoid.Reason,
+                purchaseVoid.VoidedByUserId,
+                purchaseVoid.VoidedAt));
 }

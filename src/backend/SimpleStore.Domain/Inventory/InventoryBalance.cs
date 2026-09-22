@@ -54,6 +54,9 @@ public sealed class InventoryBalance
         new(Guid.NewGuid(), storeId, warehouseId, productId, openingInventory, updatedAt);
 
     public void ReceivePurchase(decimal quantity, decimal inventoryValue, DateTimeOffset updatedAt)
+        => ReceiveInbound(quantity, inventoryValue, updatedAt);
+
+    public void ReceiveInbound(decimal quantity, decimal inventoryValue, DateTimeOffset updatedAt)
     {
         if (quantity <= 0)
         {
@@ -79,6 +82,27 @@ public sealed class InventoryBalance
             HasAverageCost = false;
         }
 
+        UpdatedAt = updatedAt;
+    }
+
+    public void RestoreExact(
+        decimal quantity,
+        decimal inventoryValue,
+        decimal averageCost,
+        bool hasAverageCost,
+        DateTimeOffset updatedAt)
+    {
+        if (averageCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-average-cost",
+                "Average cost cannot be negative.");
+        }
+
+        QuantityOnHand = quantity;
+        InventoryValue = inventoryValue;
+        AverageCost = averageCost;
+        HasAverageCost = hasAverageCost;
         UpdatedAt = updatedAt;
     }
 

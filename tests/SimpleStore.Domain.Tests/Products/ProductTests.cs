@@ -69,4 +69,38 @@ public sealed class ProductTests
         Assert.False(product.IsActive);
         Assert.Equal(updatedAt, product.UpdatedAt);
     }
+
+    [Fact]
+    public void ReferencePurchaseCostRevisionChangesOnlyWhenCostValueChanges()
+    {
+        var product = Product.Create(
+            Guid.NewGuid(), "SKU-01", null, "Product", "item", 100, 10, DateTimeOffset.UtcNow);
+        var initialRevision = product.ReferencePurchaseCostRevision;
+
+        product.UpdateReferencePurchaseCost(10, DateTimeOffset.UtcNow);
+        Assert.Equal(initialRevision, product.ReferencePurchaseCostRevision);
+
+        product.Update("SKU-01", null, "Renamed", "item", 120, 10, DateTimeOffset.UtcNow);
+        Assert.Equal(initialRevision, product.ReferencePurchaseCostRevision);
+
+        product.UpdateReferencePurchaseCost(20, DateTimeOffset.UtcNow);
+        Assert.Equal(initialRevision + 1, product.ReferencePurchaseCostRevision);
+
+        product.RestoreReferencePurchaseCost(10, DateTimeOffset.UtcNow);
+        Assert.Equal(initialRevision + 2, product.ReferencePurchaseCostRevision);
+    }
+
+    [Fact]
+    public void ReferencePurchaseCostRevisionDistinguishesNullAndKnownZero()
+    {
+        var product = Product.Create(
+            Guid.NewGuid(), "SKU-NULL", null, "Product", "item", 100, null, DateTimeOffset.UtcNow);
+        var initialRevision = product.ReferencePurchaseCostRevision;
+
+        product.UpdateReferencePurchaseCost(0, DateTimeOffset.UtcNow);
+        Assert.Equal(initialRevision + 1, product.ReferencePurchaseCostRevision);
+
+        product.RestoreReferencePurchaseCost(null, DateTimeOffset.UtcNow);
+        Assert.Equal(initialRevision + 2, product.ReferencePurchaseCostRevision);
+    }
 }

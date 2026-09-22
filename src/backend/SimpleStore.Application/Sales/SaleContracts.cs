@@ -30,6 +30,19 @@ public sealed record SalePaymentResult(
 
 public sealed record SaleCustomerResult(Guid Id, string Name, string? Phone);
 
+public sealed record SaleReturnSummaryResult(
+    Guid Id,
+    decimal TotalReturnAmount,
+    decimal RefundAmount,
+    Guid CompletedByUserId,
+    DateTimeOffset CompletedAt);
+
+public sealed record SaleVoidInfoResult(
+    Guid Id,
+    string Reason,
+    Guid VoidedByUserId,
+    DateTimeOffset VoidedAt);
+
 public sealed record SaleResult(
     Guid Id,
     string Status,
@@ -44,7 +57,16 @@ public sealed record SaleResult(
     decimal OutstandingAmount,
     DateTimeOffset CreatedAt,
     DateTimeOffset CompletedAt,
-    bool WasAlreadyCompleted = false);
+    bool WasAlreadyCompleted = false,
+    decimal OriginalTotalAmount = 0,
+    decimal TotalReturnedAmount = 0,
+    decimal NetSaleAmount = 0,
+    decimal OriginalCollectedAmount = 0,
+    decimal TotalRefundedAmount = 0,
+    decimal NetCollectedAmount = 0,
+    bool IsVoided = false,
+    SaleVoidInfoResult? Void = null,
+    IReadOnlyList<SaleReturnSummaryResult>? Returns = null);
 
 public sealed record SaleListItemResult(
     Guid Id,
@@ -54,7 +76,14 @@ public sealed record SaleListItemResult(
     decimal TotalAmount,
     decimal PaidAmount,
     decimal OutstandingAmount,
-    DateTimeOffset CompletedAt);
+    DateTimeOffset CompletedAt,
+    decimal OriginalTotalAmount = 0,
+    decimal TotalReturnedAmount = 0,
+    decimal NetSaleAmount = 0,
+    decimal OriginalCollectedAmount = 0,
+    decimal TotalRefundedAmount = 0,
+    decimal NetCollectedAmount = 0,
+    bool IsVoided = false);
 
 public sealed record SaleListResult(
     IReadOnlyList<SaleListItemResult> Items,

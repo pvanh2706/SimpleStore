@@ -36,6 +36,8 @@ public sealed class InventoryMovement
 
     public Guid Id { get; private set; }
 
+    public long LedgerSequence { get; private set; }
+
     public Guid StoreId { get; private set; }
 
     public Guid WarehouseId { get; private set; }
@@ -156,6 +158,120 @@ public sealed class InventoryMovement
             InventoryMovementType.Sale,
             "SaleLine",
             saleLineId,
+            performedByUserId,
+            occurredAt);
+    }
+
+    public static InventoryMovement CreateReturnRestock(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantity,
+        decimal inventoryValue,
+        decimal unitCost,
+        Guid returnLineId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt) =>
+        CreateInboundCorrection(
+            storeId,
+            warehouseId,
+            productId,
+            quantity,
+            inventoryValue,
+            unitCost,
+            InventoryMovementType.ReturnRestock,
+            "ReturnLine",
+            returnLineId,
+            performedByUserId,
+            occurredAt);
+
+    public static InventoryMovement CreateSaleVoid(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantity,
+        decimal inventoryValue,
+        decimal unitCost,
+        Guid saleVoidId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt) =>
+        CreateInboundCorrection(
+            storeId,
+            warehouseId,
+            productId,
+            quantity,
+            inventoryValue,
+            unitCost,
+            InventoryMovementType.SaleVoid,
+            "SaleVoid",
+            saleVoidId,
+            performedByUserId,
+            occurredAt);
+
+    public static InventoryMovement CreatePurchaseVoid(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantityDelta,
+        decimal inventoryValueDelta,
+        decimal unitCost,
+        Guid purchaseVoidId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        if (quantityDelta >= 0 || inventoryValueDelta > 0 || unitCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-purchase-void-movement",
+                "Purchase void movement deltas are invalid.");
+        }
+
+        return new InventoryMovement(
+            Guid.NewGuid(),
+            storeId,
+            warehouseId,
+            productId,
+            quantityDelta,
+            inventoryValueDelta,
+            unitCost,
+            InventoryMovementType.PurchaseVoid,
+            "PurchaseVoid",
+            purchaseVoidId,
+            performedByUserId,
+            occurredAt);
+    }
+
+    private static InventoryMovement CreateInboundCorrection(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantity,
+        decimal inventoryValue,
+        decimal unitCost,
+        InventoryMovementType movementType,
+        string sourceType,
+        Guid sourceId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        if (quantity <= 0 || inventoryValue < 0 || unitCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-inbound-correction-movement",
+                "Inbound correction movement quantity and value are invalid.");
+        }
+
+        return new InventoryMovement(
+            Guid.NewGuid(),
+            storeId,
+            warehouseId,
+            productId,
+            quantity,
+            inventoryValue,
+            unitCost,
+            movementType,
+            sourceType,
+            sourceId,
             performedByUserId,
             occurredAt);
     }

@@ -68,6 +68,7 @@ public sealed class SaleLineConfiguration : IEntityTypeConfiguration<SaleLine>
             table.HasCheckConstraint("CK_SaleLines_UnitCostAtSale", "[UnitCostAtSale] >= 0");
         });
         builder.HasKey(line => line.Id);
+        builder.HasAlternateKey(line => new { line.StoreId, line.Id });
         builder.Property(line => line.ProductName).HasMaxLength(160).IsRequired();
         builder.Property(line => line.ProductSku).HasMaxLength(64).IsRequired();
         builder.Property(line => line.ProductUnit).HasMaxLength(32).IsRequired();

@@ -50,6 +50,8 @@ public sealed class Product
 
     public decimal? ReferencePurchaseCost { get; private set; }
 
+    public long ReferencePurchaseCostRevision { get; private set; }
+
     public bool IsActive { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
@@ -113,7 +115,7 @@ public sealed class Product
                 "Reference purchase cost cannot be negative.");
         }
 
-        ReferencePurchaseCost = unitPrice;
+        SetReferencePurchaseCost(unitPrice);
         UpdatedAt = updatedAt;
     }
 
@@ -147,7 +149,29 @@ public sealed class Product
         }
 
         SalePrice = salePrice;
-        ReferencePurchaseCost = referencePurchaseCost;
+        SetReferencePurchaseCost(referencePurchaseCost);
+    }
+
+    public void RestoreReferencePurchaseCost(decimal? referencePurchaseCost, DateTimeOffset updatedAt)
+    {
+        if (referencePurchaseCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-reference-purchase-cost",
+                "Reference purchase cost cannot be negative.");
+        }
+
+        SetReferencePurchaseCost(referencePurchaseCost);
+        UpdatedAt = updatedAt;
+    }
+
+    private void SetReferencePurchaseCost(decimal? value)
+    {
+        if (ReferencePurchaseCost != value)
+        {
+            ReferencePurchaseCost = value;
+            ReferencePurchaseCostRevision++;
+        }
     }
 
     private static string RequireText(string? value, int maxLength, string code, string message)

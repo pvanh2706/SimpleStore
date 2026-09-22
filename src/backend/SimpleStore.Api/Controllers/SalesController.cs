@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleStore.Application.Sales;
 using SimpleStore.Infrastructure.Identity;
+using SimpleStore.Application.Returns;
+using SimpleStore.Application.Corrections;
 
 namespace SimpleStore.Api.Controllers;
 
@@ -11,7 +13,9 @@ namespace SimpleStore.Api.Controllers;
 public sealed class SalesController(
     CompleteSaleUseCase completeSale,
     GetSaleUseCase getSale,
-    GetSalesUseCase getSales) : ControllerBase
+    GetSalesUseCase getSales,
+    GetReturnContextUseCase getReturnContext,
+    VoidSaleUseCase voidSale) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<SaleListResult>> List(
@@ -31,6 +35,21 @@ public sealed class SalesController(
         CompleteSaleRequest request,
         CancellationToken cancellationToken) =>
         Ok(await completeSale.ExecuteAsync(request.ToCommand(), cancellationToken));
+
+    [HttpGet("{saleId:guid}/return-context")]
+    [Authorize(Roles = ApplicationRoles.Owner)]
+    public async Task<ActionResult<ReturnContextResult>> ReturnContext(
+        Guid saleId,
+        CancellationToken cancellationToken) =>
+        Ok(await getReturnContext.ExecuteAsync(saleId, cancellationToken));
+
+    [HttpPost("{saleId:guid}/void")]
+    [Authorize(Roles = ApplicationRoles.Owner)]
+    public async Task<ActionResult<SaleVoidResult>> Void(
+        Guid saleId,
+        VoidTransactionRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await voidSale.ExecuteAsync(saleId, request.ToCommand(), cancellationToken));
 }
 
 public sealed record CompleteSaleLineRequest(Guid ProductId, decimal Quantity);
@@ -47,4 +66,9 @@ public sealed record CompleteSaleRequest(
             CustomerId,
             Lines.Select(line => new CompleteSaleLineCommand(line.ProductId, line.Quantity)).ToArray(),
             Payments.Select(payment => new SalePaymentCommand(payment.Amount, payment.Method)).ToArray());
+}
+
+public sealed record VoidTransactionRequest(Guid OperationId, string Reason)
+{
+    public VoidTransactionCommand ToCommand() => new(OperationId, Reason);
 }

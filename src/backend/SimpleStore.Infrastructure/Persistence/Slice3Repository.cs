@@ -1,7 +1,6 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using SimpleStore.Application.Abstractions;
 using SimpleStore.Application.Errors;
 using SimpleStore.Domain.Customers;
@@ -107,11 +106,29 @@ public sealed class Slice3Repository(ApplicationDbContext dbContext) : ISlice3Re
                 user => user.Id,
                 user => user.Email ?? user.UserName ?? user.Id.ToString(),
                 cancellationToken);
+        var saleIds = sales.Select(sale => sale.Id).ToArray();
+        var returnAmounts = await dbContext.Returns.AsNoTracking()
+            .Where(item => item.StoreId == storeId && saleIds.Contains(item.OriginalSaleId))
+            .GroupBy(item => item.OriginalSaleId)
+            .Select(group => new
+            {
+                SaleId = group.Key,
+                Returned = group.Sum(item => item.TotalReturnAmount),
+                Refunded = group.SelectMany(item => item.RefundPayments).Sum(payment => payment.Amount)
+            })
+            .ToDictionaryAsync(item => item.SaleId, cancellationToken);
+        var voidedSaleIds = await dbContext.SaleVoids.AsNoTracking()
+            .Where(item => item.StoreId == storeId && saleIds.Contains(item.OriginalSaleId))
+            .Select(item => item.OriginalSaleId)
+            .ToHashSetAsync(cancellationToken);
         return new SaleSearchPage(
             sales.Select(sale => new SaleSearchItem(
                 sale,
                 sale.CustomerId.HasValue ? customerNames[sale.CustomerId.Value] : null,
-                users[sale.CompletedByUserId])).ToArray(),
+                users[sale.CompletedByUserId],
+                returnAmounts.TryGetValue(sale.Id, out var amounts) ? amounts.Returned : 0,
+                returnAmounts.TryGetValue(sale.Id, out amounts) ? amounts.Refunded : 0,
+                voidedSaleIds.Contains(sale.Id))).ToArray(),
             totalCount);
     }
 
@@ -135,36 +152,8 @@ public sealed class Slice3Repository(ApplicationDbContext dbContext) : ISlice3Re
             orderedProductIds,
             cancellationToken);
 
-    public async Task AcquireOperationLockAsync(Guid operationId, CancellationToken cancellationToken)
-    {
-        var transaction = dbContext.Database.CurrentTransaction
-            ?? throw new InvalidOperationException("An active database transaction is required.");
-        var connection = dbContext.Database.GetDbConnection();
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction.GetDbTransaction();
-        command.CommandText = """
-            DECLARE @result int;
-            EXEC @result = sys.sp_getapplock
-                @Resource = @resource,
-                @LockMode = 'Exclusive',
-                @LockOwner = 'Transaction',
-                @LockTimeout = 15000;
-            SELECT @result;
-            """;
-        command.Parameters.Add(new SqlParameter("@resource", SqlDbType.NVarChar, 255)
-        {
-            Value = $"SimpleStore:CompleteSale:{operationId:N}"
-        });
-        var result = Convert.ToInt32(
-            await command.ExecuteScalarAsync(cancellationToken),
-            System.Globalization.CultureInfo.InvariantCulture);
-        if (result < 0)
-        {
-            throw new ApplicationConflictException(
-                "operation-lock-timeout",
-                "The operation is already being processed. Check its status and retry.");
-        }
-    }
+    public Task AcquireOperationLockAsync(Guid operationId, CancellationToken cancellationToken) =>
+        ApplicationLock.AcquireBusinessOperationAsync(dbContext, operationId, cancellationToken);
 
     public Task<BusinessOperation?> GetOperationAsync(
         Guid storeId,

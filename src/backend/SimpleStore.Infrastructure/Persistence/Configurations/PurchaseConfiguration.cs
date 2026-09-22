@@ -62,6 +62,7 @@ public sealed class PurchaseLineConfiguration : IEntityTypeConfiguration<Purchas
             table.HasCheckConstraint("CK_PurchaseLines_LineAmount", "[LineAmount] >= 0");
         });
         builder.HasKey(line => line.Id);
+        builder.HasAlternateKey(line => new { line.StoreId, line.Id });
         builder.Property(line => line.Quantity).HasPrecision(18, 3);
         builder.Property(line => line.UnitPrice).HasPrecision(18, 2);
         builder.Property(line => line.LineAmount).HasPrecision(18, 2);
