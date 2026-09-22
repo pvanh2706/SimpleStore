@@ -1,12 +1,15 @@
 # Technical Breakdown — Slice 4 v0.1
 
 - **Slice:** 4 — Return / Void / Recovery
-- **Trạng thái:** `PROPOSED / PENDING PRODUCT OWNER APPROVAL`
+- **Trạng thái:** `APPROVED FOR IMPLEMENTATION`
 - **Ngày:** 2026-09-22
+- **Ngày Product Owner final approval:** 2026-09-22
 - **Approved business/technical decisions:** D-033–D-040
+- **Approval decision:** D-041 — Slice 4 / Technical Breakdown Approval
 - **Implementation status:** `NOT STARTED`
-- **Source of truth hiện hành:** Architecture v0.1, Domain Model v0.1, Development Plan v0.1 và các decision `APPROVED` trong `DECISIONS.md`.
-- **Ranh giới:** Tài liệu này đề xuất implementation design để review; chưa cho phép bắt đầu production implementation và không thay đổi Step 1–11 hoặc Slice 0–3 đã approved.
+- **Review:** Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được Product Owner review và chấp thuận.
+- **Source of truth hiện hành:** Tài liệu này là implementation source of truth cho Slice 4, cùng Architecture v0.1, Domain Model v0.1, Development Plan v0.1 và các decision `APPROVED` trong `DECISIONS.md`.
+- **Ranh giới:** Approval cho phép chuyển sang implementation; production implementation chưa bắt đầu trong commit approval này và không thay đổi Step 1–11 hoặc Slice 0–3 đã approved.
 
 ## Outcome
 
@@ -851,4 +854,4 @@ Slice 4 chỉ được đề nghị implementation approval khi:
 - [Development Plan v0.1](development-plan-v0.1.md)
 - [Technical Breakdown Slice 3 v0.1](technical-breakdown-slice-3-v0.1.md)
 
-Slice 0–3 giữ nguyên trạng thái. Tài liệu này chỉ đưa Technical Breakdown Slice 4 tới `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; Slice 4 production implementation chưa bắt đầu.
+Slice 0–3 giữ nguyên trạng thái. Product Owner final-approved Technical Breakdown Slice 4 v0.1 ngày 2026-09-22; tài liệu này là `APPROVED FOR IMPLEMENTATION` và implementation source of truth cho Slice 4. Production implementation Slice 4 vẫn `NOT STARTED` trong commit approval này.

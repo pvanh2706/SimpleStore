@@ -431,3 +431,15 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Serialization:** Sale correction applock `SimpleStore:SaleCorrection:{SaleId}` serialize Return/Return, Return/SaleVoid và SaleVoid/SaleVoid. Purchase Void dùng `SimpleStore:PurchaseCorrection:{PurchaseId}`. Inventory mutation tiếp tục dùng shared `UPDLOCK, HOLDLOCK` theo deterministic ProductId order.
 - **Audit:** Lưu actor, timestamp, operation type, original transaction, return/reversal transaction và mandatory Void reason. Không xây generic audit/correction framework.
 - **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-041 — Slice 4 / Technical Breakdown Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner final-approve `Technical Breakdown Slice 4 v0.1` sau review/hardening Return refund/debt math, cumulative return quantity/value rounding, Return/Void concurrency, Sale Void inventory reversal, safe Purchase Void, InventoryMovement ordering evidence và ReferencePurchaseCost ABA protection bằng semantic revision.
+- **Phạm vi:** Technical Breakdown Slice 4 được phép chuyển sang implementation.
+- **Bảo toàn:** D-033–D-040 giữ nguyên `APPROVED`; không thay đổi Slice 0–3 hoặc Step 1–11; không bắt đầu Slice 5.
+- **Review evidence:** Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được review và chấp thuận.
+- **Tiếp theo:** Bắt đầu implementation Slice 4 — Return / Void / Recovery.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).

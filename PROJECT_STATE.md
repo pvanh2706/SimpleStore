@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 4 — Return / Void / Recovery: Technical Breakdown `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; production implementation `NOT STARTED`**
+**Slice 4 — Return / Void / Recovery: Technical Breakdown `APPROVED FOR IMPLEMENTATION`; ready for implementation; production implementation `NOT STARTED`**
 
 ## Primary Persona
 
@@ -27,7 +27,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Slice 3 đã implement và được approval end-to-end: Customer tối thiểu; Sale, SaleLine và SalePayment; checkout và authoritative pricing; credit Sale; inventory deduction và InventoryMovement; cost snapshot với reliability `Reliable` / `Estimated` / `Unavailable`; negative-stock policy; `HasAverageCost` và negative residual InventoryValue guard; CompleteSale atomic/idempotent; shared deterministic Sale/Purchase locking; browser print/reprint; Owner/Cashier authorization.
 - Implementation đã được technical review. CI backend/frontend tại commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e` (GitHub Actions run `35627192222`) đã pass: backend build, 39 domain tests, 43 SQL Server integration tests, frontend build, 12 frontend test files và 32 frontend tests. Real Slice 3 Playwright flow đã chạy local; CI không chạy real E2E này.
 - D-033–D-040 — Slice 4 permissions, Return lifecycle/quantity/refund/restock, Sale Void, safe Purchase Void và correction idempotency/concurrency/audit — đã được Product Owner `APPROVED` ngày 2026-09-22.
-- Technical Breakdown Slice 4 v0.1 đang `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; tài liệu này chưa phải approval để implementation và Slice 4 production code chưa bắt đầu.
+- D-041 — Technical Breakdown Slice 4 Approval — đã được Product Owner `APPROVED` ngày 2026-09-22.
+- Technical Breakdown Slice 4 v0.1 là `APPROVED FOR IMPLEMENTATION`; Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được review và chấp thuận. Production implementation Slice 4 vẫn `NOT STARTED`.
 
 ## Tiến độ
 
@@ -139,7 +140,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Review và Product Owner final approval cho Technical Breakdown Slice 4 v0.1.** Không bắt đầu Slice 4 implementation trước approval này.
+**Implementation Slice 4 — Return / Void / Recovery theo Technical Breakdown Slice 4 v0.1 đã approved.** Slice 5 chưa bắt đầu.
 
 ## Chưa triển khai
 
@@ -150,4 +151,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Product Owner approve D-033–D-040 cho Slice 4 — Return / Void / Recovery. Technical Breakdown Slice 4 v0.1 được tạo ở trạng thái `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; production implementation `NOT STARTED`. Slice 0–1 completed, Slice 2–3 `APPROVED / COMPLETED`; bước tiếp theo là review/final approval Technical Breakdown Slice 4.
+2026-09-22 — Product Owner final-approve Technical Breakdown Slice 4 v0.1 sau review/hardening Purchase Void evidence. D-033–D-040 giữ nguyên `APPROVED`; D-041 được thêm ở trạng thái `APPROVED`. Slice 0–1 completed, Slice 2–3 `APPROVED / COMPLETED`; Slice 4 ready for implementation nhưng production implementation vẫn `NOT STARTED`. Bước tiếp theo là implementation Slice 4; không bắt đầu Slice 5.
