@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 5 — Debt + End-of-day documentation: `PROPOSED / PENDING PRODUCT OWNER APPROVAL`**
+**Slice 5 — Debt + End-of-day Technical Breakdown: `APPROVED FOR IMPLEMENTATION`; implementation: `NOT STARTED`**
 
 Slice 4 — Return / Void / Recovery giữ trạng thái `APPROVED / COMPLETED`; baseline trước Slice 5 là commit `5876082a`.
 
@@ -41,7 +41,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-043–D-050 — derived debt, actual customer/supplier debt payments, no overpayment/advance, no invoice allocation, EOD query-only, Revenue khác Collected và historical-cost Estimated Gross Profit — là `APPROVED` ngày 2026-09-22.
 - D-051–D-056 — Customer debt Owner/Cashier access, Owner-only Supplier debt/EOD/profit, Net Collected headline, configurable IANA Store timezone, immutable optional Debt Payment Note và correction không tạo aggregate debt âm — là `APPROVED` ngày 2026-09-22.
 - Toàn bộ sáu Product Owner Open Questions chặn ban đầu của Slice 5 đã được giải quyết; không còn known Product Owner blocker trong `OPEN_QUESTIONS.md` cho Slice 5.
-- Technical Breakdown Slice 5 v0.1 là `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; chưa phải `APPROVED FOR IMPLEMENTATION`.
+- D-057 — Technical Breakdown Slice 5 Approval — là `APPROVED` ngày 2026-09-22; D-043–D-056 giữ nguyên `APPROVED`.
+- Technical Breakdown Slice 5 v0.1 là `APPROVED FOR IMPLEMENTATION`.
 - Slice 5 implementation là `NOT STARTED`; chưa có production code hoặc migration của Slice 5.
 
 ## Tiến độ
@@ -154,7 +155,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner final review Technical Breakdown Slice 5 v0.1.** Sáu Open Questions chặn đã được giải quyết tại D-051–D-056, nhưng chỉ sau explicit Technical Breakdown approval mới được bắt đầu Stage 5A/5B. Slice 5 implementation hiện `NOT STARTED`.
+**Stage 5A — Debt backend/domain/persistence/tests được phép bắt đầu theo D-057.** Phạm vi gồm derived Customer/Supplier debt queries, DebtPayment domain/persistence, Customer/Supplier Debt Payment, idempotency/recovery/concurrency, party debt locks, backend D-056 correction integration, timezone persistence/configuration foundation nếu cần và SQL Server/domain/API integration tests. Không tự mở rộng sang toàn bộ frontend/EOD UI của Stage 5B. Slice 5 implementation hiện `NOT STARTED`.
 
 ## Chưa triển khai
 
@@ -164,4 +165,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Trên docs baseline `54d942d62afa569a65cb2e09ceeb1f8a868c4eeb`, Product Owner đã giải quyết toàn bộ sáu Slice 5 blockers tại D-051–D-056. Technical Breakdown đã được cập nhật nhưng vẫn `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; Slice 5 implementation `NOT STARTED`, chưa có production code hoặc migration. Slice 4 giữ `APPROVED / COMPLETED` tại baseline `5876082a`.
+2026-09-22 — Trên docs baseline `58634796b7144559872af21106f86a8a8793faab`, Product Owner final-approved Technical Breakdown Slice 5 tại D-057. Tài liệu là `APPROVED FOR IMPLEMENTATION`; Stage 5A được phép bắt đầu, Stage 5B vẫn planned. Slice 5 implementation vẫn `NOT STARTED`, chưa có production code hoặc migration. Slice 4 giữ `APPROVED / COMPLETED` tại baseline `5876082a`.

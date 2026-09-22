@@ -2,9 +2,9 @@
 
 ## Trạng thái
 
-`PROPOSED / PENDING PRODUCT OWNER APPROVAL`
+`APPROVED FOR IMPLEMENTATION`
 
-Tài liệu này chưa phải authorization để implement. Không được tạo migration, sửa production code hoặc bắt đầu Stage 5A/5B trước khi Product Owner approve Technical Breakdown. Sáu Product Owner questions ban đầu đã được giải quyết tại D-051–D-056 nhưng bản technical design vẫn cần final approval riêng.
+Product Owner final-approved tài liệu ngày 2026-09-22 tại D-057. Implementation phải tuân thủ D-043–D-057. Stage 5A được phép bắt đầu sau approval commit ghi nhận D-057; Stage 5B giữ planned và chỉ bắt đầu theo implementation sequencing/review process của project.
 
 ## Mục tiêu và quy trình
 
@@ -12,7 +12,7 @@ Slice 5 hoàn thiện vòng vận hành tối thiểu về công nợ và câu h
 
 `Domain behavior → DB changes → API contract → UI flow → Test cases → Implement`
 
-Các quyết định D-001–D-056 tiếp tục được bảo toàn, đặc biệt:
+Các quyết định D-001–D-057 tiếp tục được bảo toàn, đặc biệt:
 
 - Completed Sale/Purchase/Return là immutable; correction dùng Return/Void/Reversal có audit.
 - Payment chỉ là tiền thực nhận/thực trả; Payment không đồng nghĩa Revenue hoặc Debt.
@@ -978,16 +978,21 @@ Không dùng EF InMemory để chứng minh locking/concurrency.
 - concurrent SupplierDebtPayment + Purchase Void theo cả outcomes; final debt không âm;
 - Purchase Void exact retry/recovery và existing safety/dependency guards không đổi.
 
-## 14. Implementation staging proposal
+## 14. Approved implementation staging
 
 ### Stage 5A — Debt backend/domain/persistence/tests
 
-- Debt formula/query services.
-- Shared DebtPayment domain model.
+- Customer debt derived query.
+- Supplier debt derived query.
+- Shared DebtPayment domain model và persistence.
+- Customer Debt Payment và Supplier Debt Payment use cases/APIs.
 - Customer/Supplier debt locks, operation types, idempotency/fingerprint/recovery.
-- Extend existing debt-affecting mutations với canonical party lock order.
-- Proposed schema/migration sau review.
-- Thin debt APIs, authorization và SQL Server integration tests.
+- Timeout/recovery và concurrent-operation handling.
+- Extend existing debt-affecting mutations với canonical party lock order và D-056 correction integration cần thiết ở backend.
+- Store timezone persistence/configuration foundation nếu Stage 5A schema foundation cần để Stage 5B tiếp tục an toàn.
+- Reviewed schema/migration implementation và SQL Server/domain/API integration tests.
+
+Stage 5A không tự mở rộng sang toàn bộ frontend hoặc End-of-day UI đã xếp tại Stage 5B.
 
 ### Stage 5B — End-of-day + frontend + E2E/recovery
 
@@ -998,7 +1003,7 @@ Không dùng EF InMemory để chứng minh locking/concurrency.
 - Immutable retry/recovery và stale-balance UX.
 - Frontend tests, integration hardening và real local E2E.
 
-Việc chia 5A/5B chỉ là `PROPOSAL`. Không stage nào được phép implement cho tới khi Product Owner final-approve Technical Breakdown.
+Stage 5A/5B sequencing được approve tại D-057. Stage 5A được phép bắt đầu; Stage 5B vẫn planned, chưa được ghi nhận đã bắt đầu hoặc hoàn thành.
 
 ## 15. Resolved Product Owner questions và approval gate
 
@@ -1010,9 +1015,9 @@ Sáu Product Owner questions chặn ban đầu đã được giải quyết đ�
 - Debt Payment Note/no Reference: D-055;
 - correction sau unallocated debt payment: D-056.
 
-Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Tuy nhiên Technical Breakdown vẫn `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; việc giải quyết questions không tự động cấp implementation approval.
+Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Product Owner đã cấp Technical Breakdown approval tại D-057; approval này cho phép bắt đầu Stage 5A nhưng không đồng nghĩa Slice 5 hoặc bất kỳ stage nào đã completed.
 
-## 16. Definition of Done đề xuất sau approval
+## 16. Definition of Done
 
 - Partial/full/multiple Customer/Supplier debt payments chạy Vue → API → SQL Server.
 - No overpayment được chứng minh dưới concurrency khác OperationId.
@@ -1035,5 +1040,6 @@ Không còn Product Owner Open Question nào được biết đang chặn Slice 
 - D-033–D-040 — Return/Void permission, financial effects, actual refund, safe Purchase Void và correction locking.
 - D-043–D-050 — approved Slice 5 product scope/semantics.
 - D-051–D-056 — approved authorization, net Collected, IANA timezone, immutable Note và correction/aggregate-debt behavior.
+- D-057 — Technical Breakdown Slice 5 Approval và implementation sequencing.
 
-Tài liệu này vẫn là `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; không phải `APPROVED FOR IMPLEMENTATION`.
+Tài liệu này là `APPROVED FOR IMPLEMENTATION` theo D-057. Approval không phải bằng chứng production implementation, migration hoặc Stage 5A/5B đã hoàn thành.
