@@ -12,6 +12,10 @@ public sealed class StoreConfiguration : IEntityTypeConfiguration<Store>
         builder.ToTable("Stores");
         builder.HasKey(store => store.Id);
         builder.Property(store => store.Name).HasMaxLength(120).IsRequired();
+        builder.Property(store => store.TimeZoneId)
+            .HasMaxLength(Store.MaxTimeZoneIdLength)
+            .HasDefaultValue(Store.DefaultTimeZoneId)
+            .IsRequired();
         builder.Property(store => store.AllowNegativeStock).HasDefaultValue(false);
         builder.HasOne<ApplicationUser>()
             .WithMany()

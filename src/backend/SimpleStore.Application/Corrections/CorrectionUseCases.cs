@@ -16,6 +16,7 @@ public sealed class VoidSaleUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
     ISlice4Repository repository,
+    ISlice5Repository debtRepository,
     TimeProvider timeProvider)
 {
     public async Task<SaleVoidResult> ExecuteAsync(Guid saleId, VoidTransactionCommand command, CancellationToken cancellationToken)
@@ -39,20 +40,47 @@ public sealed class VoidSaleUseCase(
                 return ToResult(existingVoid, true);
             }
 
-            await repository.AcquireSaleCorrectionLockAsync(saleId, token);
             var sale = await repository.GetSaleAsync(storeId, saleId, token)
                 ?? throw new ApplicationNotFoundException("sale-not-found", "Sale was not found.");
+            if (sale.CustomerId.HasValue)
+            {
+                await debtRepository.AcquireCustomerDebtLockAsync(storeId, sale.CustomerId.Value, token);
+            }
+            await repository.AcquireSaleCorrectionLockAsync(saleId, token);
             if (await repository.GetSaleVoidAsync(storeId, saleId, token) is not null)
                 throw new ApplicationConflictException("sale-already-voided", "Sale is already voided.");
             if ((await repository.GetReturnsForSaleAsync(storeId, saleId, token)).Count > 0)
                 throw new ApplicationConflictException("sale-has-returns", "A sale with completed returns cannot be voided.");
+
+            var now = timeProvider.GetUtcNow();
+            if (sale.CustomerId.HasValue)
+            {
+                var debt = await debtRepository.GetCustomerDebtAsync(
+                    storeId, sale.CustomerId.Value, now, token)
+                    ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
+                var activeContribution = sale.TotalAmount - sale.Payments.Sum(payment => payment.Amount);
+                var hypothetical = debt.OutstandingAmount - activeContribution;
+                if (debt.OutstandingAmount < 0)
+                {
+                    throw new ApplicationConflictException(
+                        "customer-debt-state-invalid",
+                        "Customer debt history produces a negative outstanding balance.");
+                }
+                if (hypothetical < 0)
+                {
+                    throw NegativeDebtConflict(
+                        "customer-debt-would-become-negative",
+                        debt.OutstandingAmount,
+                        hypothetical,
+                        "use-return-refund-flow");
+                }
+            }
 
             var productIds = sale.Lines.Select(item => item.ProductId).Distinct().OrderBy(item => item).ToArray();
             var balances = await repository.LockInventoryBalancesAsync(storeId, sale.WarehouseId, productIds, token);
             if (balances.Count != productIds.Length)
                 throw new ApplicationConflictException("inventory-balance-missing", "An inventory balance is missing for a sale product.");
             var movements = await repository.GetSaleMovementsAsync(storeId, sale.Lines.Select(item => item.Id).ToArray(), token);
-            var now = timeProvider.GetUtcNow();
             var saleVoid = SaleVoid.Create(storeId, saleId, reason, userId, now);
             foreach (var line in sale.Lines.OrderBy(item => item.ProductId))
             {
@@ -78,12 +106,29 @@ public sealed class VoidSaleUseCase(
 
     private static SaleVoidResult ToResult(SaleVoid item, bool retry) =>
         new(item.Id, item.OriginalSaleId, item.Reason, item.VoidedByUserId, item.VoidedAt, retry);
+
+    private static ApplicationConflictException NegativeDebtConflict(
+        string code,
+        decimal current,
+        decimal hypothetical,
+        string suggestedActionCode) =>
+        new(
+            code,
+            "The correction would make aggregate debt negative.",
+            new Dictionary<string, object?>
+            {
+                ["currentOutstandingAmount"] = current,
+                ["hypotheticalOutstandingAmount"] = hypothetical,
+                ["excessAmount"] = Math.Abs(hypothetical),
+                ["suggestedActionCode"] = suggestedActionCode
+            });
 }
 
 public sealed class VoidPurchaseUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
     ISlice4Repository repository,
+    ISlice5Repository debtRepository,
     TimeProvider timeProvider)
 {
     public async Task<PurchaseVoidResult> ExecuteAsync(Guid purchaseId, VoidTransactionCommand command, CancellationToken cancellationToken)
@@ -107,13 +152,39 @@ public sealed class VoidPurchaseUseCase(
                 return ToResult(existingVoid, true);
             }
 
-            await repository.AcquirePurchaseCorrectionLockAsync(purchaseId, token);
             var purchase = await repository.GetPurchaseAsync(storeId, purchaseId, token)
                 ?? throw new ApplicationNotFoundException("purchase-not-found", "Purchase was not found.");
+            await debtRepository.AcquireSupplierDebtLockAsync(storeId, purchase.SupplierId, token);
+            await repository.AcquirePurchaseCorrectionLockAsync(purchaseId, token);
             if (purchase.Status != PurchaseStatus.Completed)
                 throw new ApplicationConflictException("purchase-not-completed", "Only a completed purchase can be voided.");
             if (await repository.GetPurchaseVoidAsync(storeId, purchaseId, token) is not null)
                 throw new ApplicationConflictException("purchase-already-voided", "Purchase is already voided.");
+
+            var now = timeProvider.GetUtcNow();
+            var debt = await debtRepository.GetSupplierDebtAsync(storeId, purchase.SupplierId, now, token)
+                ?? throw new ApplicationNotFoundException("supplier-not-found", "Supplier was not found.");
+            if (debt.OutstandingAmount < 0)
+            {
+                throw new ApplicationConflictException(
+                    "supplier-debt-state-invalid",
+                    "Supplier debt history produces a negative outstanding balance.");
+            }
+            var activeContribution = purchase.TotalAmount - purchase.Payments.Sum(payment => payment.Amount);
+            var hypothetical = debt.OutstandingAmount - activeContribution;
+            if (hypothetical < 0)
+            {
+                throw new ApplicationConflictException(
+                    "supplier-debt-would-become-negative",
+                    "The correction would make aggregate debt negative.",
+                    new Dictionary<string, object?>
+                    {
+                        ["currentOutstandingAmount"] = debt.OutstandingAmount,
+                        ["hypotheticalOutstandingAmount"] = hypothetical,
+                        ["excessAmount"] = Math.Abs(hypothetical),
+                        ["suggestedActionCode"] = "supplier-refund-not-supported"
+                    });
+            }
 
             var bases = await repository.GetPurchaseReversalBasesAsync(storeId, purchaseId, token);
             if (bases.Count != purchase.Lines.Count)
@@ -169,7 +240,6 @@ public sealed class VoidPurchaseUseCase(
                 validated.Add((line, basis, movement!));
             }
 
-            var now = timeProvider.GetUtcNow();
             var purchaseVoid = PurchaseVoid.Create(storeId, purchaseId, reason, userId, now);
             foreach (var item in validated)
             {

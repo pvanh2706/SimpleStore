@@ -21,6 +21,10 @@ const preview = (refundDueNow = 0): ReturnPreview => ({
   currentReturnValue: 12000, previousReturnedValue: 12000, cumulativeReturnedValue: 24000,
   netSaleObligation: 12000, netCashHeld: refundDueNow > 0 ? 12000 : 0,
   outstanding: 12000, refundDueNow, refundMethodRequired: refundDueNow > 0,
+  returnObligationReduction: 12000,
+  currentAggregateCustomerDebt: null,
+  debtReduction: null,
+  requiredActualRefund: refundDueNow,
 })
 const result: ReturnResult = {
   id: 'return-2', originalSaleId: 'sale-1', status: 'Completed',
@@ -84,8 +88,11 @@ describe('ReturnForm', () => {
     expect(payload).toEqual({
       operationId: 'return-operation', originalSaleId: 'sale-1',
       lines: [{ originalSaleLineId: 'line-1', quantity: 1, restock: false }], refundMethod: null,
+      expectedAggregateCustomerDebt: null,
+      expectedRequiredActualRefund: 0,
     })
-    expect(JSON.stringify(payload)).not.toMatch(/price|cost|amount/i)
+    expect(payload).not.toHaveProperty('refundAmount')
+    expect(JSON.stringify(payload)).not.toMatch(/price|cost/i)
   })
 
   it('requires only a method for positive authoritative refund and never exposes an editable refund amount', async () => {

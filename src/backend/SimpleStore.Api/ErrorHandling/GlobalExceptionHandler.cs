@@ -77,6 +77,14 @@ public sealed partial class GlobalExceptionHandler(
             problem.Extensions["shortages"] = stockException.Shortages;
         }
 
+        if (exception is ApplicationConflictException conflictException)
+        {
+            foreach (var extension in conflictException.Extensions)
+            {
+                problem.Extensions[extension.Key] = extension.Value;
+            }
+        }
+
         return problem;
     }
 

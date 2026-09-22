@@ -6,7 +6,9 @@ public sealed record CreateReturnCommand(
     Guid OperationId,
     Guid OriginalSaleId,
     IReadOnlyCollection<ReturnLineCommand> Lines,
-    string? RefundMethod);
+    string? RefundMethod,
+    decimal? ExpectedAggregateCustomerDebt,
+    decimal? ExpectedRequiredActualRefund);
 
 public sealed record ReturnLineResult(
     Guid Id,
@@ -54,7 +56,11 @@ public sealed record ReturnPreviewResult(
     decimal NetCashHeld,
     decimal Outstanding,
     decimal RefundDueNow,
-    bool RefundMethodRequired);
+    bool RefundMethodRequired,
+    decimal ReturnObligationReduction,
+    decimal? CurrentAggregateCustomerDebt,
+    decimal? DebtReduction,
+    decimal RequiredActualRefund);
 
 public sealed record ReturnContextLineResult(
     Guid SaleLineId,

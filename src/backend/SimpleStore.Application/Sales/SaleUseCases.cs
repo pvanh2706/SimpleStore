@@ -22,6 +22,7 @@ public sealed class CompleteSaleUseCase(
     ISlice1Repository slice1Repository,
     ISlice3Repository repository,
     ISlice4Repository correctionRepository,
+    ISlice5Repository debtRepository,
     TimeProvider timeProvider)
 {
     public async Task<SaleResult> ExecuteAsync(
@@ -74,6 +75,20 @@ public sealed class CompleteSaleUseCase(
                     .Distinct()
                     .OrderBy(productId => productId)
                     .ToArray();
+                Customer? customer = null;
+                if (command.CustomerId.HasValue)
+                {
+                    customer = await repository.GetCustomerAsync(
+                        storeId,
+                        command.CustomerId.Value,
+                        transactionCancellationToken)
+                        ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
+                    await debtRepository.AcquireCustomerDebtLockAsync(
+                        storeId,
+                        customer.Id,
+                        transactionCancellationToken);
+                }
+
                 var store = await repository.GetStoreAsync(storeId, transactionCancellationToken)
                     ?? throw new ApplicationNotFoundException("store-not-found", "Store was not found.");
                 var warehouse = await repository.GetMainWarehouseAsync(storeId, transactionCancellationToken)
@@ -124,16 +139,6 @@ public sealed class CompleteSaleUseCase(
                 if (!store.AllowNegativeStock && shortages.Length > 0)
                 {
                     throw new InsufficientStockException(shortages);
-                }
-
-                Customer? customer = null;
-                if (command.CustomerId.HasValue)
-                {
-                    customer = await repository.GetCustomerAsync(
-                        storeId,
-                        command.CustomerId.Value,
-                        transactionCancellationToken)
-                        ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
                 }
 
                 var lineInputs = command.Lines.Select(line =>

@@ -4,7 +4,12 @@ using SimpleStore.Domain.Stores;
 
 namespace SimpleStore.Application.Stores;
 
-public sealed record StoreResult(Guid Id, string Name, Guid MainWarehouseId, string MainWarehouseName);
+public sealed record StoreResult(
+    Guid Id,
+    string Name,
+    Guid MainWarehouseId,
+    string MainWarehouseName,
+    string TimeZoneId);
 
 public sealed record StoreOperationalSettingsResult(bool AllowNegativeStock);
 
@@ -48,7 +53,12 @@ public sealed class InitializeStoreUseCase(
                         store.Id,
                         transactionCancellationToken);
 
-                    return new StoreResult(store.Id, store.Name, warehouse.Id, warehouse.Name);
+                    return new StoreResult(
+                        store.Id,
+                        store.Name,
+                        warehouse.Id,
+                        warehouse.Name,
+                        store.TimeZoneId);
                 },
                 cancellationToken);
         }
@@ -85,7 +95,7 @@ public sealed class InitializeStoreUseCase(
                 "main-warehouse-not-found",
                 "Main warehouse was not found.");
 
-        return new StoreResult(store.Id, store.Name, warehouse.Id, warehouse.Name);
+        return new StoreResult(store.Id, store.Name, warehouse.Id, warehouse.Name, store.TimeZoneId);
     }
 }
 
@@ -156,7 +166,7 @@ public sealed class GetCurrentStoreUseCase(
                 "main-warehouse-not-found",
                 "Main warehouse was not found.");
 
-        return new StoreResult(store.Id, store.Name, warehouse.Id, warehouse.Name);
+        return new StoreResult(store.Id, store.Name, warehouse.Id, warehouse.Name, store.TimeZoneId);
     }
 }
 

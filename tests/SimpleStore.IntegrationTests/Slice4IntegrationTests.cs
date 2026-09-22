@@ -44,10 +44,32 @@ public sealed class Slice4IntegrationTests(CustomWebApplicationFactory factory)
         var first = await client.CreateReturnAsync(
             Guid.NewGuid(), sale.Id, [(lineId, 1, false)]);
         var secondOperation = Guid.NewGuid();
+        ReturnPreviewResult secondPreview;
+        using (var secondPreviewResponse = await client.PostWithAntiforgeryAsync(
+            "/api/returns/preview",
+            JsonContent.Create(new
+            {
+                originalSaleId = sale.Id,
+                lines = new[] { new { originalSaleLineId = lineId, quantity = 2m, restock = true } }
+            })))
+        {
+            secondPreviewResponse.EnsureSuccessStatusCode();
+            secondPreview = (await secondPreviewResponse.Content.ReadFromJsonAsync<ReturnPreviewResult>())!;
+        }
         var second = await client.CreateReturnAsync(
-            secondOperation, sale.Id, [(lineId, 2, true)], "Cash");
+            secondOperation,
+            sale.Id,
+            [(lineId, 2, true)],
+            "Cash",
+            secondPreview.CurrentAggregateCustomerDebt,
+            secondPreview.RequiredActualRefund);
         var retry = await client.CreateReturnAsync(
-            secondOperation, sale.Id, [(lineId, 2, true)], "Cash");
+            secondOperation,
+            sale.Id,
+            [(lineId, 2, true)],
+            "Cash",
+            secondPreview.CurrentAggregateCustomerDebt,
+            secondPreview.RequiredActualRefund);
 
         Assert.Equal(12_000, first.TotalReturnAmount);
         Assert.Equal(0, first.RefundAmount);

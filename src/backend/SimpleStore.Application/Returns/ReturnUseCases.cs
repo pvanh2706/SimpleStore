@@ -7,6 +7,7 @@ using SimpleStore.Application.Stores;
 using SimpleStore.Application.Suppliers;
 using SimpleStore.Domain;
 using SimpleStore.Domain.Inventory;
+using SimpleStore.Domain.Debts;
 using SimpleStore.Domain.Operations;
 using SimpleStore.Domain.Purchases;
 using SimpleStore.Domain.Returns;
@@ -17,12 +18,21 @@ namespace SimpleStore.Application.Returns;
 public sealed class PreviewReturnUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
-    ISlice4Repository repository)
+    ISlice4Repository repository,
+    ISlice5Repository debtRepository,
+    TimeProvider timeProvider)
 {
     public async Task<ReturnPreviewResult> ExecuteAsync(ReturnPreviewCommand command, CancellationToken cancellationToken)
     {
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
-        var calculation = await ReturnUseCaseSupport.CalculateAsync(repository, storeId, command.OriginalSaleId, command.Lines, cancellationToken);
+        var calculation = await ReturnUseCaseSupport.CalculateAsync(
+            repository,
+            debtRepository,
+            storeId,
+            command.OriginalSaleId,
+            command.Lines,
+            timeProvider.GetUtcNow(),
+            cancellationToken);
         return calculation.ToPreview();
     }
 }
@@ -31,6 +41,7 @@ public sealed class CreateReturnUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
     ISlice4Repository repository,
+    ISlice5Repository debtRepository,
     TimeProvider timeProvider)
 {
     public async Task<ReturnResult> ExecuteAsync(CreateReturnCommand command, CancellationToken cancellationToken)
@@ -58,16 +69,49 @@ public sealed class CreateReturnUseCase(
                 return ReturnUseCaseSupport.ToResult(existingReturn, true);
             }
 
+            var saleForLock = await repository.GetSaleAsync(storeId, command.OriginalSaleId, transactionToken)
+                ?? throw new ApplicationNotFoundException("return-sale-not-found", "Sale was not found.");
+            if (saleForLock.CustomerId.HasValue)
+            {
+                await debtRepository.AcquireCustomerDebtLockAsync(
+                    storeId,
+                    saleForLock.CustomerId.Value,
+                    transactionToken);
+            }
             await repository.AcquireSaleCorrectionLockAsync(command.OriginalSaleId, transactionToken);
+            var now = timeProvider.GetUtcNow();
             var calculation = await ReturnUseCaseSupport.CalculateAsync(
-                repository, storeId, command.OriginalSaleId, command.Lines, transactionToken);
-            if (calculation.Financials.RefundDueNow > 0 && normalizedMethod is null)
+                repository,
+                debtRepository,
+                storeId,
+                command.OriginalSaleId,
+                command.Lines,
+                now,
+                transactionToken);
+            if (calculation.AggregateFinancials is not null
+                && (command.ExpectedAggregateCustomerDebt != calculation.AggregateFinancials.CurrentAggregateCustomerDebt
+                    || command.ExpectedRequiredActualRefund != calculation.AggregateFinancials.RequiredActualRefund))
+            {
+                throw new ApplicationConflictException(
+                    "return-refund-requirement-changed",
+                    "Aggregate customer debt or required refund changed after preview.",
+                    new Dictionary<string, object?>
+                    {
+                        ["returnObligationReduction"] = calculation.AggregateFinancials.ReturnObligationReduction,
+                        ["currentAggregateCustomerDebt"] = calculation.AggregateFinancials.CurrentAggregateCustomerDebt,
+                        ["debtReduction"] = calculation.AggregateFinancials.DebtReduction,
+                        ["requiredActualRefund"] = calculation.AggregateFinancials.RequiredActualRefund
+                    });
+            }
+
+            var requiredRefund = calculation.RequiredActualRefund;
+            if (requiredRefund > 0 && normalizedMethod is null)
             {
                 throw new ApplicationValidationException(
                     "refund-method-required", "A refund method is required.",
                     [new ValidationError(null, "refundMethod", "refund-method-required", "Choose Cash or Transfer.")]);
             }
-            if (calculation.Financials.RefundDueNow == 0 && normalizedMethod is not null)
+            if (requiredRefund == 0 && normalizedMethod is not null)
             {
                 throw new ApplicationValidationException(
                     "refund-method-not-applicable", "Refund method is not applicable when no refund is due.",
@@ -85,7 +129,6 @@ public sealed class CreateReturnUseCase(
                 throw new ApplicationConflictException("inventory-balance-missing", "An inventory balance is missing for a return product.");
             }
 
-            var now = timeProvider.GetUtcNow();
             var customerReturn = CustomerReturn.Complete(
                 storeId,
                 calculation.Sale.Id,
@@ -99,7 +142,7 @@ public sealed class CreateReturnUseCase(
                     item.Amounts.ReturnLineAmount,
                     item.SaleLine.UnitCostAtSale,
                     item.Amounts.RestockedInventoryValue)).ToArray(),
-                calculation.Financials.RefundDueNow,
+                requiredRefund,
                 normalizedMethod,
                 now);
             repository.AddReturn(customerReturn);
@@ -220,9 +263,11 @@ internal static class ReturnUseCaseSupport
 
     public static async Task<ReturnCalculation> CalculateAsync(
         ISlice4Repository repository,
+        ISlice5Repository debtRepository,
         Guid storeId,
         Guid saleId,
         IReadOnlyCollection<ReturnLineCommand> commands,
+        DateTimeOffset asOf,
         CancellationToken cancellationToken)
     {
         ValidateCommandLines(commands);
@@ -288,7 +333,27 @@ internal static class ReturnUseCaseSupport
         {
             throw new ApplicationConflictException(exception.Code, exception.Message);
         }
-        return new ReturnCalculation(sale, calculatedLines, previousReturned, financials);
+        AggregateReturnFinancials? aggregateFinancials = null;
+        if (sale.CustomerId.HasValue)
+        {
+            var aggregateDebt = await debtRepository.GetCustomerDebtAsync(
+                storeId,
+                sale.CustomerId.Value,
+                asOf,
+                cancellationToken)
+                ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
+            try
+            {
+                aggregateFinancials = DebtCalculations.CalculateAggregateReturn(
+                    calculatedLines.Sum(item => item.Amounts.ReturnLineAmount),
+                    aggregateDebt.OutstandingAmount);
+            }
+            catch (DomainRuleException exception)
+            {
+                throw new ApplicationConflictException(exception.Code, exception.Message);
+            }
+        }
+        return new ReturnCalculation(sale, calculatedLines, previousReturned, financials, aggregateFinancials);
     }
 
     public static string CreateFingerprint(CreateReturnCommand command, PaymentMethod? method)
@@ -296,7 +361,9 @@ internal static class ReturnUseCaseSupport
         var lines = command.Lines.OrderBy(item => item.OriginalSaleLineId).Select(item => string.Create(
             CultureInfo.InvariantCulture,
             $"{item.OriginalSaleLineId:N}:{item.Quantity:G29}:{item.Restock!.Value}"));
-        var normalized = $"return|sale:{command.OriginalSaleId:N}|lines:{string.Join(';', lines)}|refund:{method?.ToString() ?? "null"}";
+        var normalized = string.Create(
+            CultureInfo.InvariantCulture,
+            $"return|sale:{command.OriginalSaleId:N}|lines:{string.Join(';', lines)}|refund:{method?.ToString() ?? "null"}|expectedDebt:{command.ExpectedAggregateCustomerDebt?.ToString("G29", CultureInfo.InvariantCulture) ?? "null"}|expectedRefund:{command.ExpectedRequiredActualRefund?.ToString("G29", CultureInfo.InvariantCulture) ?? "null"}");
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
@@ -326,8 +393,12 @@ internal sealed record ReturnCalculation(
     Sale Sale,
     IReadOnlyList<CalculatedReturnLine> Lines,
     decimal PreviousReturnedValue,
-    ReturnFinancialAmounts Financials)
+    ReturnFinancialAmounts Financials,
+    AggregateReturnFinancials? AggregateFinancials)
 {
+    public decimal RequiredActualRefund =>
+        AggregateFinancials?.RequiredActualRefund ?? Financials.RefundDueNow;
+
     public ReturnPreviewResult ToPreview() => new(
         Sale.Id,
         Lines.Select(item => new ReturnPreviewLineResult(
@@ -342,6 +413,10 @@ internal sealed record ReturnCalculation(
         Financials.NetSaleObligation,
         Financials.NetCashHeld,
         Financials.Outstanding,
-        Financials.RefundDueNow,
-        Financials.RefundDueNow > 0);
+        RequiredActualRefund,
+        RequiredActualRefund > 0,
+        Lines.Sum(item => item.Amounts.ReturnLineAmount),
+        AggregateFinancials?.CurrentAggregateCustomerDebt,
+        AggregateFinancials?.DebtReduction,
+        RequiredActualRefund);
 }

@@ -11,6 +11,7 @@ export interface StoreInfo {
   name: string
   mainWarehouseId: string
   mainWarehouseName: string
+  timeZoneId: string
 }
 
 export interface Product {
@@ -386,4 +387,8 @@ export interface ReturnPreview {
   outstanding: number
   refundDueNow: number
   refundMethodRequired: boolean
+  returnObligationReduction: number
+  currentAggregateCustomerDebt: number | null
+  debtReduction: number | null
+  requiredActualRefund: number
 }

@@ -10,6 +10,7 @@ using SimpleStore.Domain.Customers;
 using SimpleStore.Domain.Sales;
 using SimpleStore.Domain.Returns;
 using SimpleStore.Domain.Corrections;
+using SimpleStore.Domain.Debts;
 using SimpleStore.Domain.Stores;
 using SimpleStore.Domain.Suppliers;
 using SimpleStore.Infrastructure.Identity;
@@ -61,6 +62,7 @@ public sealed class ApplicationDbContext(
     public DbSet<SaleVoid> SaleVoids => Set<SaleVoid>();
     public DbSet<PurchaseVoid> PurchaseVoids => Set<PurchaseVoid>();
     public DbSet<PurchaseLineReversalBasis> PurchaseLineReversalBases => Set<PurchaseLineReversalBasis>();
+    public DbSet<DebtPayment> DebtPayments => Set<DebtPayment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -10,6 +10,7 @@ using SimpleStore.Domain.Purchases;
 using SimpleStore.Domain.Stores;
 using SimpleStore.Domain.Corrections;
 using SimpleStore.Domain.Suppliers;
+using SimpleStore.Domain.Debts;
 
 namespace SimpleStore.Infrastructure.Persistence;
 
@@ -47,7 +48,12 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
             .SumAsync(
                 purchase => purchase.TotalAmount
                     - purchase.Payments.Sum(payment => payment.Amount),
-                cancellationToken);
+                cancellationToken)
+        - await dbContext.DebtPayments
+            .Where(payment => payment.StoreId == storeId
+                && payment.SupplierId == supplierId
+                && payment.Purpose == DebtPaymentPurpose.SupplierDebtSettlement)
+            .SumAsync(payment => payment.Amount, cancellationToken);
 
     public async Task<SupplierSearchPage> SearchSuppliersAsync(
         Guid storeId,
@@ -86,7 +92,12 @@ public sealed class Slice2Repository(ApplicationDbContext dbContext) : ISlice2Re
                         && !dbContext.PurchaseVoids.Any(voided => voided.StoreId == storeId
                             && voided.OriginalPurchaseId == purchase.Id))
                     .Sum(purchase => purchase.TotalAmount
-                        - purchase.Payments.Sum(payment => payment.Amount))))
+                        - purchase.Payments.Sum(payment => payment.Amount))
+                    - dbContext.DebtPayments
+                        .Where(payment => payment.StoreId == storeId
+                            && payment.SupplierId == supplier.Id
+                            && payment.Purpose == DebtPaymentPurpose.SupplierDebtSettlement)
+                        .Sum(payment => payment.Amount)))
             .ToArrayAsync(cancellationToken);
         return new SupplierSearchPage(items, totalCount);
     }

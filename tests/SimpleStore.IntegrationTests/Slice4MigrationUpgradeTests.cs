@@ -71,6 +71,7 @@ public sealed class Slice4MigrationUpgradeTests
                 new MigrationTestCurrentUser(ids.UserId),
                 new Slice1Repository(db),
                 new Slice4Repository(db),
+                new Slice5Repository(db),
                 TimeProvider.System);
             var exception = await Assert.ThrowsAsync<ApplicationConflictException>(() =>
                 useCase.ExecuteAsync(

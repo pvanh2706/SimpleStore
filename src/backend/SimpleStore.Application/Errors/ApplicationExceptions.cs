@@ -16,9 +16,26 @@ public sealed class ApplicationValidationException(
     public IReadOnlyCollection<ValidationError> Errors { get; } = errors;
 }
 
-public sealed class ApplicationConflictException(string code, string message) : Exception(message)
+public sealed class ApplicationConflictException : Exception
 {
-    public string Code { get; } = code;
+    public ApplicationConflictException(string code, string message)
+        : this(code, message, new Dictionary<string, object?>())
+    {
+    }
+
+    public ApplicationConflictException(
+        string code,
+        string message,
+        IReadOnlyDictionary<string, object?> extensions)
+        : base(message)
+    {
+        Code = code;
+        Extensions = extensions;
+    }
+
+    public string Code { get; }
+
+    public IReadOnlyDictionary<string, object?> Extensions { get; }
 }
 
 public sealed class ApplicationNotFoundException(string code, string message) : Exception(message)

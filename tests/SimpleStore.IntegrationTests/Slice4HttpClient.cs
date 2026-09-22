@@ -10,7 +10,9 @@ internal static class Slice4HttpClient
         Guid operationId,
         Guid saleId,
         IReadOnlyCollection<(Guid SaleLineId, decimal Quantity, bool Restock)> lines,
-        string? refundMethod = null) =>
+        string? refundMethod = null,
+        decimal? expectedAggregateCustomerDebt = null,
+        decimal? expectedRequiredActualRefund = null) =>
         JsonContent.Create(new
         {
             operationId,
@@ -21,7 +23,9 @@ internal static class Slice4HttpClient
                 quantity = item.Quantity,
                 restock = item.Restock
             }),
-            refundMethod
+            refundMethod,
+            expectedAggregateCustomerDebt,
+            expectedRequiredActualRefund
         });
 
     public static async Task<ReturnResult> CreateReturnAsync(
@@ -29,11 +33,39 @@ internal static class Slice4HttpClient
         Guid operationId,
         Guid saleId,
         IReadOnlyCollection<(Guid SaleLineId, decimal Quantity, bool Restock)> lines,
-        string? refundMethod = null)
+        string? refundMethod = null,
+        decimal? expectedAggregateCustomerDebt = null,
+        decimal? expectedRequiredActualRefund = null)
     {
+        if (!expectedAggregateCustomerDebt.HasValue && !expectedRequiredActualRefund.HasValue)
+        {
+            using var previewResponse = await client.PostWithAntiforgeryAsync(
+                "/api/returns/preview",
+                JsonContent.Create(new
+                {
+                    originalSaleId = saleId,
+                    lines = lines.Select(item => new
+                    {
+                        originalSaleLineId = item.SaleLineId,
+                        quantity = item.Quantity,
+                        restock = item.Restock
+                    })
+                }));
+            await EnsureSuccessAsync(previewResponse);
+            var preview = (await previewResponse.Content.ReadFromJsonAsync<ReturnPreviewResult>())!;
+            expectedAggregateCustomerDebt = preview.CurrentAggregateCustomerDebt;
+            expectedRequiredActualRefund = preview.RequiredActualRefund;
+        }
+
         using var response = await client.PostWithAntiforgeryAsync(
             "/api/returns",
-            ReturnContent(operationId, saleId, lines, refundMethod));
+            ReturnContent(
+                operationId,
+                saleId,
+                lines,
+                refundMethod,
+                expectedAggregateCustomerDebt,
+                expectedRequiredActualRefund));
         await EnsureSuccessAsync(response);
         return (await response.Content.ReadFromJsonAsync<ReturnResult>())!;
     }

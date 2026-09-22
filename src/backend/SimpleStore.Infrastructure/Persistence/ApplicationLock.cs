@@ -26,6 +26,26 @@ internal static class ApplicationLock
         CancellationToken cancellationToken) =>
         AcquireAsync(dbContext, $"SimpleStore:PurchaseCorrection:{purchaseId:N}", cancellationToken);
 
+    public static Task AcquireCustomerDebtAsync(
+        ApplicationDbContext dbContext,
+        Guid storeId,
+        Guid customerId,
+        CancellationToken cancellationToken) =>
+        AcquireAsync(
+            dbContext,
+            $"SimpleStore:CustomerDebt:{storeId:N}:{customerId:N}",
+            cancellationToken);
+
+    public static Task AcquireSupplierDebtAsync(
+        ApplicationDbContext dbContext,
+        Guid storeId,
+        Guid supplierId,
+        CancellationToken cancellationToken) =>
+        AcquireAsync(
+            dbContext,
+            $"SimpleStore:SupplierDebt:{storeId:N}:{supplierId:N}",
+            cancellationToken);
+
     private static async Task AcquireAsync(
         ApplicationDbContext dbContext,
         string resource,

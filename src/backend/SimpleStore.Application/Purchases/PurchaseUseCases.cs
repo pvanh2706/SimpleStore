@@ -177,6 +177,7 @@ public sealed class CompletePurchaseUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
     ISlice2Repository repository,
+    ISlice5Repository debtRepository,
     TimeProvider timeProvider)
 {
     public async Task<PurchaseResult> ExecuteAsync(
@@ -239,6 +240,11 @@ public sealed class CompletePurchaseUseCase(
                         "purchase-already-completed",
                         "Purchase is already completed.");
                 }
+
+                await debtRepository.AcquireSupplierDebtLockAsync(
+                    storeId,
+                    purchase.SupplierId,
+                    transactionCancellationToken);
 
                 var supplier = await PurchaseUseCaseSupport.GetActiveSupplierAsync(
                     repository,

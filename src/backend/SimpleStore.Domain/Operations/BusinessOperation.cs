@@ -109,6 +109,22 @@ public sealed class BusinessOperation
         DateTimeOffset completedAt) =>
         Complete(operationId, storeId, BusinessOperationTypes.VoidPurchase, requestFingerprint, purchaseVoidId, completedAt);
 
+    public static BusinessOperation RecordCustomerDebtPayment(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid debtPaymentId,
+        DateTimeOffset completedAt) =>
+        Complete(operationId, storeId, BusinessOperationTypes.RecordCustomerDebtPayment, requestFingerprint, debtPaymentId, completedAt);
+
+    public static BusinessOperation RecordSupplierDebtPayment(
+        Guid operationId,
+        Guid storeId,
+        string requestFingerprint,
+        Guid debtPaymentId,
+        DateTimeOffset completedAt) =>
+        Complete(operationId, storeId, BusinessOperationTypes.RecordSupplierDebtPayment, requestFingerprint, debtPaymentId, completedAt);
+
     private static BusinessOperation Complete(
         Guid operationId,
         Guid storeId,
@@ -145,4 +161,6 @@ public static class BusinessOperationTypes
     public const string CreateReturn = "CreateReturn";
     public const string VoidSale = "VoidSale";
     public const string VoidPurchase = "VoidPurchase";
+    public const string RecordCustomerDebtPayment = "RecordCustomerDebtPayment";
+    public const string RecordSupplierDebtPayment = "RecordSupplierDebtPayment";
 }

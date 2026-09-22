@@ -45,11 +45,15 @@ public sealed record CreateReturnRequest(
     Guid OperationId,
     Guid OriginalSaleId,
     IReadOnlyCollection<ReturnLineRequest> Lines,
-    string? RefundMethod)
+    string? RefundMethod,
+    decimal? ExpectedAggregateCustomerDebt,
+    decimal? ExpectedRequiredActualRefund)
 {
     public CreateReturnCommand ToCommand() => new(
         OperationId,
         OriginalSaleId,
         Lines.Select(item => new ReturnLineCommand(item.OriginalSaleLineId, item.Quantity, item.Restock)).ToArray(),
-        RefundMethod);
+        RefundMethod,
+        ExpectedAggregateCustomerDebt,
+        ExpectedRequiredActualRefund);
 }

@@ -2,15 +2,19 @@ namespace SimpleStore.Domain.Stores;
 
 public sealed class Store
 {
+    public const int MaxTimeZoneIdLength = 128;
+    public const string DefaultTimeZoneId = "Asia/Ho_Chi_Minh";
+
     private Store()
     {
     }
 
-    private Store(Guid id, Guid ownerUserId, string name, DateTimeOffset createdAt)
+    private Store(Guid id, Guid ownerUserId, string name, string timeZoneId, DateTimeOffset createdAt)
     {
         Id = id;
         OwnerUserId = ownerUserId;
         Name = name;
+        TimeZoneId = NormalizeTimeZoneId(timeZoneId);
         AllowNegativeStock = false;
         CreatedAt = createdAt;
     }
@@ -23,9 +27,15 @@ public sealed class Store
 
     public bool AllowNegativeStock { get; private set; }
 
+    public string TimeZoneId { get; private set; } = DefaultTimeZoneId;
+
     public DateTimeOffset CreatedAt { get; private set; }
 
-    public static Store Create(Guid ownerUserId, string name, DateTimeOffset createdAt)
+    public static Store Create(
+        Guid ownerUserId,
+        string name,
+        DateTimeOffset createdAt,
+        string timeZoneId = DefaultTimeZoneId)
     {
         if (ownerUserId == Guid.Empty)
         {
@@ -40,7 +50,7 @@ public sealed class Store
                 "Store name is required and must not exceed 120 characters.");
         }
 
-        return new Store(Guid.NewGuid(), ownerUserId, normalizedName, createdAt);
+        return new Store(Guid.NewGuid(), ownerUserId, normalizedName, timeZoneId, createdAt);
     }
 
     public NegativeStockSettingAudit ChangeNegativeStockPolicy(
@@ -61,5 +71,20 @@ public sealed class Store
             changedAt);
         AllowNegativeStock = allowNegativeStock;
         return audit;
+    }
+
+    private static string NormalizeTimeZoneId(string? timeZoneId)
+    {
+        var normalized = timeZoneId?.Trim() ?? string.Empty;
+        if (normalized.Length is < 1 or > MaxTimeZoneIdLength
+            || !TimeZoneInfo.TryFindSystemTimeZoneById(normalized, out var timeZone)
+            || !timeZone.HasIanaId)
+        {
+            throw new DomainRuleException(
+                "invalid-store-timezone",
+                "Store timezone must be a valid canonical IANA timezone ID.");
+        }
+
+        return timeZone.Id;
     }
 }

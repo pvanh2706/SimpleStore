@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleStore.Application.Purchases;
+using SimpleStore.Domain.Operations;
 using SimpleStore.Infrastructure.Identity;
 
 namespace SimpleStore.Api.Controllers;
@@ -16,6 +17,11 @@ public sealed class OperationsController(GetOperationStatusUseCase getOperationS
         CancellationToken cancellationToken)
     {
         var result = await getOperationStatus.ExecuteAsync(operationId, cancellationToken);
+        if (result?.OperationType == BusinessOperationTypes.RecordSupplierDebtPayment
+            && !User.IsInRole(ApplicationRoles.Owner))
+        {
+            return Forbid();
+        }
         return result is null
             ? Problem(
                 statusCode: StatusCodes.Status404NotFound,

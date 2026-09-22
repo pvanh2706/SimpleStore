@@ -13,6 +13,8 @@ export interface ReturnAttemptSnapshot {
   originalSaleId: string
   lines: ReturnLineInput[]
   refundMethod: RefundMethod | null
+  expectedAggregateCustomerDebt: number | null
+  expectedRequiredActualRefund: number
 }
 
 const props = defineProps<{
@@ -44,6 +46,7 @@ const errorMessages: Record<string, string> = {
   'return-quantity-exceeds-remaining': 'Số lượng có thể trả đã thay đổi. Dữ liệu mới nhất đã được tải lại.',
   'concurrent-update': 'Dữ liệu giao dịch vừa thay đổi. Dữ liệu mới nhất đã được tải lại.',
   'sale-already-voided': 'Đơn bán đã bị hủy nên không thể trả hàng.',
+  'return-refund-requirement-changed': 'Công nợ hoặc số tiền cần hoàn vừa thay đổi. Vui lòng xem trước lại.',
   'return-financial-state-invalid': 'Lịch sử hoàn tiền không nhất quán. Không thể tiếp tục giao dịch trả hàng.',
   'refund-method-required': 'Vui lòng chọn phương thức hoàn tiền.',
   'refund-method-not-applicable': 'Không cần hoàn tiền cho lần trả hàng này.',
@@ -178,6 +181,8 @@ async function completeReturn() {
       originalSaleId: props.context.saleId,
       lines: lines.map(line => ({ ...line })),
       refundMethod: preview.value.refundMethodRequired ? refundMethod.value as RefundMethod : null,
+      expectedAggregateCustomerDebt: preview.value.currentAggregateCustomerDebt,
+      expectedRequiredActualRefund: preview.value.requiredActualRefund,
     }
   }
 
@@ -198,7 +203,10 @@ async function completeReturn() {
       const code = reason && typeof reason === 'object' && 'problem' in reason
         ? (reason as { problem?: { code?: string } }).problem?.code
         : undefined
-      if (code === 'return-quantity-exceeds-remaining' || code === 'sale-already-voided' || code === 'concurrent-update') {
+      if (code === 'return-quantity-exceeds-remaining'
+        || code === 'return-refund-requirement-changed'
+        || code === 'sale-already-voided'
+        || code === 'concurrent-update') {
         state.value = 'checking'
         resetDecisionBoundary(props.context)
         try {
