@@ -106,6 +106,71 @@ describe('ReturnForm', () => {
     expect(createReturn.mock.calls[0][0].refundMethod).toBe('Transfer')
   })
 
+  it('locks every return-intention input while the server preview is pending', async () => {
+    let resolvePreview!: (value: ReturnPreview) => void
+    const pendingPreview = new Promise<ReturnPreview>(resolve => { resolvePreview = resolve })
+    const wrapper = mountForm({ previewReturn: vi.fn(() => pendingPreview) })
+    await chooseLine(wrapper)
+
+    const previewButton = wrapper.findAll('button').find(button => button.text() === 'Cập nhật xem trước')!
+    await previewButton.trigger('click')
+
+    expect(wrapper.get('[aria-label="Chọn trả Cà phê"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('[aria-label="Số lượng trả Cà phê"]').attributes('disabled')).toBeDefined()
+    for (const radio of wrapper.findAll('input[type="radio"]')) {
+      expect(radio.attributes('disabled')).toBeDefined()
+    }
+    expect(wrapper.findAll('button').find(button => button.text() === 'Đang xem trước…')!.attributes('disabled')).toBeDefined()
+
+    resolvePreview(preview())
+    await flushPromises()
+    expect(wrapper.get('[aria-label="Chọn trả Cà phê"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('[aria-label="Số lượng trả Cà phê"]').attributes('disabled')).toBeUndefined()
+    for (const radio of wrapper.findAll('input[type="radio"]')) {
+      expect(radio.attributes('disabled')).toBeUndefined()
+    }
+  })
+
+  it('invalidates a preview when the local intention changes and requires a new server preview', async () => {
+    const randomUUID = vi.fn(() => 'must-not-be-created')
+    vi.stubGlobal('crypto', { randomUUID })
+    const createReturn = vi.fn()
+    const wrapper = mountForm({ createReturn })
+    await chooseLine(wrapper)
+    await requestPreview(wrapper)
+    expect(wrapper.find('[aria-label="Xem trước trả hàng"]').exists()).toBe(true)
+
+    await wrapper.get('[aria-label="Số lượng trả Cà phê"]').setValue('2')
+    expect(wrapper.find('[aria-label="Xem trước trả hàng"]').exists()).toBe(false)
+    await wrapper.findAll('button').find(button => button.text() === 'Hoàn tất trả hàng')!.trigger('click')
+
+    expect(wrapper.text()).toContain('Dữ liệu trả hàng đã thay đổi. Vui lòng cập nhật xem trước lại.')
+    expect(createReturn).not.toHaveBeenCalled()
+    expect(randomUUID).not.toHaveBeenCalled()
+  })
+
+  it('cannot submit a different intention while its exact preview request is in flight', async () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'return-operation' })
+    let resolvePreview!: (value: ReturnPreview) => void
+    const pendingPreview = new Promise<ReturnPreview>(resolve => { resolvePreview = resolve })
+    const createReturn = vi.fn().mockResolvedValue(result)
+    const wrapper = mountForm({ previewReturn: vi.fn(() => pendingPreview), createReturn })
+    await chooseLine(wrapper)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Cập nhật xem trước')!.trigger('click')
+    const quantity = wrapper.get('[aria-label="Số lượng trả Cà phê"]')
+    expect(quantity.attributes('disabled')).toBeDefined()
+    expect((quantity.element as HTMLInputElement).value).toBe('1')
+
+    resolvePreview(preview())
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Hoàn tất trả hàng')!.trigger('click')
+    await flushPromises()
+    expect(createReturn.mock.calls[0][0].lines).toEqual([
+      { originalSaleLineId: 'line-1', quantity: 1, restock: true },
+    ])
+  })
+
   it.each([
     ['network', new TypeError('lost')],
     ['HTTP 408', new ApiError(408, { title: 'Timeout' })],
@@ -172,6 +237,38 @@ describe('ReturnForm', () => {
     await flushPromises()
     expect(refreshContext).toHaveBeenCalledOnce()
     expect(concurrent.emitted('contextReloaded')?.[0]).toEqual([context])
+  })
+
+  it('clears preview, preview snapshot, refund method, and inputs when context is refreshed', async () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'stale-operation' })
+    const refreshedContext: ReturnContext = {
+      ...context,
+      totalReturnedAmount: 24000,
+      lines: [{ ...context.lines[0], previouslyReturnedQuantity: 2, returnableQuantity: 1 }],
+    }
+    const wrapper = mountForm({
+      previewReturn: vi.fn().mockResolvedValue(preview(12000)),
+      createReturn: vi.fn().mockRejectedValue(new ApiError(409, { code: 'return-quantity-exceeds-remaining' })),
+      refreshContext: vi.fn().mockResolvedValue(refreshedContext),
+    })
+    await chooseLine(wrapper)
+    await requestPreview(wrapper)
+    await wrapper.get('[aria-label="Phương thức hoàn tiền"]').setValue('Cash')
+    await wrapper.findAll('button').find(button => button.text() === 'Hoàn tất trả hàng')!.trigger('click')
+    await flushPromises()
+
+    const exposed = wrapper.vm as unknown as {
+      preview: ReturnPreview | null
+      previewSnapshot: unknown
+      refundMethod: string
+      entries: Record<string, { selected: boolean; quantity: number; restock: boolean | null }>
+    }
+    expect(exposed.preview).toBeNull()
+    expect(exposed.previewSnapshot).toBeNull()
+    expect(exposed.refundMethod).toBe('')
+    expect(exposed.entries['line-1']).toEqual({ selected: false, quantity: 0, restock: null })
+    expect(wrapper.emitted('contextReloaded')?.[0]).toEqual([refreshedContext])
+    expect(wrapper.text()).toContain('Số lượng có thể trả đã thay đổi')
   })
 
   it('blocks double-submit while the create request is active', async () => {

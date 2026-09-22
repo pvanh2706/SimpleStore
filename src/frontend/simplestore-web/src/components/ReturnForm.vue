@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { isAmbiguousOperationFailure, problemMessage, recoverCompletedOperation } from '../api/operationRecovery'
 import type { OperationStatus, ReturnContext, ReturnPreview, ReturnResult } from '../api/types'
 
 type RefundMethod = 'Cash' | 'Transfer'
 type State = 'idle' | 'previewing' | 'submitting' | 'checking' | 'retryable' | 'completed'
 type ReturnLineInput = { originalSaleLineId: string; quantity: number; restock: boolean }
+type ReturnIntentionSnapshot = { originalSaleId: string; lines: ReturnLineInput[] }
+type ReturnEntry = { selected: boolean; quantity: number; restock: boolean | null }
 export interface ReturnAttemptSnapshot {
   operationId: string
   originalSaleId: string
@@ -26,17 +28,17 @@ const emit = defineEmits<{
   contextReloaded: [context: ReturnContext]
 }>()
 
-const entries = reactive(Object.fromEntries(props.context.lines.map(line => [line.saleLineId, {
-  selected: false,
-  quantity: 0,
-  restock: null as boolean | null,
-}])))
+const entries = reactive<Record<string, ReturnEntry>>({})
 const preview = ref<ReturnPreview | null>(null)
+const previewSnapshot = ref<ReturnIntentionSnapshot | null>(null)
 const refundMethod = ref<RefundMethod | ''>('')
 const state = ref<State>('idle')
 const message = ref('')
 const attempt = ref<ReturnAttemptSnapshot | null>(null)
+const previewStale = ref(false)
+let previewGeneration = 0
 const locked = computed(() => ['submitting', 'checking', 'retryable', 'completed'].includes(state.value))
+const intentionLocked = computed(() => locked.value || state.value === 'previewing')
 
 const errorMessages: Record<string, string> = {
   'return-quantity-exceeds-remaining': 'Số lượng có thể trả đã thay đổi. Dữ liệu mới nhất đã được tải lại.',
@@ -48,46 +50,102 @@ const errorMessages: Record<string, string> = {
   'idempotency-key-reused': 'Mã thao tác đã được dùng cho một yêu cầu khác.',
 }
 
+function resetEntries(context: ReturnContext) {
+  for (const id of Object.keys(entries)) delete entries[id]
+  for (const line of context.lines) {
+    entries[line.saleLineId] = { selected: false, quantity: 0, restock: null }
+  }
+}
+
+function clearPreview(markStale = false) {
+  previewGeneration += 1
+  preview.value = null
+  previewSnapshot.value = null
+  previewStale.value = markStale
+  refundMethod.value = ''
+}
+
+function resetDecisionBoundary(context: ReturnContext) {
+  clearPreview()
+  resetEntries(context)
+}
+
 function invalidatePreview() {
   if (locked.value) return
-  preview.value = null
-  refundMethod.value = ''
+  const hadAcceptedPreview = preview.value !== null && previewSnapshot.value !== null
+  clearPreview(hadAcceptedPreview || previewStale.value)
   message.value = ''
 }
 
-function selectedLines(): ReturnLineInput[] | null {
+function normalizeLines(lines: ReturnLineInput[]) {
+  return lines
+    .map(line => ({ ...line }))
+    .sort((left, right) => left.originalSaleLineId.localeCompare(right.originalSaleLineId))
+}
+
+function createIntentionSnapshot(lines: ReturnLineInput[]): ReturnIntentionSnapshot {
+  return { originalSaleId: props.context.saleId, lines: normalizeLines(lines) }
+}
+
+function sameIntention(left: ReturnIntentionSnapshot, right: ReturnIntentionSnapshot) {
+  if (left.originalSaleId !== right.originalSaleId || left.lines.length !== right.lines.length) return false
+  return left.lines.every((line, index) => {
+    const other = right.lines[index]
+    return other !== undefined
+      && line.originalSaleLineId === other.originalSaleLineId
+      && line.quantity === other.quantity
+      && line.restock === other.restock
+  })
+}
+
+function selectedLines(reportValidation = true): ReturnLineInput[] | null {
   const result: ReturnLineInput[] = []
   for (const line of props.context.lines) {
     const entry = entries[line.saleLineId]
     if (!entry?.selected) continue
     if (entry.quantity <= 0 || entry.quantity > line.returnableQuantity) {
-      message.value = `Số lượng trả của ${line.productName} phải lớn hơn 0 và không vượt quá ${line.returnableQuantity}.`
+      if (reportValidation) message.value = `Số lượng trả của ${line.productName} phải lớn hơn 0 và không vượt quá ${line.returnableQuantity}.`
       return null
     }
     if (entry.restock === null) {
-      message.value = `Vui lòng chọn nhập lại kho hoặc không nhập lại kho cho ${line.productName}.`
+      if (reportValidation) message.value = `Vui lòng chọn nhập lại kho hoặc không nhập lại kho cho ${line.productName}.`
       return null
     }
     result.push({ originalSaleLineId: line.saleLineId, quantity: entry.quantity, restock: entry.restock })
   }
   if (result.length === 0) {
-    message.value = 'Chọn ít nhất một sản phẩm cần trả.'
+    if (reportValidation) message.value = 'Chọn ít nhất một sản phẩm cần trả.'
     return null
   }
-  return result
+  return normalizeLines(result)
 }
 
 async function requestPreview() {
-  if (locked.value) return
+  if (intentionLocked.value) return
   message.value = ''
   const lines = selectedLines()
   if (!lines) return
+  const requestedSnapshot = createIntentionSnapshot(lines)
+  clearPreview()
+  const requestGeneration = previewGeneration
   state.value = 'previewing'
   try {
-    preview.value = await props.previewReturn(lines.map(line => ({ ...line })))
+    const result = await props.previewReturn(lines.map(line => ({ ...line })))
+    const currentLines = selectedLines(false)
+    const currentSnapshot = currentLines ? createIntentionSnapshot(currentLines) : null
+    if (requestGeneration !== previewGeneration || !currentSnapshot || !sameIntention(requestedSnapshot, currentSnapshot)) {
+      previewStale.value = true
+      message.value = 'Dữ liệu trả hàng đã thay đổi. Vui lòng cập nhật xem trước lại.'
+      return
+    }
+    preview.value = result
+    previewSnapshot.value = requestedSnapshot
+    previewStale.value = false
     if (!preview.value.refundMethodRequired) refundMethod.value = ''
   } catch (reason) {
-    message.value = problemMessage(reason, errorMessages, 'Không thể xem trước giao dịch trả hàng.')
+    if (requestGeneration === previewGeneration) {
+      message.value = problemMessage(reason, errorMessages, 'Không thể xem trước giao dịch trả hàng.')
+    }
   } finally {
     state.value = 'idle'
   }
@@ -99,8 +157,16 @@ async function completeReturn() {
   if (!attempt.value) {
     const lines = selectedLines()
     if (!lines) return
-    if (!preview.value) {
-      message.value = 'Vui lòng cập nhật xem trước từ máy chủ trước khi hoàn tất.'
+    const currentSnapshot = createIntentionSnapshot(lines)
+    if (!preview.value || !previewSnapshot.value) {
+      message.value = previewStale.value
+        ? 'Dữ liệu trả hàng đã thay đổi. Vui lòng cập nhật xem trước lại.'
+        : 'Vui lòng cập nhật xem trước từ máy chủ trước khi hoàn tất.'
+      return
+    }
+    if (!sameIntention(currentSnapshot, previewSnapshot.value)) {
+      clearPreview(true)
+      message.value = 'Dữ liệu trả hàng đã thay đổi. Vui lòng cập nhật xem trước lại.'
       return
     }
     if (preview.value.refundMethodRequired && !refundMethod.value) {
@@ -133,7 +199,14 @@ async function completeReturn() {
         ? (reason as { problem?: { code?: string } }).problem?.code
         : undefined
       if (code === 'return-quantity-exceeds-remaining' || code === 'sale-already-voided' || code === 'concurrent-update') {
-        try { emit('contextReloaded', await props.refreshContext()) } catch { /* Keep the typed error visible. */ }
+        state.value = 'checking'
+        resetDecisionBoundary(props.context)
+        try {
+          const refreshedContext = await props.refreshContext()
+          resetDecisionBoundary(refreshedContext)
+          emit('contextReloaded', refreshedContext)
+        } catch { /* Keep the typed error visible. */ }
+        finally { state.value = 'idle' }
       }
       return
     }
@@ -158,7 +231,12 @@ async function completeReturn() {
   }
 }
 
-defineExpose({ state, attempt, preview, entries, refundMethod })
+resetEntries(props.context)
+watch(() => props.context, context => {
+  if (!attempt.value) resetDecisionBoundary(context)
+})
+
+defineExpose({ state, attempt, preview, previewSnapshot, entries, refundMethod })
 const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
 </script>
 
@@ -169,17 +247,17 @@ const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
         <thead class="border-b bg-stone-50"><tr><th class="p-4">Chọn</th><th>Sản phẩm</th><th>Đã bán</th><th>Đã trả</th><th>Có thể trả</th><th>Số lượng trả</th><th>Xử lý tồn kho</th></tr></thead>
         <tbody>
           <tr v-for="line in context.lines" :key="line.saleLineId" class="border-b last:border-0">
-            <td class="p-4"><input v-model="entries[line.saleLineId].selected" type="checkbox" :aria-label="`Chọn trả ${line.productName}`" :disabled="locked || line.returnableQuantity <= 0" @change="invalidatePreview" /></td>
+            <td class="p-4"><input v-model="entries[line.saleLineId].selected" type="checkbox" :aria-label="`Chọn trả ${line.productName}`" :disabled="intentionLocked || line.returnableQuantity <= 0" @change="invalidatePreview" /></td>
             <td><strong>{{ line.productName }}</strong><p class="text-xs text-slate-500">{{ line.productSku }} · {{ money(line.originalUnitSalePrice) }} ₫/{{ line.productUnit }}</p></td>
             <td>{{ line.soldQuantity }}</td><td>{{ line.previouslyReturnedQuantity }}</td><td>{{ line.returnableQuantity }}</td>
-            <td><input v-model.number="entries[line.saleLineId].quantity" class="input w-28" type="number" min="0.001" :max="line.returnableQuantity" step="0.001" :aria-label="`Số lượng trả ${line.productName}`" :disabled="locked || !entries[line.saleLineId].selected" @input="invalidatePreview" /></td>
-            <td><div class="grid gap-2"><label><input v-model="entries[line.saleLineId].restock" type="radio" :name="`restock-${line.saleLineId}`" :value="true" :disabled="locked || !entries[line.saleLineId].selected" @change="invalidatePreview" /> Nhập lại kho</label><label><input v-model="entries[line.saleLineId].restock" type="radio" :name="`restock-${line.saleLineId}`" :value="false" :disabled="locked || !entries[line.saleLineId].selected" @change="invalidatePreview" /> Không nhập lại kho</label></div></td>
+            <td><input v-model.number="entries[line.saleLineId].quantity" class="input w-28" type="number" min="0.001" :max="line.returnableQuantity" step="0.001" :aria-label="`Số lượng trả ${line.productName}`" :disabled="intentionLocked || !entries[line.saleLineId].selected" @input="invalidatePreview" /></td>
+            <td><div class="grid gap-2"><label><input v-model="entries[line.saleLineId].restock" type="radio" :name="`restock-${line.saleLineId}`" :value="true" :disabled="intentionLocked || !entries[line.saleLineId].selected" @change="invalidatePreview" /> Nhập lại kho</label><label><input v-model="entries[line.saleLineId].restock" type="radio" :name="`restock-${line.saleLineId}`" :value="false" :disabled="intentionLocked || !entries[line.saleLineId].selected" @change="invalidatePreview" /> Không nhập lại kho</label></div></td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div class="flex justify-end"><button class="btn-secondary" type="button" :disabled="locked || state === 'previewing'" @click="requestPreview">{{ state === 'previewing' ? 'Đang xem trước…' : 'Cập nhật xem trước' }}</button></div>
+    <div class="flex justify-end"><button class="btn-secondary" type="button" :disabled="intentionLocked" @click="requestPreview">{{ state === 'previewing' ? 'Đang xem trước…' : 'Cập nhật xem trước' }}</button></div>
 
     <section v-if="preview" class="card grid gap-3" aria-label="Xem trước trả hàng">
       <h2 class="text-xl font-black">Kết quả từ máy chủ</h2>
