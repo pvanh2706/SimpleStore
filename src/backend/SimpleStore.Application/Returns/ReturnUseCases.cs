@@ -153,7 +153,7 @@ public sealed class GetReturnContextUseCase(
         var returns = await repository.GetReturnsForSaleAsync(storeId, saleId, cancellationToken);
         var saleVoid = await repository.GetSaleVoidAsync(storeId, saleId, cancellationToken);
         var totalReturned = returns.Sum(item => item.TotalReturnAmount);
-        var totalRefunded = returns.Sum(item => item.RefundAmount);
+        var totalRefunded = ReturnFinancialHistory.GetActualRefundTotal(returns);
         var originalCollected = sale.PaidAmount;
         var netSale = saleVoid is null ? sale.TotalAmount - totalReturned : 0;
         var netCollected = saleVoid is null ? originalCollected - totalRefunded : 0;
@@ -276,11 +276,12 @@ internal static class ReturnUseCaseSupport
         }
 
         var previousReturned = returns.Sum(item => item.TotalReturnAmount);
+        var previousRefunds = ReturnFinancialHistory.GetActualRefundTotal(returns);
         ReturnFinancialAmounts financials;
         try
         {
             financials = ReturnCalculations.CalculateFinancials(
-                sale.TotalAmount, sale.PaidAmount, previousReturned, returns.Sum(item => item.RefundAmount),
+                sale.TotalAmount, sale.PaidAmount, previousReturned, previousRefunds,
                 calculatedLines.Sum(item => item.Amounts.ReturnLineAmount));
         }
         catch (DomainRuleException exception)
@@ -299,21 +300,25 @@ internal static class ReturnUseCaseSupport
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalized)));
     }
 
-    public static ReturnResult ToResult(CustomerReturn item, bool wasAlreadyCompleted) => new(
-        item.Id,
-        item.OriginalSaleId,
-        item.Status.ToString(),
-        item.Lines.Select(line => new ReturnLineResult(
-            line.Id, line.OriginalSaleLineId, line.ProductId, line.Quantity, line.Restock,
-            line.UnitSalePriceBasis, line.ReturnLineAmount, line.UnitCostBasis, line.RestockedInventoryValue)).ToArray(),
-        item.RefundPayments.Select(payment => new ReturnRefundPaymentResult(
-            payment.Id, payment.Amount, payment.Method.ToString(), payment.OccurredAt)).ToArray(),
-        item.TotalReturnAmount,
-        item.RefundAmount,
-        item.CompletedByUserId,
-        item.CreatedAt,
-        item.CompletedAt,
-        wasAlreadyCompleted);
+    public static ReturnResult ToResult(CustomerReturn item, bool wasAlreadyCompleted)
+    {
+        _ = ReturnFinancialHistory.GetActualRefundTotal([item]);
+        return new(
+            item.Id,
+            item.OriginalSaleId,
+            item.Status.ToString(),
+            item.Lines.Select(line => new ReturnLineResult(
+                line.Id, line.OriginalSaleLineId, line.ProductId, line.Quantity, line.Restock,
+                line.UnitSalePriceBasis, line.ReturnLineAmount, line.UnitCostBasis, line.RestockedInventoryValue)).ToArray(),
+            item.RefundPayments.Select(payment => new ReturnRefundPaymentResult(
+                payment.Id, payment.Amount, payment.Method.ToString(), payment.OccurredAt)).ToArray(),
+            item.TotalReturnAmount,
+            item.RefundAmount,
+            item.CompletedByUserId,
+            item.CreatedAt,
+            item.CompletedAt,
+            wasAlreadyCompleted);
+    }
 }
 
 internal sealed record CalculatedReturnLine(ReturnLineCommand Command, SaleLine SaleLine, ReturnLineAmounts Amounts);

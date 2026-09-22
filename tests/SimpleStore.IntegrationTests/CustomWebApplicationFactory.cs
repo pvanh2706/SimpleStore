@@ -113,7 +113,7 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         await DisposeAsync();
     }
 
-    private static string CreateConnectionString()
+    internal static string CreateIsolatedConnectionString(string databasePrefix)
     {
         var configuredConnection = Environment.GetEnvironmentVariable(
             "SIMPLESTORE_TEST_CONNECTION_STRING");
@@ -126,10 +126,13 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
             }
             : new SqlConnectionStringBuilder(configuredConnection);
 
-        builder.InitialCatalog = $"SimpleStoreTests_{Guid.NewGuid():N}";
+        builder.InitialCatalog = $"{databasePrefix}_{Guid.NewGuid():N}";
         builder.MultipleActiveResultSets = true;
         return builder.ConnectionString;
     }
+
+    private static string CreateConnectionString() =>
+        CreateIsolatedConnectionString("SimpleStoreTests");
 
     private static string FormatErrors(IdentityResult result) =>
         string.Join("; ", result.Errors.Select(error => error.Description));

@@ -4,6 +4,7 @@ using System.Text;
 using SimpleStore.Application.Abstractions;
 using SimpleStore.Application.Customers;
 using SimpleStore.Application.Errors;
+using SimpleStore.Application.Returns;
 using SimpleStore.Application.Stores;
 using SimpleStore.Application.Suppliers;
 using SimpleStore.Domain.Customers;
@@ -338,7 +339,7 @@ internal static class SaleUseCaseSupport
     {
         returns ??= [];
         var totalReturned = returns.Sum(item => item.TotalReturnAmount);
-        var totalRefunded = returns.SelectMany(item => item.RefundPayments).Sum(item => item.Amount);
+        var totalRefunded = ReturnFinancialHistory.GetActualRefundTotal(returns);
         var isVoided = saleVoid is not null;
         var netSale = isVoided ? 0 : sale.TotalAmount - totalReturned;
         var netCollected = isVoided ? 0 : sale.PaidAmount - totalRefunded;

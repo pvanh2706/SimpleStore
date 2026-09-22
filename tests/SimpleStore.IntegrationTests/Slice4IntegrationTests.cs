@@ -66,11 +66,23 @@ public sealed class Slice4IntegrationTests(CustomWebApplicationFactory factory)
         Assert.Equal(0, detail.NetCollectedAmount);
         Assert.Equal(0, detail.OutstandingAmount);
         Assert.Equal(2, detail.Returns!.Count);
+        var returnContext = await client.GetFromJsonAsync<ReturnContextResult>(
+            $"/api/sales/{sale.Id}/return-context");
         var list = await client.GetFromJsonAsync<SaleListResult>("/api/sales?page=1&pageSize=20");
         var listItem = Assert.Single(list!.Items, item => item.Id == sale.Id);
-        Assert.Equal(36_000, listItem.TotalReturnedAmount);
-        Assert.Equal(0, listItem.NetSaleAmount);
-        Assert.Equal(0, listItem.OutstandingAmount);
+        Assert.NotNull(returnContext);
+        Assert.Equal(detail.TotalReturnedAmount, returnContext.TotalReturnedAmount);
+        Assert.Equal(detail.TotalRefundedAmount, returnContext.TotalRefundedAmount);
+        Assert.Equal(detail.NetSaleAmount, returnContext.NetSaleAmount);
+        Assert.Equal(detail.NetCollectedAmount, returnContext.NetCollectedAmount);
+        Assert.Equal(detail.OutstandingAmount, returnContext.OutstandingAmount);
+        Assert.Equal(detail.IsVoided, returnContext.IsVoided);
+        Assert.Equal(detail.TotalReturnedAmount, listItem.TotalReturnedAmount);
+        Assert.Equal(detail.TotalRefundedAmount, listItem.TotalRefundedAmount);
+        Assert.Equal(detail.NetSaleAmount, listItem.NetSaleAmount);
+        Assert.Equal(detail.NetCollectedAmount, listItem.NetCollectedAmount);
+        Assert.Equal(detail.OutstandingAmount, listItem.OutstandingAmount);
+        Assert.Equal(detail.IsVoided, listItem.IsVoided);
 
         var state = await factory.WithDbContextAsync(async db => new
         {
@@ -86,6 +98,62 @@ public sealed class Slice4IntegrationTests(CustomWebApplicationFactory factory)
         Assert.Equal(2, state.ReturnCount);
         Assert.Equal(1, state.RefundCount);
         Assert.Equal(1, state.RestockMovements);
+    }
+
+    [Fact]
+    public async Task CorruptRefundSnapshotBlocksFurtherAuthoritativeCorrectionWithoutSideEffects()
+    {
+        var context = await CreateOwnerContextAsync("Refund authority");
+        using var client = context.Client;
+        var product = await client.CreateProductAsync(openingQuantity: 2, openingCost: 10);
+        var sale = await client.CompleteSaleAsync(Guid.NewGuid(), null, [(product.Id, 2)], (24_000, "Cash"));
+        var lineId = Assert.Single(sale.Lines).Id;
+        var firstReturn = await client.CreateReturnAsync(
+            Guid.NewGuid(), sale.Id, [(lineId, 1, true)], "Cash");
+        Assert.Equal(12_000, Assert.Single(firstReturn.RefundPayments).Amount);
+
+        await factory.WithDbContextAsync(async db =>
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE [Returns]
+                SET [RefundAmount] = {1m}
+                WHERE [Id] = {firstReturn.Id};
+                """);
+            return true;
+        });
+
+        using var preview = await client.PostWithAntiforgeryAsync(
+            "/api/returns/preview",
+            JsonContent.Create(new
+            {
+                originalSaleId = sale.Id,
+                lines = new[] { new { originalSaleLineId = lineId, quantity = 1m, restock = true } }
+            }));
+        Assert.Equal(HttpStatusCode.Conflict, preview.StatusCode);
+        Assert.Equal("return-financial-state-invalid", await ReadCodeAsync(preview));
+
+        var operationId = Guid.NewGuid();
+        using var create = await client.PostWithAntiforgeryAsync(
+            "/api/returns",
+            Slice4HttpClient.ReturnContent(operationId, sale.Id, [(lineId, 1, true)], "Cash"));
+        Assert.Equal(HttpStatusCode.Conflict, create.StatusCode);
+        Assert.Equal("return-financial-state-invalid", await ReadCodeAsync(create));
+
+        var state = await factory.WithDbContextAsync(async db => new
+        {
+            Returns = await db.Returns.CountAsync(item => item.OriginalSaleId == sale.Id),
+            Refunds = await db.ReturnRefundPayments.CountAsync(payment => payment.ReturnId == firstReturn.Id),
+            Restocks = await db.InventoryMovements.CountAsync(item =>
+                item.ProductId == product.Id && item.MovementType == InventoryMovementType.ReturnRestock),
+            Operations = await db.BusinessOperations.CountAsync(item => item.OperationId == operationId),
+            Quantity = await db.InventoryBalances.Where(item => item.ProductId == product.Id)
+                .Select(item => item.QuantityOnHand).SingleAsync()
+        });
+        Assert.Equal(1, state.Returns);
+        Assert.Equal(1, state.Refunds);
+        Assert.Equal(1, state.Restocks);
+        Assert.Equal(0, state.Operations);
+        Assert.Equal(1, state.Quantity);
     }
 
     [Fact]
