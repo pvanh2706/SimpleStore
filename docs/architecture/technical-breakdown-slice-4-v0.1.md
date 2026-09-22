@@ -175,13 +175,31 @@ Technical/audit entity được tạo cho mỗi PurchaseLine trong cùng Complet
 - `HasAverageCostBefore`
 - `ReferencePurchaseCostBefore` nullable
 - `ReferencePurchaseCostApplied`
+- `ReferencePurchaseCostRevisionAfterPurchase`
 - `PurchaseMovementId`
-- `PurchaseMovementSequence`
 - `CapturedAt`
 
 Unique `PurchaseLineId`; vì Purchase hiện đã enforce one Product per Purchase, mỗi affected Product có đúng một basis. Basis là immutable evidence, không biến Completed Purchase thành mutable business transaction.
 
-`ReferencePurchaseCostBefore/Applied` cho phép tránh để một voided Purchase tiếp tục làm cost fallback. Safe Void chỉ restore previous reference cost khi current value vẫn bằng applied value và không có later Purchase movement; nếu evidence không khớp thì reject thay vì overwrite trạng thái mới.
+`ReferencePurchaseCostBefore/Applied` cùng `ReferencePurchaseCostRevisionAfterPurchase` cho phép tránh để một voided Purchase tiếp tục làm cost fallback mà không ghi đè mutation xảy ra sau đó. Có thể lưu thêm revision-before để audit, nhưng safe-Void authority là revision resulting after Purchase effect.
+
+### ReferencePurchaseCost revision evidence
+
+Product cần một semantic version riêng, đề xuất `ReferencePurchaseCostRevision bigint`, độc lập với generic Product RowVersion:
+
+```text
+if old ReferencePurchaseCost != new ReferencePurchaseCost:
+    ReferencePurchaseCost = new value
+    ReferencePurchaseCostRevision += 1
+else:
+    ReferencePurchaseCostRevision unchanged
+```
+
+Rule áp dụng cho Owner Product edit, CompletePurchase, safe Purchase Void restore và mọi future mutation thực sự thay đổi ReferencePurchaseCost. Name, SKU, Barcode, Unit hoặc SalePrice thay đổi không increment revision này. Generic Product RowVersion vẫn bảo vệ optimistic concurrency nhưng không phải semantic dependency evidence: unrelated metadata edit không được tự làm Purchase Void unsafe.
+
+Revision là monotonic và không bao giờ rollback/replay về historical number. Existing Product có thể bắt đầu từ revision baseline 0 khi migration; chỉ basis được tạo cùng new Slice 4 Purchase effect mới là trustworthy Void evidence.
+
+Numeric equality hoặc timestamp không thay revision evidence. Product RowVersion tiếp tục phát hiện mutation race giữa eligibility check và commit; nếu unrelated metadata edit gây transient optimistic-concurrency conflict, retry phải re-evaluate và không reject eligibility khi cost value/revision cùng inventory evidence vẫn hợp lệ.
 
 ### PurchaseVoid
 
@@ -215,7 +233,9 @@ Thêm explicit movement types theo codebase convention:
 
 Mỗi movement có Store/Warehouse/Product, signed quantity/value delta, cost basis, typed source id, actor và occurred time. NoRestock không tạo movement. Không mutation balance nào thiếu movement.
 
-Để Purchase dependency evidence không dựa vào timestamp hoặc current balance equality, đề xuất thêm database-generated monotonic `LedgerSequence bigint IDENTITY` và index `(StoreId, WarehouseId, ProductId, LedgerSequence)`. Existing rows nhận sequence chỉ để query/order kỹ thuật; không dùng sequence backfill để suy đoán trustworthy legacy pre-state. New Purchase basis lưu exact movement id/sequence tạo cùng transaction.
+Để Purchase dependency evidence không dựa vào timestamp hoặc current balance equality, đề xuất thêm database-generated monotonic `LedgerSequence bigint IDENTITY` và index `(StoreId, WarehouseId, ProductId, LedgerSequence)`. Existing rows nhận sequence chỉ để query/order kỹ thuật; không dùng sequence backfill để suy đoán trustworthy legacy pre-state.
+
+`PurchaseLineReversalBasis` chỉ lưu `PurchaseMovementId`; exact referenced InventoryMovement là authority cho `LedgerSequence`. Purchase Void phải load relationship này và validate movement type/source, StoreId, WarehouseId, ProductId và source PurchaseLine đều khớp basis/original Purchase. Missing hoặc mismatched movement làm basis invalid. Không persist independently copied `PurchaseMovementSequence`; nếu implementation sau review vẫn chọn duplicate audit snapshot thì snapshot phải equal referenced movement.LedgerSequence và mismatch phải reject Void.
 
 ## Persistence and database integrity
 
@@ -223,6 +243,7 @@ Migration Slice 4 dự kiến:
 
 - tạo `Returns`, `ReturnLines`, `ReturnRefundPayments`;
 - tạo `SaleVoids`, `PurchaseVoids`, `PurchaseLineReversalBases`;
+- thêm `Product.ReferencePurchaseCostRevision` monotonic với baseline 0 cho existing rows;
 - mở rộng InventoryMovement type và thêm ledger ordering evidence;
 - không recreate/drop các bảng Slice 1–3;
 - không auto-run production migration khi startup.
@@ -468,17 +489,24 @@ CompletePurchase Slice 4 giữ current behavior và thêm capture trong existing
 operation lock
 load Draft Purchase
 lock balances sorted ProductId
-load products for update
+load authoritative products for update
 for each line in ProductId order:
-    snapshot balance pre-state and Product.ReferencePurchaseCost
+    snapshot balance pre-state, ReferencePurchaseCostBefore
+        and current cost revision
     create Purchase movement with database ledger sequence
-    apply ReceivePurchase and ReferencePurchaseCost
-    persist PurchaseLineReversalBasis linked to movement
+    apply ReceivePurchase
+    if ReferencePurchaseCostBefore != line.UnitPrice:
+        set ReferencePurchaseCost = line.UnitPrice
+        increment ReferencePurchaseCostRevision
+    otherwise keep revision unchanged
+    persist PurchaseLineReversalBasis with applied cost,
+        resulting ReferencePurchaseCostRevisionAfterPurchase
+        and exact PurchaseMovementId
 complete Purchase + payments + BusinessOperation
 commit
 ```
 
-Basis và Purchase effect phải commit/rollback cùng nhau. Nếu không tạo đầy đủ basis cho mọi line thì CompletePurchase fail; không tạo partially reversible new Purchase.
+Purchase movement, basis, Product cost/revision, InventoryBalance, Purchase/payments và BusinessOperation phải commit/rollback cùng nhau. Nếu không tạo đầy đủ basis cho mọi line thì CompletePurchase fail; không tạo partially reversible new Purchase. Same-value Purchase cost write không increment revision vì semantic reference-cost state không thay đổi.
 
 Migration không backfill guessed reversal basis cho legacy Purchases. Legacy Void mặc định reject `purchase-void-reversal-basis-unavailable`; chỉ một future explicitly reviewed proof path mới có thể nới, không suy đoán từ current balance.
 
@@ -501,10 +529,11 @@ All conditions required:
 - basis links exact original Purchase movement;
 - no later InventoryMovement sequence exists for any `(StoreId, WarehouseId, ProductId)` after that line's Purchase movement;
 - current balance equals the deterministic post-Purchase state implied by basis plus original Purchase movement;
-- current ReferencePurchaseCost still equals captured applied value;
+- current `ReferencePurchaseCost == basis.ReferencePurchaseCostApplied`;
+- current `ReferencePurchaseCostRevision == basis.ReferencePurchaseCostRevisionAfterPurchase`;
 - all evidence/order is unambiguous.
 
-Current-state equality là secondary integrity check, không thay movement dependency evidence. Any unsafe line rejects the entire Purchase Void.
+Value và revision đều bắt buộc match. Revision mismatch trả `purchase-void-reference-cost-dependency` ngay cả khi numeric cost đã quay lại đúng applied value qua chuỗi ABA như `20 → 30 → 20`. Unrelated Product metadata edits không đổi cost revision và không tự làm Void unsafe. Current-state equality là secondary integrity check, không thay movement dependency evidence. Any unsafe line rejects the entire Purchase Void.
 
 Transaction:
 
@@ -520,12 +549,15 @@ validate current post-state and reference-cost evidence
 create PurchaseVoid
 for each line create negative PurchaseVoid reversal movement
 restore QuantityOnHand, InventoryValue, AverageCost, HasAverageCost exactly
-restore ReferencePurchaseCostBefore
+if current ReferencePurchaseCost != ReferencePurchaseCostBefore:
+    restore ReferencePurchaseCostBefore
+    increment ReferencePurchaseCostRevision
+otherwise keep revision unchanged
 create BusinessOperation
 commit
 ```
 
-Không reverse AverageCost algebraically. Reversal movement deltas equal exact restored-before minus current state, and source links PurchaseVoid/original PurchaseLine. Original PurchasePayments stay historical; supplier outstanding/list/detail projections exclude voided Purchase contribution without creating fake payment.
+Purchase Void restore là mutation mới ở hiện tại; không restore revision-before hoặc replay old revision. Ví dụ cost/revision `10/N → 20/N+1 → safe Void 10/N+2`. Historical basis giữ immutable. Không reverse AverageCost algebraically. Reversal movement deltas equal exact restored-before minus current state, and source links PurchaseVoid/original PurchaseLine. Original PurchasePayments stay historical; supplier outstanding/list/detail projections exclude voided Purchase contribution without creating fake payment.
 
 ## Idempotency and recovery
 
@@ -673,6 +705,10 @@ Reuse Slice 3 immutable snapshot/retry pattern. Disable inputs while submitting/
 - Inbound Q/V/HasAverageCost cases, including negative residual value.
 - Refund calculation: fully paid, partially paid, refund zero and refund positive.
 - Mandatory/normalized Void reason.
+- ReferencePurchaseCostRevision increments exactly once when nullable/numeric cost value actually changes.
+- Same-value ReferencePurchaseCost write leaves revision unchanged.
+- Unrelated Product field changes leave ReferencePurchaseCostRevision unchanged.
+- Purchase Void cost restore increments from current revision; it never restores a historical revision number.
 
 ### SQL Server integration tests
 
@@ -705,6 +741,12 @@ Purchase Void:
 
 - newly Completed Purchase writes basis atomically.
 - safe Void restores exact Q/V/AverageCost/HasAverageCost and reference cost.
+- safe normal path proves `10/revision N → Purchase 20/N+1 → Void 10/N+2`.
+- ABA path `20 → 30 → 20` after Purchase is rejected with `purchase-void-reference-cost-dependency` although current numeric value equals the Purchase-applied value.
+- editing only Product Name/SalePrice after Purchase does not change cost revision and does not by itself block an otherwise safe Void.
+- same-value ReferencePurchaseCost write leaves revision unchanged and does not create a false dependency.
+- basis references the exact Purchase InventoryMovement; movement type/source/Product/Store/Warehouse and source line must match.
+- missing/mismatched linked movement makes basis invalid; if a redundant sequence snapshot is implemented, mismatch against linked movement.LedgerSequence rejects Void.
 - negative reversal movement exists; original Purchase/payments retained.
 - supplier projection excludes voided obligation/payment contribution.
 - downstream Sale, Purchase, ReturnRestock, SaleVoid or other later movement blocks Void.
@@ -756,8 +798,8 @@ Purchase Void safe path có thể integration-test-heavy nếu browser orchestra
 
 ## Technical risks and review points
 
-1. **Purchase dependency ordering:** current InventoryMovement chỉ có `OccurredAt` + GUID; không đủ chứng minh ordering khi timestamp trùng hoặc movements net về cùng balance. Proposed `LedgerSequence` + captured movement link giải quyết cho new Purchases; legacy mặc định reject.
-2. **ReferencePurchaseCost reversal:** CompletePurchase hiện mutate Product.ReferencePurchaseCost ngoài balance. Breakdown đề xuất capture/restore previous value và reject khi current applied evidence không còn khớp; cần được review cùng migration/use case design.
+1. **Purchase dependency ordering:** current InventoryMovement chỉ có `OccurredAt` + GUID; không đủ chứng minh ordering khi timestamp trùng hoặc movements net về cùng balance. Proposed `LedgerSequence` trên linked movement giải quyết cho new Purchases; basis giữ MovementId thay vì sequence copy và legacy mặc định reject.
+2. **ReferencePurchaseCost ABA:** numeric equality không chứng minh không có later mutation. Cost-specific monotonic revision, captured revision-after-Purchase và value+revision eligibility chặn `20 → 30 → 20` mà không biến unrelated Product metadata thành dependency.
 3. **NoRestock residual:** NoRestock không restore inventory value và quantity đó không thể được return lần nữa. Chỉ close full inventory rounding residual khi cumulative restocked quantity thật sự bằng original sold quantity; không phân bổ value của discarded item sang item restocked.
 4. **Void financial wording:** Sale/Purchase Void làm active business projection bằng zero nhưng không tạo actual money movement. UI/report phải tách historical paid/collected khỏi active contribution để không ngụ ý cash đã refund/thu hồi.
 5. **Preview race:** server preview không reserve returnable state. Complete command luôn recompute dưới correction lock và có thể trả typed conflict sau concurrent Return/Void.
