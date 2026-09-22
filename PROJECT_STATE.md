@@ -39,6 +39,8 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Real local Playwright đã verify multiple Return (Restock/NoRestock), Sale Void và safe Purchase Void qua Vue → ASP.NET Core → SQL Server. GitHub CI hiện không chạy real E2E, vì vậy local execution không được suy diễn là CI evidence.
 - Slice 5 Product Owner scope — Customer/Supplier debt payment và End-of-day — là `APPROVED`.
 - D-043–D-050 — derived debt, actual customer/supplier debt payments, no overpayment/advance, no invoice allocation, EOD query-only, Revenue khác Collected và historical-cost Estimated Gross Profit — là `APPROVED` ngày 2026-09-22.
+- D-051–D-056 — Customer debt Owner/Cashier access, Owner-only Supplier debt/EOD/profit, Net Collected headline, configurable IANA Store timezone, immutable optional Debt Payment Note và correction không tạo aggregate debt âm — là `APPROVED` ngày 2026-09-22.
+- Toàn bộ sáu Product Owner Open Questions chặn ban đầu của Slice 5 đã được giải quyết; không còn known Product Owner blocker trong `OPEN_QUESTIONS.md` cho Slice 5.
 - Technical Breakdown Slice 5 v0.1 là `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; chưa phải `APPROVED FOR IMPLEMENTATION`.
 - Slice 5 implementation là `NOT STARTED`; chưa có production code hoặc migration của Slice 5.
 
@@ -152,7 +154,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review Technical Breakdown Slice 5 v0.1 và giải quyết các Open Questions chặn.** Chỉ sau final approval mới được bắt đầu Stage 5A/5B. Slice 5 implementation hiện `NOT STARTED`.
+**Product Owner final review Technical Breakdown Slice 5 v0.1.** Sáu Open Questions chặn đã được giải quyết tại D-051–D-056, nhưng chỉ sau explicit Technical Breakdown approval mới được bắt đầu Stage 5A/5B. Slice 5 implementation hiện `NOT STARTED`.
 
 ## Chưa triển khai
 
@@ -162,4 +164,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Slice 4 giữ trạng thái `APPROVED / COMPLETED` tại baseline `5876082a`. Product Owner đã approve scope Slice 5 và D-043–D-050. Technical Breakdown Slice 5 v0.1 đã được soạn ở trạng thái `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; implementation `NOT STARTED`, chưa có production code hoặc migration.
+2026-09-22 — Trên docs baseline `54d942d62afa569a65cb2e09ceeb1f8a868c4eeb`, Product Owner đã giải quyết toàn bộ sáu Slice 5 blockers tại D-051–D-056. Technical Breakdown đã được cập nhật nhưng vẫn `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; Slice 5 implementation `NOT STARTED`, chưa có production code hoặc migration. Slice 4 giữ `APPROVED / COMPLETED` tại baseline `5876082a`.

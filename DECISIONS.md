@@ -532,3 +532,60 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Quyết định:** `EstimatedGrossProfit = NetSalesRevenue - COGS`; COGS dùng historical `SaleLine.UnitCostAtSale`/cost basis đã snapshot, có Return/Void adjustment phù hợp. Thay đổi Product average cost hiện tại không được làm thay đổi historical gross profit của Sale cũ.
 - **Boundary:** Đây là Estimated Gross Profit, không phải accounting/net profit; không gồm salary, rent, electricity, depreciation, tax hoặc operating expenses khác.
 - **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+
+### D-051 — Slice 5 / Customer debt access and collection
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Owner và Cashier đều được xem Customer outstanding debt và ghi nhận Customer Debt Payment. Customer debt collection là continuation của luồng bán hàng/thu tiền thông thường.
+- **Authorization/isolation:** Backend authorization là authority; UI visibility không thay thế authorization. Cross-store access tiếp tục bị chặn bởi Store isolation hiện tại.
+- **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+
+### D-052 — Slice 5 / Supplier debt and financial summary are Owner-only
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Xem Supplier debt, ghi nhận Supplier Debt Payment, xem End-of-day summary và xem Estimated Gross Profit đều là Owner-only trong MVP.
+- **Boundary:** Không tạo Cashier-specific reduced EOD dashboard trong Slice 5 và không mở rộng quyền Supplier/Purchase hiện tại cho Cashier.
+- **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+
+### D-053 — Slice 5 / Collected headline uses net actual cash movement
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Headline `Collected = SalePayments + CustomerDebtPayments - ActualCustomerRefunds` trong business date. Đây là net actual collected; API/UI vẫn phải hiển thị riêng Sale payments, Customer debt collected, Customer refunds và Net collected.
+- **Invariant:** Debt creation không phải Collected; Collected không được dùng để suy ra Revenue.
+- **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+
+### D-054 — Slice 5 / Store timezone uses configurable IANA timezone
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Mỗi Store có timezone configuration riêng, canonical persisted format là IANA timezone ID và có thể cấu hình trong onboarding/settings. Backend EOD dùng Store timezone; browser timezone, application-server local timezone và UTC calendar date không phải authority cho business date.
+- **Existing Store:** MVP backfill/default `Asia/Ho_Chi_Minh`; technical design vẫn phải hỗ trợ Store timezone khác. Runtime conversion compatibility là implementation detail, canonical persisted ID vẫn là IANA.
+- **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+
+### D-055 — Slice 5 / Debt Payment supports optional immutable Note
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Customer/Supplier Debt Payment hỗ trợ `Note` optional, tối đa 250 ký tự. Trim đầu/cuối; null/empty đều canonical thành “không có note”; Note immutable sau Completed và normalized Note tham gia idempotency fingerprint.
+- **Boundary:** Không thêm field `Reference` riêng trong Slice 5.
+- **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+
+### D-056 — Slice 5 / Correction must not create negative aggregate debt
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Invariant:** Sau mọi Completed mutation liên quan, `CustomerOutstandingDebt >= 0` và `SupplierOutstandingDebt >= 0`. Không clamp âm về zero, sửa/xóa historical payment, tự allocate debt payment vào invoice hoặc tạo implicit customer credit/supplier advance.
+- **Customer Return:** Return khóa và recompute authoritative aggregate Customer debt. `DebtReduction = min(ReturnObligationReduction, CurrentAggregateCustomerDebt)` và `RequiredActualRefund = ReturnObligationReduction - DebtReduction`. Phần vượt debt trở thành actual Return refund; refund/Return/operation commit atomically và giữ idempotency/recovery/refund-history semantics Slice 4.
+- **Compatibility:** D-056 mở rộng obligation-first rule D-036 sang Customer aggregate khi có unallocated debt payments; RequiredActualRefund là một authoritative result duy nhất, không cộng thêm vào refund đã tính riêng ở cấp Sale và không double refund.
+- **Sale Void:** Nếu hypothetical Void làm aggregate Customer debt âm thì reject bằng typed business error; không auto-create refund. User dùng Return với actual refund khi phù hợp.
+- **Purchase Void:** Nếu hypothetical Void làm aggregate Supplier debt âm thì reject bằng typed business error; không tạo Supplier Advance hoặc implicit Supplier Refund. Supplier refund/recovery flow riêng nằm ngoài Slice 5.
+- **Tài liệu đề xuất:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.

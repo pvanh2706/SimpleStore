@@ -67,20 +67,20 @@ Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, t
 
 Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
 
-### Slice 5 — Debt + End-of-day
+## Đã giải quyết cho Slice 5 — APPROVED
 
-D-043–D-050 đã `APPROVED`. Các câu hỏi dưới đây không mở lại scope Debt + End-of-day; đây là những lựa chọn Product Owner chưa quyết định rõ và có ảnh hưởng trực tiếp đến behavior, security hoặc dữ liệu:
+Toàn bộ sáu Product Owner questions chặn ban đầu của Slice 5 đã được giải quyết tại D-051–D-056:
 
-1. **Customer debt authorization:** Cashier có được xem customer outstanding debt và ghi nhận Customer Debt Payment, hay cả hai action phải Owner-only?
-2. **Sensitive financial authorization:** Có chốt Supplier Debt Payment, End-of-day và Estimated Gross Profit là Owner-only không? Nếu End-of-day Owner-only, có cần cho Cashier xem một subset không chứa profit/debt tổng hợp không?
-3. **Refund presentation trong Collected:** Headline `Collected` là net actual inflow sau khi trừ actual Return refunds, hay UI phải hiển thị gross collected và refunds như hai headline tách biệt? Technical proposal sẽ luôn trả component breakdown để không mất thông tin.
-4. **Store timezone source:** Store timezone được chọn ở onboarding/settings, lấy từ deployment configuration hay dùng một policy khác? Dùng IANA hay Windows timezone ID, và backfill/default nào áp dụng cho Store hiện hữu? Không hard-code một timezone trước quyết định này.
-5. **Debt payment note/reference:** MVP có cần optional note/reference text cho Customer/Supplier Debt Payment không? Nếu có, cần giới hạn độ dài và note có thuộc immutable audit record/fingerprint không?
-6. **Correction sau unallocated debt payment:** Nếu Customer đã trả nợ ở cấp Customer rồi sau đó Return/Sale Void làm obligation giảm thấp hơn tổng tiền đã thu, hoặc Store đã trả nợ Supplier rồi Purchase Void làm supplier obligation giảm thấp hơn tổng đã trả, behavior nào được phép? D-046 cấm customer credit/supplier advance; D-047 không allocation theo invoice; không được clamp balance, xóa payment hoặc tự suy diễn allocation. Cần chốt một trong các business direction được review (ví dụ reject correction gây balance âm, hoặc bổ sung explicit actual-money refund/recovery flow với scope được approve).
+- D-051: Owner và Cashier được xem/thu Customer debt.
+- D-052: Supplier debt, Supplier Debt Payment, End-of-day và Estimated Gross Profit là Owner-only; không có Cashier-specific reduced EOD.
+- D-053: headline Collected là net actual collected sau actual customer refunds, đồng thời giữ component breakdown.
+- D-054: Store dùng configurable canonical IANA timezone; Store hiện hữu backfill/default `Asia/Ho_Chi_Minh`.
+- D-055: Debt Payment có optional immutable Note tối đa 250 ký tự; normalized Note tham gia fingerprint; không có Reference riêng.
+- D-056: correction không được tạo aggregate debt âm; Return refund phần obligation reduction vượt current Customer debt, còn Sale/Purchase Void gây debt âm phải bị reject.
 
-Câu 6 là blocker domain cho việc phối hợp Slice 5 với correction hiện có. Các lựa chọn schema, query, EF mapping, SQL lock resource và index thông thường được giải quyết trong technical design; không phải Product Owner question.
+Không còn Product Owner Open Question nào đang chặn Technical Breakdown Slice 5. Các lựa chọn schema, EF mapping, timezone conversion compatibility, SQL lock resource và index là implementation details phải tuân theo các decision đã approve, không phải Product Owner questions mới.
 
-Tài liệu đề xuất: [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
+Tài liệu đề xuất vẫn là [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
 
 ## Đã giải quyết tại Step 9 — APPROVED
 

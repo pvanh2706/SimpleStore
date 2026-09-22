@@ -4,7 +4,7 @@
 
 `PROPOSED / PENDING PRODUCT OWNER APPROVAL`
 
-Tài liệu này chưa phải authorization để implement. Không được tạo migration, sửa production code hoặc bắt đầu Stage 5A/5B trước khi Product Owner approve Technical Breakdown và giải quyết các Open Questions chặn domain/authorization.
+Tài liệu này chưa phải authorization để implement. Không được tạo migration, sửa production code hoặc bắt đầu Stage 5A/5B trước khi Product Owner approve Technical Breakdown. Sáu Product Owner questions ban đầu đã được giải quyết tại D-051–D-056 nhưng bản technical design vẫn cần final approval riêng.
 
 ## Mục tiêu và quy trình
 
@@ -12,7 +12,7 @@ Slice 5 hoàn thiện vòng vận hành tối thiểu về công nợ và câu h
 
 `Domain behavior → DB changes → API contract → UI flow → Test cases → Implement`
 
-Các quyết định D-001–D-050 tiếp tục được bảo toàn, đặc biệt:
+Các quyết định D-001–D-056 tiếp tục được bảo toàn, đặc biệt:
 
 - Completed Sale/Purchase/Return là immutable; correction dùng Return/Void/Reversal có audit.
 - Payment chỉ là tiền thực nhận/thực trả; Payment không đồng nghĩa Revenue hoặc Debt.
@@ -20,6 +20,7 @@ Các quyết định D-001–D-050 tiếp tục được bảo toàn, đặc bi�
 - Mọi dữ liệu và query phải Store-scoped; backend là authorization boundary.
 - Historical SaleLine cost snapshot là nguồn tính COGS lịch sử.
 - End-of-day là query theo business date, không phải accounting close.
+- Owner/Cashier authorization, net Collected, IANA Store timezone, immutable Note và negative-debt correction behavior tuân theo D-051–D-056.
 
 ## 1. Scope
 
@@ -113,6 +114,7 @@ Giải thích:
 - Sale Void làm active debt contribution của Sale bằng zero; original Sale/Payment vẫn là historical facts.
 - Customer debt payment giảm aggregate debt của Customer nhưng không tạo Revenue và không gắn tới Sale cụ thể.
 - Invariant sau mọi mutation liên quan phải là `CustomerOutstandingDebt >= 0`; không clamp âm về zero vì clamp sẽ che customer credit/overpayment mà D-046 cấm.
+- Theo D-056, Return giảm aggregate Customer debt trước và tạo exact actual refund cho phần Return obligation reduction vượt current aggregate debt. Sale Void không phải refund và bị reject nếu loại active Sale contribution làm aggregate debt âm.
 
 Query current và historical-as-of phải dùng cùng semantic. Nếu dữ liệu vi phạm invariant, API/report trả typed data-integrity error và log đủ điều tra; không âm thầm sửa hoặc clamp.
 
@@ -135,8 +137,54 @@ SupplierOutstandingDebt(supplier, T) =
 - PurchasePayment tại CompletePurchase và SupplierDebtPayment sau đó đều là actual money out.
 - Purchase Void làm active obligation/payment contribution của Purchase bằng zero theo D-039; không xóa payment lịch sử và không tạo fake money movement.
 - Invariant sau mọi mutation liên quan là `SupplierOutstandingDebt >= 0`; không clamp và không tạo supplier advance.
+- Theo D-056, Purchase Void bị reject nếu loại active Purchase contribution làm aggregate Supplier debt âm; không tự tạo supplier refund hoặc advance.
 
-### 3.4 Source of truth và performance
+### 3.4 D-056 — correction trên aggregate debt
+
+#### Customer Return
+
+Sau khi validate remaining returnable quantity/value và existing actual refund history theo Slice 4, backend tính dưới Customer debt lock + Sale correction lock:
+
+```text
+ReturnObligationReduction = authoritative proposed Return value
+CurrentAggregateCustomerDebt = derived Customer debt trước proposed Return
+
+DebtReduction = min(ReturnObligationReduction, CurrentAggregateCustomerDebt)
+RequiredActualRefund = ReturnObligationReduction - DebtReduction
+EndingCustomerDebt = CurrentAggregateCustomerDebt - DebtReduction
+```
+
+Do các input không âm, `RequiredActualRefund >= 0` và `EndingCustomerDebt >= 0`. Ví dụ debt `30,000`, Return value `50,000` ⇒ debt reduction `30,000`, required refund `20,000`, ending debt `0`.
+
+Đây là **một authoritative aggregate calculation**, không phải amount cộng thêm vào refund calculator Slice 4. Existing SalePayments, prior Returns, prior actual ReturnRefundPayments, CustomerDebtPayments và mọi active Sale của Customer đều tham gia derived `CurrentAggregateCustomerDebt`. Backend vẫn validate refund snapshot bằng actual payment history và remaining SaleLine financial cap trước khi tính proposed reduction. Exact `RequiredActualRefund` trở thành `Return.RefundAmount` và đúng một actual `ReturnRefundPayment` khi > 0; khi bằng 0 không tạo refund row.
+
+D-056 mở rộng nguyên tắc obligation-first D-036 từ original Sale state sang Customer aggregate state khi có unallocated debt payments. Không double refund, không sửa historical payment và không allocation CustomerDebtPayment vào Sale. Return, lines, refund, inventory effects và BusinessOperation vẫn commit/rollback atomically.
+
+Nếu OriginalSale không có Customer (chỉ hợp lệ khi Sale đã thanh toán đủ theo D-026), Sale đó không thể có CustomerDebtPayment. Return giữ nguyên authoritative sale-level D-036 calculation; không invent Customer hoặc Customer lock. Preview có thể trả `currentAggregateCustomerDebt = null` để phân biệt path này, còn required actual refund vẫn do backend tính từ original Sale payment/refund history.
+
+#### Sale Void
+
+Vì Sale có Return không được Void, candidate active contribution là original Sale obligation trừ original SalePayments. Dưới Customer debt lock:
+
+```text
+HypotheticalOutstandingAfterVoid =
+    CurrentAggregateCustomerDebt - ActiveSaleDebtContribution
+```
+
+Nếu kết quả `< 0`, reject `customer-debt-would-become-negative`; response có current outstanding, hypothetical result/excess và suggestion dùng Return/refund flow phù hợp. Không clamp, không auto-create refund và không commit inventory/void/operation effect.
+
+#### Purchase Void
+
+Dưới Supplier debt lock:
+
+```text
+HypotheticalOutstandingAfterVoid =
+    CurrentAggregateSupplierDebt - ActivePurchaseDebtContribution
+```
+
+Nếu kết quả `< 0`, reject `supplier-debt-would-become-negative`. Không tạo Supplier Advance hoặc implicit Supplier Refund; toàn bộ Purchase Void fail trước commit. Supplier refund/recovery flow nằm ngoài Slice 5.
+
+### 3.5 Source of truth và performance
 
 MVP đề xuất query/projection trực tiếp từ indexed transaction/payment/correction history. Không thêm mutable debt-balance column trong Stage 5A.
 
@@ -174,7 +222,7 @@ Mỗi flow giữ format đã approve: `User Action → System Behavior → Busin
 
 **Business Outcome** → Outstanding về chính xác `0.00`, không tạo credit balance; actual collected tăng nhưng Revenue không đổi.
 
-**Failure Path** → Nếu balance đã giảm trước khi commit, request bị reject `debt-balance-changed` hoặc `debt-payment-exceeds-outstanding`, không tự đổi amount.
+**Failure Path** → Nếu balance đã giảm trước khi commit, request bị reject `customer-debt-changed` hoặc `debt-payment-exceeds-outstanding`, không tự đổi amount.
 
 **Recovery Path** → Reload authoritative balance. User xác nhận một intention mới với OperationId mới; exact retry của intention cũ vẫn dùng ID cũ.
 
@@ -206,7 +254,7 @@ Mỗi flow giữ format đã approve: `User Action → System Behavior → Busin
 
 **User Action** → User submit, client không nhận được response do timeout/network failure.
 
-**System Behavior** → UI giữ immutable `OperationId + PartyId + Purpose + Amount + Method + ExpectedOutstandingAmount`. Client gọi `GET /api/operations/{operationId}`. Nếu Completed đúng type, load committed DebtPayment; nếu not found/unknown sau transient failure, retry exact snapshot; nếu same ID khác fingerprint/type, reject.
+**System Behavior** → UI giữ immutable `OperationId + PartyId + Purpose + Amount + Method + ExpectedOutstandingAmount + normalized Note`. Client gọi `GET /api/operations/{operationId}`. Nếu Completed đúng type, load committed DebtPayment; nếu not found/unknown sau transient failure, retry exact snapshot; nếu same ID khác fingerprint/type, reject.
 
 **Business Outcome** → At-most-one committed debt payment cho một OperationId; user thấy result đã commit thay vì tạo payment lần hai.
 
@@ -228,7 +276,52 @@ Ví dụ Customer debt hiện tại `600,000`; request A và B có OperationId k
 
 **Recovery Path** → Retry exact request không bypass validation; UI reload balance `200,000` và yêu cầu intention mới.
 
-### 4.7 End-of-day query
+### 4.7 Customer Return sau aggregate debt payment
+
+**User Action** → Owner chọn Return lines/quantities/Restock state và yêu cầu server preview.
+
+**System Behavior** → Preview validate Slice 4 returnable/financial history rồi derive Customer aggregate debt. Response trả `ReturnObligationReduction`, `CurrentAggregateCustomerDebt`, `DebtReduction`, `RequiredActualRefund` và refund-method requirement. Preview không reserve state. Complete command dùng immutable correction intention, lấy Customer debt lock trước SaleCorrection/inventory locks, recompute toàn bộ values và chỉ dùng final authoritative result.
+
+**Business Outcome** → Return giảm debt tới tối đa zero; excess trở thành đúng một actual ReturnRefundPayment. Ví dụ debt `30`, Return `50` ⇒ debt reduction `30`, refund `20`, ending debt `0`. Restock/NoRestock và historical-cost behavior không đổi.
+
+**Failure Path** → Concurrent debt payment/Return/Void làm preview stale; refund method thiếu/thừa; refund snapshot/history inconsistent; return cap thay đổi hoặc transaction failure. Không tạo debt âm, double refund hay partial Return.
+
+**Recovery Path** → Reload authoritative preview/context. Ambiguous Complete giữ exact OperationId/intention và dùng Slice 4 operation recovery; committed Return trả result cũ.
+
+### 4.8 Sale Void với aggregate Customer debt
+
+**User Action** → Owner yêu cầu Void Sale hợp lệ theo Slice 4.
+
+**System Behavior** → Backend lấy Customer debt lock và SaleCorrection lock, recompute current aggregate debt và hypothetical balance sau khi loại active Sale contribution.
+
+**Business Outcome** → Void chỉ commit nếu hypothetical debt `>= 0`; inventory/history/audit effects giữ nguyên semantics Slice 4.
+
+**Failure Path** → Nếu hypothetical debt âm, reject `customer-debt-would-become-negative` trước mọi effect. Không auto-refund, không clamp và không tạo operation Completed.
+
+**Recovery Path** → UI hiển thị current debt/excess và hướng dẫn dùng Return/refund flow phù hợp. Exact retry/recovery của một Void đã commit vẫn giữ semantics D-040.
+
+### 4.9 Purchase Void với aggregate Supplier debt
+
+**User Action** → Owner yêu cầu safe Purchase Void.
+
+**System Behavior** → Ngoài eligibility/costing evidence Slice 4, backend lấy Supplier debt lock, recompute current debt và hypothetical balance sau Void.
+
+**Business Outcome** → Void chỉ commit nếu hypothetical Supplier debt `>= 0` và mọi inventory/costing guard đều pass.
+
+**Failure Path** → Hypothetical debt âm trả `supplier-debt-would-become-negative`; không tạo advance, supplier refund, Void hoặc inventory reversal.
+
+**Recovery Path** → UI giải thích payment history đã làm Void không an toàn. Supplier refund/recovery workflow không được tự tạo trong Slice 5.
+
+### 4.10 Concurrent debt payment và correction
+
+Customer debt ban đầu `100`; CustomerDebtPayment `80` và Return obligation reduction `50` chạy đồng thời:
+
+- payment thắng lock trước ⇒ debt còn `20`; Return recompute, giảm debt `20`, yêu cầu actual refund `30`, ending debt `0`;
+- Return thắng lock trước ⇒ debt còn `50`, refund `0`; payment `80` recompute latest state và bị stale/overpayment reject.
+
+Sale Void đồng thời CustomerDebtPayment và Purchase Void đồng thời SupplierDebtPayment cũng serialize trên party lock. Mọi serial order phải tạo một outcome hợp lệ hoặc typed rejection; không outcome nào được để debt âm và không dựa frontend balance.
+
+### 4.11 End-of-day query
 
 **User Action** → Owner chọn một business date.
 
@@ -240,7 +333,7 @@ Ví dụ Customer debt hiện tại `600,000`; request A và B có OperationId k
 
 **Recovery Path** → Typed error; user sửa date hoặc Owner sửa Store timezone theo workflow được approve. Không fallback ngầm sang UTC/server-local timezone.
 
-### 4.8 End-of-day với các event chính
+### 4.12 End-of-day với các event chính
 
 Metrics đề xuất dùng **event-date basis**; correction ảnh hưởng ngày correction xảy ra, không âm thầm rewrite report của ngày Sale/Purchase gốc:
 
@@ -274,7 +367,7 @@ DebtPayment
 - Method: Cash | Transfer
 - OccurredAt: DateTimeOffset (UTC instant)
 - PerformedByUserId: Guid
-- Note/Reference: not included until Open Question is decided
+- Note: string? // optional, max 250, canonical trimmed value
 ```
 
 Invariants:
@@ -286,6 +379,8 @@ Invariants:
 - Completed payment immutable; no direct edit/hard-delete.
 - OperationId unique and maps to one completed BusinessOperation result.
 - No SaleId/PurchaseId/InvoiceId because D-047 forbids invoice allocation requirement.
+- Note trim đầu/cuối; null, empty và whitespace-only canonical thành null/“không có note”; normalized Note immutable và tham gia fingerprint.
+- Không có `Reference` field riêng trong Slice 5.
 
 ### 5.2 Reversal/correction
 
@@ -314,8 +409,9 @@ Canonical order cho mutation:
 5. acquire SaleCorrection/PurchaseCorrection lock nếu operation là correction;
 6. acquire InventoryBalance locks theo ProductId deterministic order nếu có inventory effect;
 7. recompute authoritative debt và validate;
-8. persist all effects + BusinessOperation;
-9. commit.
+8. với Return, recompute exact debt reduction/refund; với Void, validate hypothetical ending debt không âm;
+9. persist all effects + BusinessOperation;
+10. commit.
 
 Để debt linearizable, các operation làm thay đổi debt phải tham gia cùng party lock:
 
@@ -326,16 +422,23 @@ Canonical order cho mutation:
 
 Read Committed + exclusive transaction-owned application lock đủ để serialize mutation của một party; không dựa riêng vào frontend, EF tracking hoặc rowversion. Unique constraints là defense-in-depth.
 
+Return preview là read-only và không reserve lock/state sau khi response. CompleteReturn phải lấy locks và recompute authoritative aggregate values. Existing Slice 4 preview/intention binding, stale-preview invalidation và immutable retry tiếp tục áp dụng; client-provided preview totals không phải authority.
+
 ### 6.2 Exact retry
 
 Fingerprint canonical gồm:
 
 ```text
-operation type + Store-resolved party id + amount G29 + method
+operation type
++ StoreId
++ Store-resolved PartyId
++ amount G29
++ normalized PaymentMethod
 + expected outstanding G29
++ normalized Note (null/empty/whitespace => canonical null)
 ```
 
-Note chỉ tham gia fingerprint nếu được Product Owner approve và model hóa.
+Note được trim/canonical-normalize trước cả persistence và fingerprint. Cùng OperationId với `" ghi chú "` rồi retry `"ghi chú"` là cùng normalized payload; cùng ID với Note khác là `idempotency-key-reused`.
 
 - Same OperationId + same fingerprint + Completed → trả DebtPayment cũ và current committed result, `WasAlreadyRecorded = true`.
 - Same OperationId + different type/payload → `idempotency-key-reused`.
@@ -347,11 +450,18 @@ Note chỉ tham gia fingerprint nếu được Product Owner approve và model h
 
 Mutation request bắt buộc gửi `ExpectedOutstandingAmount` từ read response. Backend so với recomputed balance dưới lock:
 
-- mismatch → `debt-balance-changed` với latest outstanding trong ProblemDetails extension;
+- mismatch → `customer-debt-changed` hoặc `supplier-debt-changed` với latest outstanding trong ProblemDetails extension;
 - amount lớn hơn latest → `debt-payment-exceeds-outstanding`;
 - không tự co amount hoặc tự biến “full” thành amount mới.
 
 UI reload balance, giải thích rằng công nợ vừa thay đổi và yêu cầu user xác nhận intention mới với OperationId mới. Exact ambiguous retry không bị stale-check lại theo state sau commit vì idempotency result được resolve trước validation.
+
+### 6.4 Payment/correction race acceptance
+
+- Customer debt `100`, concurrent payment `80` + Return reduction `50`: nếu payment trước thì Return refund `30`; nếu Return trước thì payment bị stale/overpayment reject. Ending debt không âm.
+- CustomerDebtPayment + SaleVoid: serialize trên Customer lock; Void reject nếu order đó tạo hypothetical negative debt, hoặc later payment validate balance sau Void.
+- SupplierDebtPayment + PurchaseVoid: serialize trên Supplier lock; Purchase Void reject nếu order đó tạo negative debt, hoặc later payment validate balance sau Void.
+- Error/lock timeout không được commit partial refund, payment, Void, inventory effect hoặc BusinessOperation.
 
 ## 7. Proposed DB changes — chưa tạo migration
 
@@ -364,6 +474,7 @@ UI reload balance, giải thích rằng công nợ vừa thay đổi và yêu c�
 - nullable `CustomerId` và `SupplierId` với composite Store FK, Restrict.
 - `Amount decimal(18,2)` + check `Amount > 0`.
 - `Method` string tối đa 32.
+- `Note` nullable `nvarchar(250)`; persisted value đã trim, empty/whitespace canonical thành null.
 - `OccurredAt datetimeoffset`.
 - `PerformedByUserId` FK `AspNetUsers`, Restrict.
 - check constraint enforce đúng một party và Direction/Purpose hợp lệ.
@@ -378,11 +489,17 @@ Indexes:
 
 `BusinessOperationTypes` cần thêm `RecordCustomerDebtPayment` và `RecordSupplierDebtPayment`. `ResultReference` trỏ `DebtPayment.Id`; không tạo generic FK từ polymorphic result reference.
 
-### 7.2 Store timezone — conditional on Open Question
+### 7.2 Store timezone — approved requirement D-054
 
-Current schema không có timezone. Đề xuất thêm `Stores.TimeZoneId` required, tối đa 128, dùng IANA hoặc Windows ID theo runtime/deployment strategy được approve. Migration/backfill value không được hard-code trước Product Owner decision về source/default.
+Current schema chưa có timezone. Proposed migration sau implementation approval thêm `Stores.TimeZoneId`:
 
-Nếu pilot onboarding bắt buộc chọn timezone, existing Store cần explicit backfill/deployment configuration đã review; API không được silently dùng server local timezone.
+- required, tối đa 128 ký tự;
+- canonical persisted value là valid IANA timezone ID;
+- existing Store backfill/default `Asia/Ho_Chi_Minh`;
+- Store onboarding/settings cho phép cấu hình timezone;
+- không persist Windows timezone ID như canonical value.
+
+.NET/Windows runtime có thể cần conversion/mapping compatibility khi resolve IANA ID; đó là implementation detail ở boundary. API không được silently fallback sang browser timezone, server local timezone hoặc UTC khi configuration invalid.
 
 ### 7.3 Index additions cho derived queries
 
@@ -446,11 +563,12 @@ List chỉ cần identity + outstanding + asOf, mặc định `outstandingAmount
   "operationId": "guid",
   "amount": 400000.00,
   "method": "Cash",
-  "expectedOutstandingAmount": 600000.00
+  "expectedOutstandingAmount": 600000.00,
+  "note": "Thu nợ ca sáng"
 }
 ```
 
-`Note/reference` chưa có trong contract trước khi Open Question được quyết định.
+`note` optional, tối đa 250 ký tự; backend trim và canonical-normalize empty/whitespace thành null. Không có `reference` field riêng.
 
 Response 200 cho first commit và exact retry, thống nhất với mutation convention hiện tại:
 
@@ -462,6 +580,7 @@ Response 200 cho first commit và exact retry, thống nhất với mutation con
   "purpose": "CustomerDebtCollection",
   "amount": 400000.00,
   "method": "Cash",
+  "note": "Thu nợ ca sáng",
   "occurredAt": "2026-09-22T10:00:00+00:00",
   "performedByUserId": "guid",
   "outstandingBefore": 600000.00,
@@ -472,7 +591,33 @@ Response 200 cho first commit và exact retry, thống nhất với mutation con
 
 Exact retry trả cùng payment/result reference và `wasAlreadyRecorded = true`; không tạo timestamp/id mới.
 
-### 8.3 End-of-day response
+### 8.3 Return preview/command extension cho aggregate debt
+
+`POST /api/returns/preview` tiếp tục dùng route/intent Slice 4 và bổ sung response:
+
+```json
+{
+  "returnObligationReduction": 50000.00,
+  "currentAggregateCustomerDebt": 30000.00,
+  "debtReduction": 30000.00,
+  "requiredActualRefund": 20000.00,
+  "refundMethodRequired": true
+}
+```
+
+`currentAggregateCustomerDebt`/`debtReduction` nullable cho customerless fully-paid Sale; path đó giữ D-036 sale-level calculation. Với Sale có Customer, các field aggregate bắt buộc có giá trị.
+
+`POST /api/returns` không nhận authoritative refund amount. Command bổ sung `expectedAggregateCustomerDebt` và `expectedRequiredActualRefund` từ preview như optimistic intention-consistency tokens; cả hai tham gia Return fingerprint. Backend recompute dưới locks:
+
+- expected values match ⇒ validate `RefundMethod`, create exact backend-calculated refund và commit;
+- mismatch do concurrent debt/correction ⇒ reject `return-refund-requirement-changed`, trả latest calculation context và không commit;
+- exact retry của operation đã Completed resolve trước recompute và trả committed Return.
+
+Như vậy frontend không quyết định money amount nhưng không bị buộc phải chấp nhận một refund amount đã đổi sau preview. Existing Return line/Restock/refund-method intention và Slice 4 recovery semantics giữ nguyên.
+
+Sale/Purchase Void request contract không nhận refund/advance field. Negative-debt conflict trả current outstanding, hypothetical ending amount, excess và stable suggestion code/data; human-readable suggestion không được frontend parse để điều khiển logic.
+
+### 8.4 End-of-day response
 
 ```json
 {
@@ -505,7 +650,7 @@ Exact retry trả cùng payment/result reference và `wasAlreadyRecorded = true`
 
 Main debt metrics là **ending balance tại `endUtc`**, không phải debt created during day. Slice 5 UI không cần “debt created during day”; nếu thêm sau này phải dùng tên riêng, không overload `CustomerOutstandingDebt`/`SupplierOutstandingDebt`.
 
-### 8.4 Validation và typed errors
+### 8.5 Validation và typed errors
 
 Validation:
 
@@ -513,6 +658,7 @@ Validation:
 - Amount positive, tối đa hai decimals.
 - Method chỉ `Cash`/`Transfer` hiện tại.
 - ExpectedOutstandingAmount nonnegative, tối đa hai decimals.
+- Note sau trim tối đa 250 ký tự; null/empty/whitespace đều hợp lệ và canonical thành null.
 - ISO `YYYY-MM-DD` valid.
 - Party phải thuộc current Store.
 
@@ -522,10 +668,15 @@ Stable error codes dự kiến:
 - `customer-has-no-outstanding-debt`, `supplier-has-no-outstanding-debt`.
 - `invalid-payment-amount`, `invalid-payment-precision`, `invalid-payment-method`.
 - `debt-payment-exceeds-outstanding`.
-- `debt-balance-changed` với `latestOutstandingAmount` extension.
+- `customer-debt-changed`, `supplier-debt-changed` với `latestOutstandingAmount` extension.
+- `customer-debt-would-become-negative` cho Sale Void; extensions gồm `currentOutstandingAmount`, `hypotheticalOutstandingAmount`, `excessAmount`, `suggestedActionCode = use-return-refund-flow`.
+- `supplier-debt-would-become-negative` cho Purchase Void; cùng numeric context và `suggestedActionCode = supplier-refund-not-supported`.
+- `return-refund-requirement-changed` với latest aggregate debt/debt reduction/required refund context.
+- `return-financial-state-invalid` cho actual refund history/snapshot inconsistency; `refund-method-required` và `refund-method-not-applicable` tiếp tục dùng theo Slice 4.
+- `invalid-note-length`.
 - `idempotency-key-reused`, `operation-lock-timeout`, `concurrent-update`.
 - `invalid-business-date`, `store-timezone-not-configured`, `invalid-store-timezone`.
-- `customer-debt-state-invalid`, `supplier-debt-state-invalid`, `return-financial-state-invalid`.
+- `customer-debt-state-invalid`, `supplier-debt-state-invalid`.
 
 Status convention: validation 400; auth 401/403; not found 404; state/concurrency/idempotency conflict 409; unexpected 500. UI branch theo `code`, không parse title/detail.
 
@@ -557,7 +708,7 @@ CustomerRefunds =
 NetCollected = GrossCollected - CustomerRefunds
 ```
 
-Proposed API trả components và `netAmount`; UI wording cuối cùng phụ thuộc Open Question. Sale Void không tự làm giảm Collected vì Void không phải actual refund theo D-038. Debt creation không tăng Collected.
+Theo D-053, API trả components và headline `Collected = netAmount`. Sale Void không tự làm giảm Collected vì Void không phải actual refund theo D-038. Debt creation không tăng Collected và Collected không được dùng để suy ra Revenue.
 
 ### 9.3 Customer Outstanding Debt
 
@@ -617,15 +768,18 @@ Không dùng `CAST(timestamp AS date)` theo UTC và không dùng timezone của 
 
 Tests bắt buộc:
 
+- `Asia/Ho_Chi_Minh` business date;
+- ít nhất một non-Vietnam IANA timezone;
 - event ngay trước start không thuộc ngày;
 - event đúng start thuộc ngày;
 - event ngay trước end thuộc ngày;
 - event đúng end thuộc ngày sau;
 - timezone offset khác UTC;
 - DST/ambiguous/invalid boundary nếu timezone được chọn có DST;
-- browser timezone khác Store timezone không đổi kết quả.
+- browser timezone khác Store timezone không đổi kết quả;
+- application-server timezone khác Store timezone không đổi kết quả.
 
-Source/format/default của Store timezone là Open Question. Không hard-code `Asia/Bangkok` hoặc timezone cụ thể chỉ vì pilot hiện tại ở Việt Nam.
+Theo D-054, persisted source là `Store.TimeZoneId`, canonical IANA ID; Store hiện hữu backfill/default `Asia/Ho_Chi_Minh`. Algorithm phải hỗ trợ timezone khác và không assume ngày luôn dài 24 giờ.
 
 ## 11. UI flow proposal
 
@@ -635,18 +789,19 @@ Không redesign visual system và không xây BI dashboard.
 
 - Trang/list tìm Customer có debt, hiển thị name/phone/current outstanding/as-of.
 - Chọn Customer mở debt card và payment form.
-- Amount; shortcut “Thu toàn bộ”; PaymentMethod Cash/Transfer.
+- Amount; shortcut “Thu toàn bộ”; PaymentMethod Cash/Transfer; optional Note tối đa 250 ký tự.
 - Confirm dialog nêu đây là tiền thực thu và không tạo Revenue.
 - Submit một lần với immutable OperationId snapshot; disable double-click.
 - Success hiển thị amount, method, occurredAt và outstanding authoritative mới.
 - Ambiguous state hiển thị “đang kiểm tra kết quả”, query operation và cho exact retry.
-- `debt-balance-changed`/overpayment reload latest outstanding, không auto-submit amount mới.
+- `customer-debt-changed`/overpayment reload latest outstanding, không auto-submit amount mới.
 
 ### 11.2 Supplier Debt
 
 - Tương tự Customer nhưng wording “tiền thực trả Supplier”.
-- List chỉ available cho role được phép; current proposal giữ Owner-only theo existing Supplier/Purchase boundary.
+- List và payment action chỉ available cho Owner theo D-052.
 - Success không thay đổi Purchase value.
+- Optional Note dùng cùng trim/length/immutable-attempt behavior.
 
 ### 11.3 End-of-day
 
@@ -654,7 +809,7 @@ Một trang summary đơn giản:
 
 - date picker theo Store local date;
 - Revenue;
-- Collected, kèm breakdown sale payments / old debt collection / refunds;
+- headline Collected = NetCollected, kèm breakdown Sale payments / Customer debt collected / Customer refunds / Net collected;
 - Customer outstanding debt at end;
 - Supplier payments, kèm purchase payment / old debt payment;
 - Supplier outstanding debt at end;
@@ -662,20 +817,28 @@ Một trang summary đơn giản:
 
 Không chart builder, drill-down BI, saved dashboard hoặc accounting close. Có thể link sang existing Sale/Purchase/debt list nếu đơn giản, nhưng drill-down mới không phải blocker MVP.
 
-## 12. Authorization proposal và Open Questions
+### 11.4 Return/Void correction UX extension
+
+- Return preview hiển thị Return obligation reduction, current aggregate Customer debt, debt reduction và required actual refund.
+- Nếu required refund > 0, Owner phải chọn Cash/Transfer; UI không cho Cashier thực hiện Return theo D-033.
+- Nếu aggregate state đổi sau preview, `return-refund-requirement-changed` reload preview/context và yêu cầu Owner xác nhận lại; không auto-accept refund amount mới.
+- `customer-debt-would-become-negative` giải thích Sale phải dùng Return/refund flow phù hợp thay vì Void; không hiển thị Void như đã thành công.
+- `supplier-debt-would-become-negative` giải thích Supplier refund/recovery chưa được hỗ trợ; không tạo advance ngầm.
+
+## 12. Authorization — final Product Owner matrix
 
 Backend authorize mọi endpoint; UI hide action chỉ là UX.
 
-| Capability | Conservative proposal trước PO decision | Cơ sở |
+| Capability | Owner | Cashier |
 |---|---|---|
-| View customer debt | Owner + Cashier | Existing Customer/Sale read là Owner + Cashier; vẫn là Open Question cho Slice 5 |
-| Collect customer debt | Owner + Cashier | Operational cash collection, nhưng chưa được approve rõ; Open Question |
-| View supplier debt | Owner only | Giữ D-021 Supplier/Purchase boundary |
-| Pay supplier debt | Owner only | Không mở quyền nhạy cảm rộng hơn D-021; xác nhận trong Open Questions |
-| View End-of-day | Owner only | Financial summary nhạy cảm; Open Question |
-| View Estimated Gross Profit | Owner only | Financial result nhạy cảm; Open Question |
+| View Customer debt | Yes | Yes |
+| Record Customer Debt Payment | Yes | Yes |
+| View Supplier debt | Yes | No |
+| Record Supplier Debt Payment | Yes | No |
+| View End-of-day | Yes | No |
+| View Estimated Gross Profit | Yes | No |
 
-Cho tới khi approve, deny-by-default đối với role chưa rõ. Cashier direct URL tới Owner-only endpoint trả 403. Cross-store party/resource dùng Store-scoped not-found và không leak existence.
+D-051/D-052 là final authorization decision cho Slice 5. Backend enforce; UI visibility chỉ hỗ trợ UX. Cashier direct URL/API tới Owner-only endpoint trả authorization error theo convention hiện tại. Không tạo Cashier-specific reduced EOD dashboard. Cross-store party/resource dùng Store-scoped not-found và không leak existence.
 
 ## 13. Test plan
 
@@ -702,7 +865,7 @@ Cho tới khi approve, deny-by-default đối với role chưa rõ. Cashier dire
 
 ### 13.3 SQL Server integration tests — Customer
 
-- allowed roles theo final decision; wrong role forbidden.
+- Owner và Cashier đều đọc/thu Customer debt; unauthorized/wrong role ngoài matrix bị chặn.
 - Customer cross-store not found; composite FK defense.
 - DebtPayment + BusinessOperation atomic commit/rollback.
 - same OperationId exact retry trả cùng payment.
@@ -716,7 +879,7 @@ Cho tới khi approve, deny-by-default đối với role chưa rõ. Cashier dire
 ### 13.4 SQL Server integration tests — Supplier
 
 - partial/full/multiple và exact retry.
-- cross-store, wrong role và Owner-only boundary theo final decision.
+- Owner Supplier debt read/pay allowed; Cashier read/pay forbidden; cross-store bị chặn.
 - concurrent payments không vượt debt.
 - concurrent SupplierDebtPayment với CompletePurchase/PurchaseVoid serialize đúng.
 - payment không sửa Purchase total/history.
@@ -755,6 +918,66 @@ Không dùng EF InMemory để chứng minh locking/concurrency.
 - Real local E2E: create credit Sale → partial/full old-debt collection → EOD verify Revenue/Collected/debt.
 - Real local E2E: credit Purchase → supplier payment → EOD verify supplier payment/debt.
 
+### 13.7 Authorization matrix tests
+
+- Owner Customer debt read/pay allowed.
+- Cashier Customer debt read/pay allowed.
+- Cashier Supplier debt read forbidden.
+- Cashier Supplier Debt Payment forbidden.
+- Cashier End-of-day forbidden.
+- Cashier Estimated Gross Profit forbidden, kể cả direct URL/API.
+- Owner Supplier debt/payment, End-of-day và Estimated Gross Profit allowed.
+- Không tồn tại Cashier reduced-EOD endpoint/view.
+
+### 13.8 Debt Payment Note tests
+
+- null accepted/persisted null;
+- empty và whitespace-only canonical thành null;
+- leading/trailing whitespace được trim;
+- exactly 250 characters accepted;
+- >250 sau trim rejected `invalid-note-length`;
+- retry same OperationId với cùng normalized Note trả payment cũ;
+- retry `" note "` rồi `"note"` là exact normalized retry;
+- same OperationId với different normalized Note trả `idempotency-key-reused`;
+- response/history trả immutable normalized Note; không có Reference field.
+
+### 13.9 Timezone tests
+
+- `Asia/Ho_Chi_Minh` local-date boundaries;
+- một non-Vietnam IANA timezone;
+- event ngay trước/đúng UTC boundaries;
+- DST timezone với ngày 23/25 giờ chứng minh không assume 24 giờ;
+- browser timezone khác Store không đổi kết quả;
+- app-server timezone khác Store không đổi kết quả;
+- invalid IANA configuration trả typed error, không silent fallback;
+- existing Store migration backfill `Asia/Ho_Chi_Minh` khi implementation được approve.
+
+### 13.10 Return + aggregate Customer debt tests
+
+- debt `30`, Return `50` ⇒ debt reduction `30`, required refund `20`, ending debt `0`;
+- debt `50`, Return `50` ⇒ refund `0`, ending debt `0`;
+- debt `100`, Return `50` ⇒ refund `0`, ending debt `50`;
+- debt `0`, Return `50` ⇒ refund `50`, ending debt `0`;
+- previous partial Returns và exact financial residual;
+- previous CustomerDebtPayments;
+- original SalePayment + previous actual refund + debt-payment interaction, không double refund;
+- refund snapshot/payment mismatch trả `return-financial-state-invalid`;
+- preview expected aggregate/refund mismatch trả `return-refund-requirement-changed`, không commit;
+- refund method required/not applicable theo final authoritative amount;
+- Restock/NoRestock quantity, inventory và historical COGS không bị financial logic làm thay đổi;
+- Return/refund/inventory/BusinessOperation atomic rollback và exact retry.
+
+### 13.11 Sale/Purchase Void aggregate-debt tests
+
+- Sale Void allowed khi hypothetical Customer debt `>= 0`;
+- Sale Void rejected `customer-debt-would-become-negative` khi `< 0`, không refund/void/inventory effect;
+- concurrent CustomerDebtPayment + Sale Void theo cả lock order outcomes; final debt không âm;
+- Sale Void exact retry/timeout recovery không đổi.
+- Purchase Void allowed khi hypothetical Supplier debt `>= 0` và costing guards pass;
+- Purchase Void rejected `supplier-debt-would-become-negative` khi `< 0`, không advance/refund/void/inventory effect;
+- concurrent SupplierDebtPayment + Purchase Void theo cả outcomes; final debt không âm;
+- Purchase Void exact retry/recovery và existing safety/dependency guards không đổi.
+
 ## 14. Implementation staging proposal
 
 ### Stage 5A — Debt backend/domain/persistence/tests
@@ -768,36 +991,37 @@ Không dùng EF InMemory để chứng minh locking/concurrency.
 
 ### Stage 5B — End-of-day + frontend + E2E/recovery
 
-- Store timezone mechanism theo approved answer.
+- Store configurable IANA timezone theo D-054.
 - EOD aggregation/query và historical COGS reliability.
 - Customer/Supplier debt UI.
 - End-of-day summary UI.
 - Immutable retry/recovery và stale-balance UX.
 - Frontend tests, integration hardening và real local E2E.
 
-Việc chia 5A/5B chỉ là `PROPOSAL`. Không stage nào được phép implement cho tới khi Product Owner approve tài liệu và các Open Questions chặn.
+Việc chia 5A/5B chỉ là `PROPOSAL`. Không stage nào được phép implement cho tới khi Product Owner final-approve Technical Breakdown.
 
-## 15. Open Questions chặn approval/implementation
+## 15. Resolved Product Owner questions và approval gate
 
-Chi tiết đầy đủ được ghi trong `OPEN_QUESTIONS.md`. Các câu hỏi Slice 5 thực sự cần Product Owner quyết định:
+Sáu Product Owner questions chặn ban đầu đã được giải quyết đầy đủ:
 
-1. Cashier có được xem/thu Customer debt không, hay Owner-only?
-2. Supplier debt payment và End-of-day/Estimated Gross Profit có chốt Owner-only không? Có cho Cashier xem phần summary không chứa profit không?
-3. Collected trên UI dùng net sau refund làm headline hay hiển thị gross collected và refund tách riêng; proposal API giữ đủ components.
-4. Store timezone lấy từ đâu, format nào và backfill/default cho Store hiện hữu ra sao?
-5. Debt payment có cần optional note/reference text trong MVP không?
-6. Sau khi đã có unallocated debt payment, Return/Sale Void/Purchase Void làm aggregate debt âm thì business behavior nào được phép, trong khi D-046 cấm credit/advance và Slice 5 không có payment allocation/refund-from-supplier workflow?
+- authorization: D-051/D-052;
+- Collected presentation: D-053;
+- Store timezone: D-054;
+- Debt Payment Note/no Reference: D-055;
+- correction sau unallocated debt payment: D-056.
 
-Câu 6 phải được giải quyết trước implementation vì nó ảnh hưởng invariant và concurrency của existing correction flows; không được clamp balance, xóa payment hoặc tự suy diễn allocation.
+Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Tuy nhiên Technical Breakdown vẫn `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; việc giải quyết questions không tự động cấp implementation approval.
 
 ## 16. Definition of Done đề xuất sau approval
 
 - Partial/full/multiple Customer/Supplier debt payments chạy Vue → API → SQL Server.
 - No overpayment được chứng minh dưới concurrency khác OperationId.
 - Exact retry/timeout recovery không duplicate actual money record.
+- Return dùng aggregate Customer state, tạo exact actual refund cho excess và không tạo hidden credit.
+- Sale/Purchase Void reject khi hypothetical aggregate debt âm; không implicit refund/advance.
 - Completed transaction/payment history immutable; Store isolation và final role policy backend-enforced.
 - Debt derived từ history, không editable balance source of truth.
-- EOD dùng Store-local business date và `[startUtc, endUtc)`.
+- EOD dùng configurable canonical IANA Store timezone và `[startUtc, endUtc)`.
 - Revenue khác Collected; supplier payments và ending debts có semantic rõ.
 - Estimated Gross Profit chỉ dùng historical cost snapshot và phản ánh Return/Void.
 - SQL Server integration, frontend tests và critical real local E2E pass; existing Slice 1–4 regression pass.
@@ -810,5 +1034,6 @@ Câu 6 phải được giải quyết trước implementation vì nó ảnh hư�
 - D-025–D-030 — Sale payment, customer credit, historical cost và recovery.
 - D-033–D-040 — Return/Void permission, financial effects, actual refund, safe Purchase Void và correction locking.
 - D-043–D-050 — approved Slice 5 product scope/semantics.
+- D-051–D-056 — approved authorization, net Collected, IANA timezone, immutable Note và correction/aggregate-debt behavior.
 
 Tài liệu này vẫn là `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; không phải `APPROVED FOR IMPLEMENTATION`.
