@@ -20,6 +20,8 @@ const router = createRouter({
     { path: '/sales', name: 'sales', component: () => import('../views/SaleListView.vue') },
     { path: '/sales/new', name: 'sale-checkout', component: () => import('../views/SaleCheckoutView.vue') },
     { path: '/sales/:id', name: 'sale-detail', component: () => import('../views/SaleDetailView.vue') },
+    { path: '/sales/:id/return', name: 'sale-return', component: () => import('../views/ReturnCreateView.vue'), meta: { ownerOnly: true } },
+    { path: '/returns/:id', name: 'return-detail', component: () => import('../views/ReturnDetailView.vue'), meta: { ownerOnly: true } },
     { path: '/settings/operations', name: 'operational-settings', component: () => import('../views/OperationalSettingsView.vue') },
   ],
 })
@@ -31,6 +33,7 @@ router.beforeEach(async (to) => {
   if (session.isAuthenticated && to.name === 'login') return session.hasStore ? { name: 'products' } : { name: 'setup' }
   if (session.isAuthenticated && !session.hasStore && to.name !== 'setup') return { name: 'setup' }
   if (session.isAuthenticated && session.hasStore && to.name === 'setup') return { name: 'products' }
+  if (to.meta.ownerOnly && !session.roles.includes('Owner')) return { name: 'products' }
   return true
 })
 

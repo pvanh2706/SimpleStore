@@ -16,6 +16,9 @@ const sale: Sale = {
   id: 'sale-1', status: 'Completed', storeName: 'Store', warehouseId: 'warehouse-1', customer: null,
   cashierDisplayName: 'cashier@test', lines: [], payments: [], totalAmount: 12000, paidAmount: 12000,
   outstandingAmount: 0, createdAt: '2026-09-21T12:00:00Z', completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
+  originalTotalAmount: 12000, totalReturnedAmount: 0, netSaleAmount: 12000,
+  originalCollectedAmount: 12000, totalRefundedAmount: 0, netCollectedAmount: 12000,
+  isVoided: false, void: null, returns: [],
 }
 
 function mountForm(overrides: Record<string, unknown> = {}) {

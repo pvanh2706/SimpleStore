@@ -7,6 +7,9 @@ const sale: Sale = {
   id: 'sale-1', status: 'Completed', storeName: 'Simple Store', warehouseId: 'warehouse-1',
   customer: null, cashierDisplayName: 'cashier@test', totalAmount: 12000, paidAmount: 12000,
   outstandingAmount: 0, createdAt: '2026-09-21T12:00:00Z', completedAt: '2026-09-21T12:00:00Z', wasAlreadyCompleted: false,
+  originalTotalAmount: 12000, totalReturnedAmount: 0, netSaleAmount: 12000,
+  originalCollectedAmount: 12000, totalRefundedAmount: 0, netCollectedAmount: 12000,
+  isVoided: false, void: null, returns: [],
   lines: [{ id: 'line-1', productId: 'product-1', productName: 'Coffee', productSku: 'CF', productUnit: 'pack', quantity: 1, unitSalePrice: 12000, lineAmount: 12000, unitCostAtSale: 8000, costReliability: 'Reliable' }],
   payments: [{ id: 'payment-1', amount: 12000, method: 'Cash', occurredAt: '2026-09-21T12:00:00Z' }],
 }
@@ -29,5 +32,12 @@ describe('SaleReceipt', () => {
     expect(wrapper.text()).toContain('Đơn bán đã hoàn tất')
     expect(wrapper.text()).toContain('In hóa đơn')
     expect(wrapper.text()).toContain('Coffee')
+  })
+
+  it('keeps original payment facts on the receipt after corrections change current outstanding', () => {
+    const corrected = { ...sale, totalAmount: 12000, paidAmount: 4000, outstandingAmount: 0, totalReturnedAmount: 12000, netSaleAmount: 0, netCollectedAmount: 0 }
+    const wrapper = mount(SaleReceipt, { props: { sale: corrected } })
+    expect(wrapper.text()).toContain('Còn nợ gốc')
+    expect(wrapper.text()).toContain('8.000 ₫')
   })
 })

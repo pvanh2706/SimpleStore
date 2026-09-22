@@ -9,7 +9,15 @@ const route = useRoute(); const id = String(route.params.id)
 const product = ref<Product | null>(null); const movements = ref<InventoryMovement[]>([]); const loading = ref(true); const error = ref(''); const deactivating = ref(false)
 const auth = useAuthStore()
 const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
-const movementLabel = (type: string) => type === 'Purchase' ? 'Nhập hàng' : type === 'Sale' ? 'Bán hàng' : 'Tồn đầu'
+const movementLabels: Record<string, string> = {
+  OpeningBalance: 'Tồn đầu',
+  Purchase: 'Nhập hàng',
+  Sale: 'Bán hàng',
+  ReturnRestock: 'Trả hàng nhập lại kho',
+  SaleVoid: 'Hủy đơn bán',
+  PurchaseVoid: 'Hủy phiếu nhập',
+}
+const movementLabel = (type: string) => movementLabels[type] ?? type
 
 async function load() {
   loading.value = true

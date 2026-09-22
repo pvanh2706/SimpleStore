@@ -8,6 +8,7 @@ const purchase: Purchase = {
   id: 'purchase-1', supplierId: 'supplier-1', supplierName: 'NCC', status: 'Draft',
   lines: [], payments: [], totalAmount: 100, paidAmount: 0, outstandingAmount: 100,
   createdAt: '', updatedAt: '', completedAt: null, wasAlreadyCompleted: false,
+  isVoided: false, void: null,
 }
 const completedPurchase: Purchase = {
   ...purchase, status: 'Completed', paidAmount: 30, outstandingAmount: 70,

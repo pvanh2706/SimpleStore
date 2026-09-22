@@ -26,6 +26,7 @@ export interface Product {
   inventoryValue: number
   averageCost: number
   hasAverageCost: boolean
+  referencePurchaseCostRevision: number
   createdAt: string
   updatedAt: string
 }
@@ -152,6 +153,15 @@ export interface Purchase {
   updatedAt: string
   completedAt: string | null
   wasAlreadyCompleted: boolean
+  isVoided: boolean
+  void: PurchaseVoidInfo | null
+}
+
+export interface PurchaseVoidInfo {
+  id: string
+  reason: string
+  voidedByUserId: string
+  voidedAt: string
 }
 
 export interface PurchaseListItem {
@@ -164,6 +174,7 @@ export interface PurchaseListItem {
   outstandingAmount: number
   createdAt: string
   completedAt: string | null
+  isVoided: boolean
 }
 
 export interface PurchasePage {
@@ -237,6 +248,30 @@ export interface Sale {
   createdAt: string
   completedAt: string
   wasAlreadyCompleted: boolean
+  originalTotalAmount: number
+  totalReturnedAmount: number
+  netSaleAmount: number
+  originalCollectedAmount: number
+  totalRefundedAmount: number
+  netCollectedAmount: number
+  isVoided: boolean
+  void: SaleVoidInfo | null
+  returns: SaleReturnSummary[]
+}
+
+export interface SaleVoidInfo {
+  id: string
+  reason: string
+  voidedByUserId: string
+  voidedAt: string
+}
+
+export interface SaleReturnSummary {
+  id: string
+  totalReturnAmount: number
+  refundAmount: number
+  completedByUserId: string
+  completedAt: string
 }
 
 export interface SaleListItem {
@@ -248,6 +283,13 @@ export interface SaleListItem {
   paidAmount: number
   outstandingAmount: number
   completedAt: string
+  originalTotalAmount: number
+  totalReturnedAmount: number
+  netSaleAmount: number
+  originalCollectedAmount: number
+  totalRefundedAmount: number
+  netCollectedAmount: number
+  isVoided: boolean
 }
 
 export interface SalePage {
@@ -260,4 +302,88 @@ export interface SalePage {
 
 export interface StoreOperationalSettings {
   allowNegativeStock: boolean
+}
+
+export interface ReturnLine {
+  id: string
+  originalSaleLineId: string
+  productId: string
+  quantity: number
+  restock: boolean
+  unitSalePriceBasis: number
+  returnLineAmount: number
+  unitCostBasis: number
+  restockedInventoryValue: number
+}
+
+export interface ReturnRefundPayment {
+  id: string
+  amount: number
+  method: 'Cash' | 'Transfer'
+  occurredAt: string
+}
+
+export interface ReturnResult {
+  id: string
+  originalSaleId: string
+  status: 'Completed'
+  lines: ReturnLine[]
+  refundPayments: ReturnRefundPayment[]
+  totalReturnAmount: number
+  refundAmount: number
+  completedByUserId: string
+  createdAt: string
+  completedAt: string
+  wasAlreadyCompleted: boolean
+}
+
+export interface ReturnContextLine {
+  saleLineId: string
+  productId: string
+  productName: string
+  productSku: string
+  productUnit: string
+  soldQuantity: number
+  previouslyReturnedQuantity: number
+  returnableQuantity: number
+  originalUnitSalePrice: number
+  originalLineAmount: number
+}
+
+export interface ReturnContext {
+  saleId: string
+  isVoided: boolean
+  hasReturns: boolean
+  originalTotalAmount: number
+  totalReturnedAmount: number
+  netSaleAmount: number
+  originalCollectedAmount: number
+  totalRefundedAmount: number
+  netCollectedAmount: number
+  outstandingAmount: number
+  lines: ReturnContextLine[]
+}
+
+export interface ReturnPreviewLine {
+  originalSaleLineId: string
+  productId: string
+  requestedQuantity: number
+  restock: boolean
+  previouslyReturnedQuantity: number
+  remainingQuantityBefore: number
+  returnLineAmount: number
+  restockedInventoryValue: number
+}
+
+export interface ReturnPreview {
+  originalSaleId: string
+  lines: ReturnPreviewLine[]
+  currentReturnValue: number
+  previousReturnedValue: number
+  cumulativeReturnedValue: number
+  netSaleObligation: number
+  netCashHeld: number
+  outstanding: number
+  refundDueNow: number
+  refundMethodRequired: boolean
 }

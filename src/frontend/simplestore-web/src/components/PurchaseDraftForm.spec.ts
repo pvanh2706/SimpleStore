@@ -15,6 +15,7 @@ const purchase: Purchase = {
   lines: [{ id: 'line-1', productId: products[0].id, productName: products[0].name, productUnit: 'cái', quantity: 2, unitPrice: 12.5, lineAmount: 25 }],
   payments: [], totalAmount: 25, paidAmount: 0, outstandingAmount: 25,
   createdAt: '', updatedAt: '', completedAt: null, wasAlreadyCompleted: false,
+  isVoided: false, void: null,
 }
 
 const supplierPage = (items: Supplier[], page = 1, totalPages = 1): SupplierPage => ({
