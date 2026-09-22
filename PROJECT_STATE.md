@@ -2,7 +2,9 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 4 — Return / Void / Recovery: `APPROVED / COMPLETED`**
+**Slice 5 — Debt + End-of-day documentation: `PROPOSED / PENDING PRODUCT OWNER APPROVAL`**
+
+Slice 4 — Return / Void / Recovery giữ trạng thái `APPROVED / COMPLETED`; baseline trước Slice 5 là commit `5876082a`.
 
 ## Primary Persona
 
@@ -15,6 +17,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Slice 1 — Setup + Product: completed.
 - Slice 2 — Purchase → Inventory: `APPROVED / COMPLETED` ngày 2026-09-21 sau các vòng review và hardening.
 - Slice 3 — Sale → Payment → Print: `APPROVED / COMPLETED` ngày 2026-09-22 sau implementation và technical review end-to-end.
+- Slice 4 — Return / Void / Recovery: `APPROVED / COMPLETED`; Slice 5 baseline commit `5876082a`.
 - Slice 1 có Store/Main Warehouse onboarding, Product, OpeningBalance ledger, InventoryBalance và fixed-template CSV import Validate → Preview → Confirm.
 - Slice 2 có Supplier CRUD-lite, Purchase Draft → Completed, multiple actual PurchasePayment, supplier outstanding derived, inventory ledger/balance và Moving Weighted Average.
 - CompletePurchase được Store-scope, Owner-only, atomic/idempotent và khóa SQL Server theo deterministic ProductId order để ngăn lost update.
@@ -34,6 +37,10 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Slice 4 Stage 4B đã hoàn tất frontend Return/detail, server-authoritative preview, immutable attempt/recovery, Sale Void, Purchase Void, Owner/Cashier action visibility, net/original transaction projections và void-aware receipt/history. Final preview-consistency hardening bind preview vào exact correction intention, invalidates stale preview và khóa input khi preview đang chạy.
 - Product Owner final-approved Slice 4 ngày 2026-09-22. Final reviewed implementation commit `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874`; GitHub Actions run `35706827677` pass backend build, 60 Domain tests, 57 SQL Server integration tests, frontend build, 16 frontend test files và 70 frontend tests. Không còn known blocker cho Slice 4.
 - Real local Playwright đã verify multiple Return (Restock/NoRestock), Sale Void và safe Purchase Void qua Vue → ASP.NET Core → SQL Server. GitHub CI hiện không chạy real E2E, vì vậy local execution không được suy diễn là CI evidence.
+- Slice 5 Product Owner scope — Customer/Supplier debt payment và End-of-day — là `APPROVED`.
+- D-043–D-050 — derived debt, actual customer/supplier debt payments, no overpayment/advance, no invoice allocation, EOD query-only, Revenue khác Collected và historical-cost Estimated Gross Profit — là `APPROVED` ngày 2026-09-22.
+- Technical Breakdown Slice 5 v0.1 là `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; chưa phải `APPROVED FOR IMPLEMENTATION`.
+- Slice 5 implementation là `NOT STARTED`; chưa có production code hoặc migration của Slice 5.
 
 ## Tiến độ
 
@@ -145,14 +152,14 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Slice 5 — Debt + End-of-day là bước dự kiến tiếp theo.** Slice 5 chưa bắt đầu implementation.
+**Product Owner review Technical Breakdown Slice 5 v0.1 và giải quyết các Open Questions chặn.** Chỉ sau final approval mới được bắt đầu Stage 5A/5B. Slice 5 implementation hiện `NOT STARTED`.
 
 ## Chưa triển khai
 
-- Supplier debt repayment sau Purchase và các debt/end-of-day flows của Slice 5.
+- Customer/Supplier debt payment, debt query, End-of-day và Estimated Gross Profit implementation của Slice 5.
 - C14, HĐĐT và các capability ngoài Slice 1.
 - Real Slice 1, Slice 2, Slice 3 và Slice 4 Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Product Owner final-approved Slice 4 — Return / Void / Recovery tại D-042. Stage 4A và Stage 4B, bao gồm final Return preview/intention consistency hardening, là `APPROVED / COMPLETED`; final reviewed commit `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874` và GitHub Actions run `35706827677` đã pass backend/frontend. D-033–D-041 giữ nguyên `APPROVED`; Slice 5 — Debt + End-of-day là planned next work nhưng chưa bắt đầu.
+2026-09-22 — Slice 4 giữ trạng thái `APPROVED / COMPLETED` tại baseline `5876082a`. Product Owner đã approve scope Slice 5 và D-043–D-050. Technical Breakdown Slice 5 v0.1 đã được soạn ở trạng thái `PROPOSED / PENDING PRODUCT OWNER APPROVAL`; implementation `NOT STARTED`, chưa có production code hoặc migration.

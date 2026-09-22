@@ -54,7 +54,6 @@ Phạm vi đã chốt được ghi tại [MVP Scope v0.1](docs/product/mvp-scope
 
 Các câu hỏi dưới đây không mở rộng functional scope đã APPROVED và chưa phải quyết định thiết kế:
 
-- Cashier bị hạn chế cụ thể thế nào trong từng luồng sửa/hủy/điều chỉnh của MVP?
 - Pilot thực tế có cần nhiều barcode cho một sản phẩm không (SHOULD có điều kiện tại C2)?
 - Chi tiết định dạng template/validation per field sẽ hoàn thiện cho Slice 1 theo required fields và Opening Cost rule đã chốt tại Step 11; không mở lại all-or-nothing policy.
 
@@ -64,10 +63,24 @@ Phạm vi functional scope tham chiếu: [MVP Functional Scope v0.1](docs/capabi
 
 Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, timeout recovery, Completed bất biến, Purchase consistency, Return validation và Reprint. Các câu hỏi sau không mở lại các nguyên tắc đó:
 
-- Có chốt áp dụng giới hạn chỉ Owner được Void transaction Completed trong pilot không? Step 8 cho phép giới hạn này; chưa suy diễn thành quyền Void cho Cashier.
 - Khổ giấy/thiết bị pilot và ngưỡng/cửa sổ dữ liệu C14 vẫn cần làm rõ như các câu hỏi ở trên; ví dụ trong user flows không chốt các lựa chọn này.
 
 Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
+
+### Slice 5 — Debt + End-of-day
+
+D-043–D-050 đã `APPROVED`. Các câu hỏi dưới đây không mở lại scope Debt + End-of-day; đây là những lựa chọn Product Owner chưa quyết định rõ và có ảnh hưởng trực tiếp đến behavior, security hoặc dữ liệu:
+
+1. **Customer debt authorization:** Cashier có được xem customer outstanding debt và ghi nhận Customer Debt Payment, hay cả hai action phải Owner-only?
+2. **Sensitive financial authorization:** Có chốt Supplier Debt Payment, End-of-day và Estimated Gross Profit là Owner-only không? Nếu End-of-day Owner-only, có cần cho Cashier xem một subset không chứa profit/debt tổng hợp không?
+3. **Refund presentation trong Collected:** Headline `Collected` là net actual inflow sau khi trừ actual Return refunds, hay UI phải hiển thị gross collected và refunds như hai headline tách biệt? Technical proposal sẽ luôn trả component breakdown để không mất thông tin.
+4. **Store timezone source:** Store timezone được chọn ở onboarding/settings, lấy từ deployment configuration hay dùng một policy khác? Dùng IANA hay Windows timezone ID, và backfill/default nào áp dụng cho Store hiện hữu? Không hard-code một timezone trước quyết định này.
+5. **Debt payment note/reference:** MVP có cần optional note/reference text cho Customer/Supplier Debt Payment không? Nếu có, cần giới hạn độ dài và note có thuộc immutable audit record/fingerprint không?
+6. **Correction sau unallocated debt payment:** Nếu Customer đã trả nợ ở cấp Customer rồi sau đó Return/Sale Void làm obligation giảm thấp hơn tổng tiền đã thu, hoặc Store đã trả nợ Supplier rồi Purchase Void làm supplier obligation giảm thấp hơn tổng đã trả, behavior nào được phép? D-046 cấm customer credit/supplier advance; D-047 không allocation theo invoice; không được clamp balance, xóa payment hoặc tự suy diễn allocation. Cần chốt một trong các business direction được review (ví dụ reject correction gây balance âm, hoặc bổ sung explicit actual-money refund/recovery flow với scope được approve).
+
+Câu 6 là blocker domain cho việc phối hợp Slice 5 với correction hiện có. Các lựa chọn schema, query, EF mapping, SQL lock resource và index thông thường được giải quyết trong technical design; không phải Product Owner question.
+
+Tài liệu đề xuất: [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `PROPOSED / PENDING PRODUCT OWNER APPROVAL`.
 
 ## Đã giải quyết tại Step 9 — APPROVED
 
@@ -107,12 +120,9 @@ Cost tạm dùng last known average cost, fallback reference purchase cost; nế
 
 Các câu hỏi này là technical/design detail hoặc validation tiếp theo, không mở lại Architecture v0.1:
 
-- Permission matrix chi tiết và việc Void transaction Completed có giới hạn Owner only trong pilot hay không.
 - Định dạng template cụ thể trong phạm vi các rule Step 11 và nhu cầu nhiều barcode cho một sản phẩm trong pilot.
 - Thiết bị/khổ giấy pilot và lựa chọn browser print, local print agent hay printer service.
 - Rule window, threshold và điều kiện dữ liệu đủ tin cậy cho C14; value/willingness-to-pay vẫn cần kiểm chứng.
-- Việc các vai trò Payment dùng chung abstraction hay không; cách materialize outstanding debt nếu cần.
-- SQL schema, API contracts, EF Core mapping, concurrency implementation, idempotency record/status và permission implementation cụ thể.
 - Chi tiết cấu hình Identity/Auth + secure HttpOnly cookie; deployment topology, backup, monitoring, secrets và CI/CD. Authentication direction đã chốt tại Step 11.
 - Request mapping, lifecycle/status và retry/dispatch mechanism nếu HĐĐT integration được bổ sung sau MVP core.
 
