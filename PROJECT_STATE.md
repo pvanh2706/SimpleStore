@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 4 — Return / Void / Recovery: `IMPLEMENTED END-TO-END / TECHNICALLY VERIFIED — PENDING PRODUCT OWNER FINAL APPROVAL`**
+**Slice 4 — Return / Void / Recovery: `APPROVED / COMPLETED`**
 
 ## Primary Persona
 
@@ -28,10 +28,12 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Implementation đã được technical review. CI backend/frontend tại commit `a0ce464384b6a2029d8ecf7be4cdc84f26367d9e` (GitHub Actions run `35627192222`) đã pass: backend build, 39 domain tests, 43 SQL Server integration tests, frontend build, 12 frontend test files và 32 frontend tests. Real Slice 3 Playwright flow đã chạy local; CI không chạy real E2E này.
 - D-033–D-040 — Slice 4 permissions, Return lifecycle/quantity/refund/restock, Sale Void, safe Purchase Void và correction idempotency/concurrency/audit — đã được Product Owner `APPROVED` ngày 2026-09-22.
 - D-041 — Technical Breakdown Slice 4 Approval — đã được Product Owner `APPROVED` ngày 2026-09-22.
+- D-042 — Slice 4 Implementation Approval — đã được Product Owner `APPROVED` ngày 2026-09-22.
 - Technical Breakdown Slice 4 v0.1 giữ nguyên `APPROVED FOR IMPLEMENTATION`; Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được review và chấp thuận.
-- Slice 4 Stage 4A đã implement và technical-verify backend/domain/persistence/API cho immutable Completed Return, obligation-first refund, Restock/NoRestock, Sale Void, safe Purchase Void, correction recovery/idempotency, shared SQL locking, `LedgerSequence`, `ReferencePurchaseCostRevision`, trustworthy `PurchaseLineReversalBasis`, authoritative refund-payment history và migration-upgrade safety.
-- Slice 4 Stage 4B đã implement frontend Return, Return detail, server preview, immutable attempt/recovery, Sale Void, Purchase Void, Owner/Cashier action visibility, net/original transaction projections và void-aware receipt/history.
-- Frontend Slice 4 Vitest và real local Playwright đã technical-verify các flow Return hai lần (Restock/NoRestock), Sale Void và safe Purchase Void qua Vue → ASP.NET Core → SQL Server. Slice 4 tổng thể vẫn chờ Product Owner final review/approval và chưa được đánh dấu `APPROVED / COMPLETED`.
+- Slice 4 Stage 4A đã hoàn tất backend/domain/persistence/API cho immutable Completed Return, obligation-first authoritative refund, Restock/NoRestock, Sale Void, safe Purchase Void, correction recovery/idempotency, shared SQL locking, `LedgerSequence`, `ReferencePurchaseCostRevision`, trustworthy `PurchaseLineReversalBasis`, authoritative refund-payment history và migration-upgrade safety.
+- Slice 4 Stage 4B đã hoàn tất frontend Return/detail, server-authoritative preview, immutable attempt/recovery, Sale Void, Purchase Void, Owner/Cashier action visibility, net/original transaction projections và void-aware receipt/history. Final preview-consistency hardening bind preview vào exact correction intention, invalidates stale preview và khóa input khi preview đang chạy.
+- Product Owner final-approved Slice 4 ngày 2026-09-22. Final reviewed implementation commit `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874`; GitHub Actions run `35706827677` pass backend build, 60 Domain tests, 57 SQL Server integration tests, frontend build, 16 frontend test files và 70 frontend tests. Không còn known blocker cho Slice 4.
+- Real local Playwright đã verify multiple Return (Restock/NoRestock), Sale Void và safe Purchase Void qua Vue → ASP.NET Core → SQL Server. GitHub CI hiện không chạy real E2E, vì vậy local execution không được suy diễn là CI evidence.
 
 ## Tiến độ
 
@@ -143,7 +145,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner final review/approval cho implementation Slice 4 end-to-end.** Slice 5 chưa bắt đầu.
+**Slice 5 — Debt + End-of-day là bước dự kiến tiếp theo.** Slice 5 chưa bắt đầu implementation.
 
 ## Chưa triển khai
 
@@ -153,4 +155,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-22 — Slice 4 đã được implement end-to-end và technical-verify: Stage 4A backend/domain/persistence hoàn tất; Stage 4B frontend Return/Sale Void/Purchase Void, immutable recovery, Vitest và real local Playwright hoàn tất. Slice 4 tổng thể `PENDING PRODUCT OWNER FINAL APPROVAL`; D-033–D-041 giữ nguyên `APPROVED`; không thêm implementation approval decision và không bắt đầu Slice 5.
+2026-09-22 — Product Owner final-approved Slice 4 — Return / Void / Recovery tại D-042. Stage 4A và Stage 4B, bao gồm final Return preview/intention consistency hardening, là `APPROVED / COMPLETED`; final reviewed commit `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874` và GitHub Actions run `35706827677` đã pass backend/frontend. D-033–D-041 giữ nguyên `APPROVED`; Slice 5 — Debt + End-of-day là planned next work nhưng chưa bắt đầu.

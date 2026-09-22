@@ -443,3 +443,21 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Review evidence:** Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được review và chấp thuận.
 - **Tiếp theo:** Bắt đầu implementation Slice 4 — Return / Void / Recovery.
 - **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).
+
+### D-042 — Slice 4 Implementation Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-22
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner final-approve implementation end-to-end `Slice 4 — Return / Void / Recovery` sau review backend/domain/persistence/API, migration upgrade safety, frontend correction/recovery, concurrency/idempotency và verification.
+- **Return:** Completed Return immutable; ReturnLine tham chiếu OriginalSaleLine; hỗ trợ partial/multiple Return với cumulative quantity/financial-value caps và deterministic final residual rounding; Restock/NoRestock explicit; historical SaleLine cost basis; obligation-first refund và actual ReturnRefundPayment là financial source of truth; refund aggregate/payment consistency validation; server preview, history/read projection, immutable OperationId recovery và correction concurrency safety.
+- **Sale Void:** Owner-only với mandatory reason; giữ nguyên original Sale, SaleLines và SalePayments; explicit SaleVoid record; full inventory reversal từ historical Sale evidence; không fake RefundPayment; Return/Void mutually exclusive; void-aware projection/receipt/history và safe recovery.
+- **Purchase Void:** Owner-only với mandatory reason; giữ original Purchase/payments; trustworthy PurchaseLineReversalBasis và exact InventoryMovement evidence; LedgerSequence downstream dependency detection; exact pre-state restore; không retroactive costing replay; legacy data thiếu trustworthy basis bị reject; ReferencePurchaseCostRevision chống ABA và giữ monotonic; multi-line reversal all-or-nothing với typed unsafe rejection.
+- **Idempotency/concurrency:** Shared global BusinessOperation OperationId lock; exact fingerprint retry; cross-operation reuse protection; SaleCorrection/PurchaseCorrection locks; deterministic InventoryBalance locking; không partial correction.
+- **Frontend:** Return screen/detail; server-authoritative preview gắn với exact correction intention; stale preview invalidation và preview-in-flight input locking; Return/Sale Void/Purchase Void retry/recovery; Owner/Cashier visibility; typed errors; void state và historical transaction visibility.
+- **Review evidence:** Technical review bao phủ refund/debt math, partial Return và inventory-value residual rounding, actual refund authority, corrupted refund snapshot detection, migration upgrade từ Slice 3 data, Return/Return và Return/Sale Void races, Sale Void reversal, safe Purchase Void eligibility, downstream movement, ReferencePurchaseCost ABA, cross-operation OperationId, frontend immutable retry và stale Return preview race.
+- **Implementation commits:** `b34c1f6e56fe0fb66a594fdbad32a542a6405aec`, `e0c3ae58bac7b4d73596369b4c2315674d9e1c3a`, `ecc9c709b19e5dd9f265cade77c3cd564f1144ab`, `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874`.
+- **Verification:** Final reviewed commit `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874`; GitHub Actions run `35706827677` pass backend build, 60 Domain tests, 57 SQL Server integration tests và 16 frontend test files. Real Slice 4 Playwright flows cho multiple Return Restock/NoRestock, Sale Void và safe Purchase Void đã chạy local; GitHub CI hiện không chạy real E2E này.
+- **Bảo toàn:** D-033–D-041 giữ nguyên `APPROVED`; không thay đổi Step 1–11 hoặc Slice 0–3; không bắt đầu Slice 5 trong approval commit.
+- **Tiếp theo:** Slice 5 — Debt + End-of-day là planned next slice nhưng chưa bắt đầu.
+- **Tài liệu:** [Technical Breakdown Slice 4 v0.1](docs/architecture/technical-breakdown-slice-4-v0.1.md).

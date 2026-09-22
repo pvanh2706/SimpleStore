@@ -6,10 +6,12 @@
 - **Ngày Product Owner final approval:** 2026-09-22
 - **Approved business/technical decisions:** D-033–D-040
 - **Approval decision:** D-041 — Slice 4 / Technical Breakdown Approval
-- **Implementation status:** Stage 4A backend/domain/persistence và Stage 4B frontend/recovery/E2E `IMPLEMENTED / TECHNICALLY VERIFIED`; Slice 4 overall `PENDING PRODUCT OWNER FINAL APPROVAL`
+- **Implementation status:** `APPROVED / COMPLETED`
+- **Implementation approval:** D-042 — Slice 4 Implementation Approval, Product Owner final approval ngày 2026-09-22
+- **Final reviewed implementation commit:** `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874`
 - **Review:** Purchase Void evidence hardening tại commit `305ffcc1186f7ddb24c5239b16d7b5323cb667bf` đã được Product Owner review và chấp thuận.
 - **Source of truth hiện hành:** Tài liệu này là implementation source of truth cho Slice 4, cùng Architecture v0.1, Domain Model v0.1, Development Plan v0.1 và các decision `APPROVED` trong `DECISIONS.md`.
-- **Ranh giới:** Stage 4A triển khai backend/domain/persistence/API và SQL Server tests; Stage 4B triển khai Vue correction UI/recovery/E2E. Cả hai stage đã được technical-verify; Slice 4 chưa được Product Owner final-approve/completed và không thay đổi Step 1–11 hoặc Slice 0–3 đã approved.
+- **Ranh giới:** Stage 4A triển khai backend/domain/persistence/API và SQL Server tests; Stage 4B triển khai Vue correction UI/recovery/E2E. Cả hai stage đã hoàn tất và được Product Owner final-approve tại D-042; không thay đổi Step 1–11 hoặc Slice 0–3 đã approved.
 
 ## Outcome
 
@@ -849,9 +851,11 @@ Slice 4 chỉ được đề nghị implementation approval khi:
 - D-016 — Store tenancy foundation.
 - D-023–D-032 — approved Slice 3 model/implementation foundation.
 - D-033–D-040 — approved Slice 4 business/technical decisions.
+- D-041 — approved Technical Breakdown Slice 4.
+- D-042 — approved Slice 4 end-to-end implementation.
 - [Architecture v0.1](architecture-v0.1.md)
 - [Domain Model v0.1](domain-model-v0.1.md)
 - [Development Plan v0.1](development-plan-v0.1.md)
 - [Technical Breakdown Slice 3 v0.1](technical-breakdown-slice-3-v0.1.md)
 
-Slice 0–3 giữ nguyên trạng thái. Product Owner final-approved Technical Breakdown Slice 4 v0.1 ngày 2026-09-22; tài liệu này là `APPROVED FOR IMPLEMENTATION` và implementation source of truth cho Slice 4. Implementation Slice 4 hiện đã hoàn tất end-to-end và technical-verified, nhưng vẫn `PENDING PRODUCT OWNER FINAL APPROVAL`.
+Slice 0–3 giữ nguyên trạng thái. Product Owner final-approved Technical Breakdown Slice 4 v0.1 ngày 2026-09-22; tài liệu này giữ trạng thái technical-design `APPROVED FOR IMPLEMENTATION` và là implementation source of truth cho Slice 4. Product Owner final-approved implementation end-to-end tại D-042 ngày 2026-09-22; Slice 4 là `APPROVED / COMPLETED`. Final reviewed implementation commit: `5ab9f5f1456b4dfc6b3baf2b916ba8ba12913874`.
