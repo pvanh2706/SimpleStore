@@ -600,3 +600,18 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn:** D-043–D-056 giữ nguyên `APPROVED`; approval này không ghi nhận production implementation hoặc migration đã hoàn thành.
 - **Implementation sequencing:** Stage 5A — Debt backend/domain/persistence/tests được phép bắt đầu sau approval commit này. Stage 5B giữ planned và chỉ bắt đầu theo sequencing/review process đã approve.
 - **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — `APPROVED FOR IMPLEMENTATION`.
+
+### D-058 — Slice 5 Stage 5A Implementation Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner final-approve implementation `Slice 5 — Stage 5A: Debt backend/domain/persistence/tests` tại baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`.
+- **Approved implementation:** Derived Customer/Supplier outstanding debt; shared immutable `DebtPayment`; Customer/Supplier Debt Payment; no overpayment, customer credit balance hoặc supplier advance; Store-scoped debt APIs; Owner/Cashier Customer debt authorization; Owner-only Supplier debt authorization; BusinessOperation idempotency/recovery và same-OperationId exact retry; party-level SQL Server application locks; concurrent-overpayment prevention; stale expected-balance protection; CompleteSale/CompletePurchase participation trong party debt serialization; D-056 Customer Return aggregate-debt/refund integration; D-056 Sale/Purchase Void negative-debt protection.
+- **Persistence/timezone:** Additive Stage 5A migration; `Store.TimeZoneId` persistence foundation; canonical IANA timezone; existing Store backfill/default `Asia/Ho_Chi_Minh`; migration-upgrade verification.
+- **Current/historical debt invariant:** Current/authoritative debt dùng toàn bộ committed history và không phụ thuộc clock cutoff; mutation decisions gồm DebtPayment, Return, Sale Void và Purchase Void phải dùng current semantic dưới party lock. Historical/as-of debt giữ strict `event timestamp < cutoff` để bảo toàn half-open business-date reporting cho Stage 5B. Hai semantic không được collapse.
+- **Review hardening:** Product Owner review chấp thuận commit `49098e94c4f44acf3762f3e33ce6be3dfc00758f`, gồm deterministic equal-timestamp regression cho current Customer/Supplier debt, Customer Return, Sale Void và Purchase Void; blocker current-vs-historical debt cutoff đã được fix.
+- **Verification:** GitHub Actions run #28 / `35805222057` — `SUCCESS` tại approved head `49098e94c4f44acf3762f3e33ce6be3dfc00758f`; backend restore, Release build và full `dotnet test` pass; frontend build và tests pass. Không ghi nhận manual E2E evidence cho Stage 5A approval này.
+- **Bảo toàn/phạm vi:** D-043–D-057 giữ nguyên `APPROVED`. Approval chỉ áp dụng cho Stage 5A; toàn bộ Slice 5 chưa completed. Stage 5B giữ `NOT STARTED / PLANNED`. Không mở rộng sang General Ledger, accounting close/reopen, full cashbook, debt aging, invoice-level settlement allocation, customer credit balance, supplier advance, financial statements, operating-expense accounting, net profit, BI dashboard hoặc AI.
+- **Tiếp theo:** Stage 5B — End-of-day + frontend + E2E/recovery theo sequencing và phạm vi đã approve; D-058 không bắt đầu Stage 5B.
+- **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — Stage 5A `APPROVED / COMPLETED`, Stage 5B `NOT STARTED / PLANNED`.

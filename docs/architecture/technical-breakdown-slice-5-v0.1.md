@@ -4,7 +4,7 @@
 
 `APPROVED FOR IMPLEMENTATION`
 
-Product Owner final-approved tài liệu ngày 2026-09-22 tại D-057. Implementation phải tuân thủ D-043–D-057. Stage 5A được phép bắt đầu sau approval commit ghi nhận D-057; Stage 5B giữ planned và chỉ bắt đầu theo implementation sequencing/review process của project.
+Product Owner final-approved tài liệu ngày 2026-09-22 tại D-057. Implementation phải tuân thủ D-043–D-058. Stage 5A được Product Owner `APPROVED / COMPLETED` ngày 2026-09-23 tại D-058, approved baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`. Stage 5B giữ `NOT STARTED / PLANNED` và chỉ bắt đầu theo implementation sequencing/review process của project; toàn bộ Slice 5 chưa completed.
 
 ## Mục tiêu và quy trình
 
@@ -197,6 +197,11 @@ Nếu profiling sau này chứng minh cần materialized balance:
 - mismatch không được tự động ghi đè history.
 
 Việc materialize là future optimization, không phải acceptance criterion Slice 5.
+
+Stage 5A implementation review tại D-058 chốt rõ hai query semantic không được collapse:
+
+- **Current/authoritative debt:** đọc toàn bộ committed transaction/payment/correction history, không dùng `TimeProvider.GetUtcNow()` hoặc clock instant khác làm artificial upper bound. DebtPayment, Return, Sale Void và Purchase Void dùng semantic này dưới party-level serialization.
+- **Historical/as-of debt:** giữ strict `event timestamp < cutoff`. Boundary event đúng tại cutoff thuộc interval sau; semantic này chủ ý bảo toàn half-open `[startUtc, endUtc)` reporting cho Stage 5B.
 
 ## 4. Domain flows
 
@@ -982,6 +987,10 @@ Không dùng EF InMemory để chứng minh locking/concurrency.
 
 ### Stage 5A — Debt backend/domain/persistence/tests
 
+**Implementation status:** `APPROVED / COMPLETED` tại D-058.
+
+**Approved baseline:** `49098e94c4f44acf3762f3e33ce6be3dfc00758f`.
+
 - Customer debt derived query.
 - Supplier debt derived query.
 - Shared DebtPayment domain model và persistence.
@@ -996,6 +1005,8 @@ Stage 5A không tự mở rộng sang toàn bộ frontend hoặc End-of-day UI �
 
 ### Stage 5B — End-of-day + frontend + E2E/recovery
 
+**Implementation status:** `NOT STARTED / PLANNED`.
+
 - Store configurable IANA timezone theo D-054.
 - EOD aggregation/query và historical COGS reliability.
 - Customer/Supplier debt UI.
@@ -1003,7 +1014,7 @@ Stage 5A không tự mở rộng sang toàn bộ frontend hoặc End-of-day UI �
 - Immutable retry/recovery và stale-balance UX.
 - Frontend tests, integration hardening và real local E2E.
 
-Stage 5A/5B sequencing được approve tại D-057. Stage 5A được phép bắt đầu; Stage 5B vẫn planned, chưa được ghi nhận đã bắt đầu hoặc hoàn thành.
+Stage 5A/5B sequencing được approve tại D-057. Stage 5A implementation được final-approve tại D-058; Stage 5B vẫn planned, chưa được ghi nhận đã bắt đầu hoặc hoàn thành. Approval Stage 5A không đánh dấu toàn bộ Slice 5 completed.
 
 ## 15. Resolved Product Owner questions và approval gate
 
@@ -1015,7 +1026,7 @@ Sáu Product Owner questions chặn ban đầu đã được giải quyết đ�
 - Debt Payment Note/no Reference: D-055;
 - correction sau unallocated debt payment: D-056.
 
-Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Product Owner đã cấp Technical Breakdown approval tại D-057; approval này cho phép bắt đầu Stage 5A nhưng không đồng nghĩa Slice 5 hoặc bất kỳ stage nào đã completed.
+Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Product Owner đã cấp Technical Breakdown approval tại D-057 và Stage 5A Implementation Approval tại D-058. Stage 5A là `APPROVED / COMPLETED`; Stage 5B vẫn `NOT STARTED / PLANNED`, vì vậy toàn bộ Slice 5 chưa completed.
 
 ## 16. Definition of Done
 
@@ -1041,5 +1052,6 @@ Không còn Product Owner Open Question nào được biết đang chặn Slice 
 - D-043–D-050 — approved Slice 5 product scope/semantics.
 - D-051–D-056 — approved authorization, net Collected, IANA timezone, immutable Note và correction/aggregate-debt behavior.
 - D-057 — Technical Breakdown Slice 5 Approval và implementation sequencing.
+- D-058 — Slice 5 Stage 5A Implementation Approval tại baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`.
 
-Tài liệu này là `APPROVED FOR IMPLEMENTATION` theo D-057. Approval không phải bằng chứng production implementation, migration hoặc Stage 5A/5B đã hoàn thành.
+Tài liệu này là `APPROVED FOR IMPLEMENTATION` theo D-057. D-058 ghi nhận Stage 5A `APPROVED / COMPLETED`; Stage 5B vẫn `NOT STARTED / PLANNED` và toàn bộ Slice 5 chưa completed.

@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 5 — Stage 5A Debt backend/domain/persistence/tests: `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 5B: `NOT STARTED / PLANNED`**
+**Slice 5 — Stage 5A Debt backend/domain/persistence/tests: `APPROVED / COMPLETED`; Stage 5B: `NOT STARTED / PLANNED`**
 
 Slice 4 — Return / Void / Recovery giữ trạng thái `APPROVED / COMPLETED`; baseline trước Slice 5 là commit `5876082a`.
 
@@ -42,9 +42,12 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-051–D-056 — Customer debt Owner/Cashier access, Owner-only Supplier debt/EOD/profit, Net Collected headline, configurable IANA Store timezone, immutable optional Debt Payment Note và correction không tạo aggregate debt âm — là `APPROVED` ngày 2026-09-22.
 - Toàn bộ sáu Product Owner Open Questions chặn ban đầu của Slice 5 đã được giải quyết; không còn known Product Owner blocker trong `OPEN_QUESTIONS.md` cho Slice 5.
 - D-057 — Technical Breakdown Slice 5 Approval — là `APPROVED` ngày 2026-09-22; D-043–D-056 giữ nguyên `APPROVED`.
+- D-058 — Slice 5 Stage 5A Implementation Approval — là `APPROVED` ngày 2026-09-23 tại reviewed baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`.
 - Technical Breakdown Slice 5 v0.1 là `APPROVED FOR IMPLEMENTATION`.
-- Slice 5 Stage 5A là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`: derived Customer/Supplier debt, shared immutable DebtPayment, debt read/payment APIs, BusinessOperation recovery, party-level SQL serialization, D-056 Return/Void integration và Store IANA timezone persistence foundation đã có production code, additive migration và automated domain/SQL Server tests.
-- Stage 5B vẫn `NOT STARTED / PLANNED`; chưa implement End-of-day aggregation/UI, debt management screens, dashboard/charts hoặc full Stage 5B E2E. Toàn bộ Slice 5 chưa được đánh dấu completed và chưa có Product Owner implementation approval.
+- Slice 5 Stage 5A là `APPROVED / COMPLETED`: derived Customer/Supplier debt, shared immutable DebtPayment, debt read/payment APIs, BusinessOperation recovery, party-level SQL serialization, D-056 Return/Void integration, Store IANA timezone persistence foundation, additive migration và automated domain/SQL Server tests đã được Product Owner final-approve tại D-058.
+- Stage 5A giữ invariant đã review: current/authoritative debt đọc toàn bộ committed history, không dùng clock cutoff; historical/as-of debt giữ strict `event timestamp < cutoff` cho future half-open business-date reporting.
+- Approved head `49098e94c4f44acf3762f3e33ce6be3dfc00758f`; GitHub Actions run #28 / `35805222057` `SUCCESS` với backend restore, Release build, full `dotnet test`, frontend build và frontend tests. Không có manual Stage 5A E2E evidence được ghi nhận.
+- Stage 5B vẫn `NOT STARTED / PLANNED`; chưa implement End-of-day aggregation/UI, debt management screens, dashboard/charts hoặc full Stage 5B E2E/recovery. Toàn bộ Slice 5 chưa được đánh dấu completed.
 
 ## Tiến độ
 
@@ -156,14 +159,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review Stage 5A.** Stage 5A hiện `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`. Stage 5B giữ `NOT STARTED / PLANNED` và chỉ bắt đầu theo sequencing/review process đã approve; không suy diễn việc Stage 5A implemented thành approval hoặc hoàn thành toàn bộ Slice 5.
+**Stage 5B — End-of-day + frontend + E2E/recovery.** Stage 5B hiện `NOT STARTED / PLANNED` và là bước tiếp theo theo sequencing đã approve. Planned scope gồm End-of-day aggregation/query theo Store-local business date và timezone boundaries; Revenue; Gross Collected; Customer Debt Collected; Customer Refunds; Net Collected headline; Customer/Supplier ending outstanding debt; Supplier payments; Estimated Gross Profit từ historical SaleLine cost snapshot; Customer/Supplier debt frontend; End-of-day frontend; recovery UX; và Stage 5B integration/frontend/E2E coverage. Việc Stage 5A completed không đồng nghĩa toàn bộ Slice 5 completed.
 
 ## Chưa triển khai
 
-- Stage 5B: End-of-day aggregation/reporting, Customer/Supplier debt frontend hoàn chỉnh, EOD UI/dashboard/charts, Estimated Gross Profit presentation và full Stage 5B E2E/recovery UX.
+- Stage 5B: End-of-day aggregation/reporting theo Store-local business date/timezone boundaries; Revenue/Gross Collected/Customer Debt Collected/Customer Refunds/Net Collected; Customer/Supplier ending debt; Supplier payments; historical-cost Estimated Gross Profit; Customer/Supplier debt frontend; EOD frontend; recovery UX; và Stage 5B integration/frontend/E2E coverage.
+- Ngoài phạm vi: General Ledger, accounting close/reopen, full cashbook, debt aging, invoice-level settlement allocation, customer credit balance, supplier advance, financial statements, operating-expense accounting, net profit, BI dashboard và AI.
 - C14, HĐĐT và các capability ngoài Slice 1.
 - Real Slice 1, Slice 2, Slice 3 và Slice 4 Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Stage 5A đã harden correctness boundary giữa current debt (toàn bộ committed history, không clock cutoff) và historical debt (`event timestamp < cutoff`), gồm deterministic equal-timestamp SQL Server regression cho Return/Sale Void/Purchase Void. Stage 5A vẫn `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 5B vẫn `NOT STARTED / PLANNED`; full Slice 5 chưa completed. Slice 4 giữ `APPROVED / COMPLETED`.
+2026-09-23 — Product Owner final-approved Stage 5A tại D-058, reviewed baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`; GitHub Actions run #28 / `35805222057` `SUCCESS`. Stage 5A là `APPROVED / COMPLETED`; current-vs-historical debt invariant và equal-timestamp hardening được chấp thuận. Stage 5B vẫn `NOT STARTED / PLANNED`; full Slice 5 chưa completed. Slice 4 giữ `APPROVED / COMPLETED`.
