@@ -68,6 +68,7 @@ describe('PurchaseDetailView correction state', () => {
   })
 
   it.each([
+    ['supplier-debt-would-become-negative', 'Supplier refund/recovery chưa được hỗ trợ trong Slice 5'],
     ['purchase-void-reversal-basis-unavailable', 'Phiếu nhập cũ này không có đủ bằng chứng'],
     ['purchase-void-downstream-inventory-dependency', 'Tồn kho đã thay đổi sau phiếu nhập này'],
     ['purchase-void-reference-cost-dependency', 'Giá nhập tham chiếu đã thay đổi sau phiếu nhập'],
@@ -81,5 +82,8 @@ describe('PurchaseDetailView correction state', () => {
     await wrapper.get('[aria-label="Xác nhận hủy phiếu nhập"] button').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain(message)
+    if (code === 'supplier-debt-would-become-negative') {
+      expect(wrapper.text()).toContain('hệ thống không tự tạo Supplier Advance/ứng trước ngầm')
+    }
   })
 })

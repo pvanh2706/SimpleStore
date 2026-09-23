@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiRequest } from '../api/client'
+import { ApiError, apiRequest } from '../api/client'
 import { useAuthStore } from '../stores/auth'
 import SaleDetailView from './SaleDetailView.vue'
 import type { ReturnContext, Sale } from '../api/types'
@@ -78,6 +78,23 @@ describe('SaleDetailView', () => {
     expect(wrapper.text()).toContain('Không thể hủy trực tiếp')
     expect(wrapper.findAll('button').some(button => button.text() === 'Hủy giao dịch')).toBe(false)
     expect(wrapper.text()).toContain('return-1')
+  })
+
+  it('guides customer debt conflicts to Return/refund by stable problem code', async () => {
+    vi.stubGlobal('crypto', { randomUUID: () => 'void-operation' })
+    const wrapper = mountView('Owner')
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Hủy giao dịch')!.trigger('click')
+    await wrapper.get('[aria-label="Lý do hủy"]').setValue('Sai đơn')
+    vi.mocked(apiRequest).mockRejectedValueOnce(new ApiError(409, {
+      code: 'customer-debt-would-become-negative',
+      title: 'Server wording must not be parsed',
+    }))
+    await wrapper.get('[aria-label="Xác nhận hủy giao dịch"] button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Hãy dùng luồng Trả hàng/hoàn tiền phù hợp thay vì Hủy giao dịch')
+    expect(wrapper.text()).not.toContain('Server wording must not be parsed')
   })
 
   it('shows void state while retaining original lines, payments and receipt history', async () => {

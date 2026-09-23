@@ -23,9 +23,13 @@ describe('DebtManagementView', () => {
   it('preserves and retries the exact immutable attempt after an ambiguous result', async () => {
     const payment = { id: 'payment-1', partyId: 'customer-1', direction: 'MoneyIn', purpose: 'CustomerDebtCollection', amount: 30, method: 'Transfer', note: 'note', occurredAt: '', performedByUserId: '', outstandingBefore: 100, outstandingAfter: 70, wasAlreadyRecorded: true }
     let paymentCalls = 0
+    let debtLoads = 0
     request.mockImplementation(async (path, init) => {
       const value = String(path)
-      if (value.includes('/debts?')) return page(paymentCalls > 2 ? 70 : 100) as never
+      if (value.includes('/debts?')) {
+        debtLoads += 1
+        return { ...page(paymentCalls > 2 ? 70 : 100), totalCount: 21, totalPages: 2 } as never
+      }
       if (value.includes('/api/operations/')) return null as never
       if (init?.method === 'POST') {
         paymentCalls += 1
@@ -47,6 +51,19 @@ describe('DebtManagementView', () => {
     expect(exposed.attempt).toMatchObject({ operationId: 'operation-1', amount: 30, method: 'Transfer', note: 'note' })
     expect(wrapper.get('input[type="number"]').attributes('disabled')).toBeDefined()
 
+    const immutableAttempt = JSON.parse(JSON.stringify(exposed.attempt))
+    expect(wrapper.get('input[aria-label="Tìm công nợ"]').attributes('disabled')).toBeDefined()
+    const searchForm = wrapper.findAll('form')[0]
+    const nextButton = wrapper.findAll('button').find(button => button.text() === 'Sau')!
+    expect(nextButton.attributes('disabled')).toBeDefined()
+    await searchForm.trigger('submit')
+    await nextButton.trigger('click')
+    await flushPromises()
+    expect(debtLoads).toBe(1)
+    expect(wrapper.text()).toContain('Trang 1 / 2')
+    expect(wrapper.get('form.card').text()).toContain('An')
+    expect(exposed.attempt).toEqual(immutableAttempt)
+
     await wrapper.get('form.card').trigger('submit')
     await flushPromises()
     const postBodies = request.mock.calls
@@ -56,6 +73,7 @@ describe('DebtManagementView', () => {
     expect(postBodies.every(body => body.operationId === 'operation-1'
       && body.amount === 30 && body.method === 'Transfer' && body.note === 'note')).toBe(true)
     expect(wrapper.text()).toContain('Công nợ còn lại: 70 ₫')
+    expect(wrapper.text()).toContain('Thu toàn bộ')
   })
 
   it('reloads stale debt and never automatically resubmits it', async () => {

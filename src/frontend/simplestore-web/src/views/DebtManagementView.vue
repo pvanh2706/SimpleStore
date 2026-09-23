@@ -53,6 +53,18 @@ async function load() {
   }
 }
 
+async function searchDebts() {
+  if (attempt.value) return
+  page.value = 1
+  await load()
+}
+
+async function changePage(nextPage: number) {
+  if (attempt.value) return
+  page.value = nextPage
+  await load()
+}
+
 function choose(item: DebtBalance) {
   if (attempt.value) return
   selected.value = item
@@ -160,9 +172,9 @@ defineExpose({ attempt })
 <template>
   <section>
     <h1 class="text-3xl font-black">{{ title }}</h1>
-    <form class="mt-5 flex gap-2" @submit.prevent="page = 1; load()">
-      <input v-model="search" class="input max-w-md" placeholder="Tìm theo tên hoặc số điện thoại" aria-label="Tìm công nợ" />
-      <button class="btn-secondary" type="submit">Tìm</button>
+    <form class="mt-5 flex gap-2" @submit.prevent="searchDebts">
+      <input v-model="search" class="input max-w-md" placeholder="Tìm theo tên hoặc số điện thoại" aria-label="Tìm công nợ" :disabled="busy || !!attempt" />
+      <button class="btn-secondary" type="submit" :disabled="busy || !!attempt">Tìm</button>
     </form>
     <p v-if="message" class="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900" role="status">{{ message }}</p>
     <div v-if="success" class="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900" aria-label="Chi tiết thanh toán công nợ">{{ money(success.amount) }} ₫ · {{ success.method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản' }} · {{ new Date(success.occurredAt).toLocaleString('vi-VN') }} · còn lại {{ money(success.outstandingAfter) }} ₫</div>
@@ -173,13 +185,13 @@ defineExpose({ attempt })
           <tbody><tr v-for="item in list?.items" :key="item.partyId" class="border-b last:border-0"><td class="p-4 font-semibold">{{ item.partyName }}</td><td>{{ item.phone || '—' }}</td><td class="font-bold">{{ money(item.outstandingAmount) }} ₫</td><td><button class="btn-secondary" type="button" :disabled="!!attempt" @click="choose(item)">{{ action }}</button></td></tr></tbody>
         </table>
         <p v-if="list && list.items.length === 0" class="p-5 text-slate-500">Không có khoản công nợ nào.</p>
-        <div v-if="list && list.totalPages > 1" class="flex items-center justify-between p-4"><button class="btn-secondary" type="button" :disabled="page <= 1" @click="page -= 1; load()">Trước</button><span>Trang {{ page }} / {{ list.totalPages }}</span><button class="btn-secondary" type="button" :disabled="page >= list.totalPages" @click="page += 1; load()">Sau</button></div>
+        <div v-if="list && list.totalPages > 1" class="flex items-center justify-between p-4"><button class="btn-secondary" type="button" :disabled="busy || !!attempt || page <= 1" @click="changePage(page - 1)">Trước</button><span>Trang {{ page }} / {{ list.totalPages }}</span><button class="btn-secondary" type="button" :disabled="busy || !!attempt || page >= list.totalPages" @click="changePage(page + 1)">Sau</button></div>
         <p v-if="list" class="px-4 pb-4 text-xs text-slate-500">Cập nhật lúc {{ new Date(list.asOf).toLocaleString('vi-VN') }}</p>
       </div>
       <form v-if="selected" class="card h-fit grid gap-4" @submit.prevent="submit">
         <div><h2 class="text-xl font-black">{{ selected.partyName }}</h2><p class="text-sm text-slate-500">{{ selected.phone || 'Không có số điện thoại' }} · Công nợ hiện tại: {{ money(selected.outstandingAmount) }} ₫ · as-of {{ new Date(selected.asOf).toLocaleString('vi-VN') }}</p></div>
         <label class="field"><span>Số tiền</span><input v-model.number="amount" class="input" type="number" min="0.01" step="0.01" :max="selected.outstandingAmount" :disabled="busy || !!attempt" /></label>
-        <button class="btn-secondary" type="button" :disabled="busy || !!attempt" @click="amount = selected.outstandingAmount">Thanh toán toàn bộ</button>
+        <button class="btn-secondary" type="button" :disabled="busy || !!attempt" @click="amount = selected.outstandingAmount">{{ kind === 'customer' ? 'Thu toàn bộ' : 'Trả toàn bộ' }}</button>
         <label class="field"><span>Phương thức</span><select v-model="method" class="input" :disabled="busy || !!attempt"><option value="Cash">Tiền mặt</option><option value="Transfer">Chuyển khoản</option></select></label>
         <label class="field"><span>Ghi chú (tối đa 250 ký tự)</span><textarea v-model="note" class="input min-h-20" maxlength="250" :disabled="busy || !!attempt" /></label>
         <p v-if="attempt" class="text-sm font-semibold text-amber-800">Dữ liệu đang được giữ nguyên cho cùng một thao tác.</p>

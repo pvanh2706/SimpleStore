@@ -9,6 +9,19 @@ const loading = ref(false)
 const message = ref('')
 const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
 
+function storeLocalDateTime(instant: string, timeZone: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(instant))
+}
+
 function localDate(timeZone: string) {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
@@ -46,7 +59,7 @@ onMounted(async () => {
     </div>
     <p v-if="message" class="error mt-4" role="alert">{{ message }}</p>
     <template v-if="report">
-      <p class="mt-5 text-sm text-slate-600">Múi giờ <strong>{{ report.timeZoneId }}</strong> · {{ new Date(report.startUtc).toLocaleString('vi-VN') }} đến trước {{ new Date(report.endUtc).toLocaleString('vi-VN') }}</p>
+      <p class="mt-5 text-sm text-slate-600">Múi giờ <strong>{{ report.timeZoneId }}</strong> · {{ storeLocalDateTime(report.startUtc, report.timeZoneId) }} đến trước {{ storeLocalDateTime(report.endUtc, report.timeZoneId) }}</p>
       <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <section class="card"><h2 class="font-bold text-slate-500">Doanh thu</h2><p class="mt-2 text-3xl font-black">{{ money(report.salesRevenue) }} ₫</p><p class="mt-3 text-sm">Theo ngày phát sinh bán, trả hàng và hủy giao dịch.</p></section>
         <section class="card"><h2 class="font-bold text-slate-500">Tiền thu thuần</h2><p class="mt-2 text-3xl font-black">{{ money(report.collected.netAmount) }} ₫</p><p class="mt-3 text-sm">Thanh toán bán hàng + thu nợ − hoàn tiền.</p></section>

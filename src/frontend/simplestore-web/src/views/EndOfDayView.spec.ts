@@ -30,4 +30,28 @@ describe('EndOfDayView', () => {
     expect(wrapper.text()).toContain('Công nợ cuối ngày')
     expect(wrapper.text()).toContain('Độ tin cậy: Reliable')
   })
+
+  it('formats business-date boundaries in the Store timezone instead of the browser timezone', async () => {
+    request.mockImplementation(async path => {
+      if (path === '/api/store/current') return { timeZoneId: 'America/New_York' } as never
+      return {
+        businessDate: '2026-03-08', timeZoneId: 'America/New_York',
+        startUtc: '2026-03-08T05:00:00Z', endUtc: '2026-03-09T04:00:00Z',
+        salesRevenue: 0,
+        collected: { salePayments: 0, customerDebtPayments: 0, customerRefunds: 0, netAmount: 0 },
+        customerOutstandingDebtAtEnd: 0,
+        supplierPayments: { purchasePayments: 0, supplierDebtPayments: 0, totalAmount: 0 },
+        supplierOutstandingDebtAtEnd: 0,
+        estimatedGrossProfit: { netSalesRevenue: 0, historicalCogs: 0, amount: 0, costReliability: 'Reliable' },
+      } as never
+    })
+
+    const wrapper = mount(EndOfDayView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('America/New_York')
+    expect(wrapper.text()).toContain('00:00:00 08/03/2026')
+    expect(wrapper.text()).toContain('00:00:00 09/03/2026')
+    expect(wrapper.text()).not.toContain('05:00:00 08/03/2026')
+  })
 })
