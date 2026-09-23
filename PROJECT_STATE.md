@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 6 — Understand & Act: Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 6B `NOT STARTED`**
+**Slice 6 — Understand & Act: Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `NOT STARTED`**
 
 Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -58,8 +58,9 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-073 — Technical Breakdown Slice 6 Approval — là `APPROVED` ngày 2026-09-23 tại reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`; Technical Breakdown và sequencing Stage 6A/6B chuyển thành `APPROVED FOR IMPLEMENTATION`.
 - GitHub Actions run #36 / `35881101954` tại approved baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280` là `SUCCESS`: backend restore, Release build và `dotnet test` pass; frontend `pnpm install`, build và tests pass. Không ghi nhận real Slice 6 E2E vì implementation chưa bắt đầu.
 - S6-Q1–S6-Q4 đã được resolve tại D-069–D-072 và chuyển sang resolved trong `OPEN_QUESTIONS.md`; không còn known Product Owner blocker cho Slice 6 technical semantics.
-- Stage 6A là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`: shared EOD/Today financial projection, backend-authoritative Store-local Today, Owner-only summary/explanations, D-069 new-debt-created, D-070 SaleCount, backend-selected typed source drill-down, `/today` UI và role-aware default landing đã được implement. Không có schema/migration mới.
-- Stage 6A final reviewed hardening head `14703c54882f10eceaee69fa41f09e2315eab8ac`: backend restore và Release build pass với 0 warnings; Domain tests 78/78; SQL Server integration tests 82/82; frontend frozen install/build pass và tests 93/93. GitHub Actions run #39 / `35891666016` tại head này là `SUCCESS`; evidence này không phải Product Owner approval.
+- D-074 — Slice 6 Stage 6A Implementation Approval — là `APPROVED` ngày 2026-09-23; Stage 6A chuyển thành `APPROVED / COMPLETED`. Không còn known Stage 6A blocker.
+- Stage 6A approved scope gồm shared EOD/Today financial projection, backend-authoritative Store-local Today, Owner-only summary/explanations, D-069 new-debt-created, D-070 SaleCount, backend-selected typed source drill-down, `/today` UI và role-aware default landing. Không có schema/migration mới.
+- Reviewed implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac` pass backend restore/Release build với 0 warnings, Domain 78/78, SQL Server integration 82/82, frontend frozen install/build và tests 93/93; GitHub Actions run #39 / `35891666016` là `SUCCESS`. Final docs/state head trước approval `8b11e1f7706bd25e51aca6aa21c1fd8af3baa60c` có run #40 / `35893244524` `SUCCESS`.
 - Stage 6B là `NOT STARTED`: chưa có C14 calculation/attention API, experiment events/telemetry, Product → Purchase preselection, C14 migration hoặc Stage 6B E2E.
 
 ## Tiến độ
@@ -172,7 +173,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review Stage 6A implementation.** Không tự approve Stage 6A và không bắt đầu Stage 6B trong handoff này.
+**Bắt đầu Stage 6B — C14/action/measurement/E2E theo D-073.** Stage 6B hiện vẫn `NOT STARTED`; D-074 chỉ approve Stage 6A.
 
 ## Chưa triển khai
 
@@ -182,4 +183,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-24 — Stage 6A final reviewed hardening head `14703c54882f10eceaee69fa41f09e2315eab8ac` giữ `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; GitHub Actions run #39 / `35891666016` là `SUCCESS` với Domain 78/78, SQL Server integration 82/82, frontend 93/93 và cả hai build pass. `/api/today` flat Stage 6A contract và typed source drill-down đã được đồng bộ trong tài liệu; không có migration/schema change; Stage 6B vẫn `NOT STARTED`; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.
+2026-09-24 — Product Owner approval D-074 chuyển Stage 6A thành `APPROVED / COMPLETED` sau review implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac` và docs/state head `8b11e1f7706bd25e51aca6aa21c1fd8af3baa60c`; GitHub Actions run #39 / `35891666016` và run #40 / `35893244524` đều `SUCCESS`. Không có migration/schema change; Stage 6B vẫn `NOT STARTED` và là bước tiếp theo theo D-073; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.

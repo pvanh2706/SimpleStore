@@ -4,7 +4,7 @@
 
 `APPROVED FOR IMPLEMENTATION`
 
-Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Tại baseline đó, approval authorize sequencing Stage 6A/6B nhưng chưa xác nhận implementation. Trạng thái hiện tại: Stage 6A `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 6B `NOT STARTED`.
+Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Tại baseline đó, approval authorize sequencing Stage 6A/6B nhưng chưa xác nhận implementation. Trạng thái hiện tại: Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `NOT STARTED`.
 
 Baseline đã inspect: `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`, tại đó `Slice 5 — Debt + End-of-day` là `APPROVED / COMPLETED` theo D-060.
 
@@ -329,7 +329,7 @@ Recording failure must not block Today read or Purchase business flow. Frontend 
 
 ## 10. API contract
 
-All endpoints below are Owner-only and Store-scoped. Stage 6A endpoints tại 10.1–10.2 là implemented contracts đang chờ Product Owner review; Stage 6B endpoints tại 10.3–10.5 vẫn là approved design, chưa được implement.
+All endpoints below are Owner-only and Store-scoped. Stage 6A endpoints tại 10.1–10.2 là implemented contracts đã được Product Owner approve tại D-074; Stage 6B endpoints tại 10.3–10.5 vẫn là approved design, chưa được implement.
 
 ### 10.1 `GET /api/today`
 
@@ -608,7 +608,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 
 ### Stage 6A — Today/C12/C13 reporting foundation
 
-`IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`:
+`APPROVED / COMPLETED — D-074`:
 
 - shared daily financial projection reused by EOD/Today;
 - current Store-local date/window service orchestration;
@@ -617,7 +617,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - D-069 new-debt-created và D-070 SaleCount projections/explainability;
 - domain/SQL integration/frontend tests.
 
-Implementation handoff: EOD và Today dùng chung `DailyFinancialProjection`; Today business date được resolve từ injected `TimeProvider` + canonical Store IANA timezone; `GET /api/today` và bounded `GET /api/today/explanations/{metric}` là Owner-only; typed optional source navigation do backend chọn và frontend map sang named Sale/Return/Purchase detail routes; frontend `/today` không có date picker/C14 placeholder. Local verification pass Domain 78/78, SQL Server integration 82/82, frontend 93/93 và backend/frontend Release build; không có schema/migration change. Trạng thái này không phải Product Owner approval.
+Approved implementation: EOD và Today dùng chung `DailyFinancialProjection`; Today business date được resolve từ injected `TimeProvider` + canonical Store IANA timezone; `GET /api/today` và bounded `GET /api/today/explanations/{metric}` là Owner-only; typed optional source navigation do backend chọn và frontend map sang named Sale/Return/Purchase detail routes; frontend `/today` không có date picker/C14 placeholder. Reviewed implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac` pass Domain 78/78, SQL Server integration 82/82, frontend 93/93 và backend/frontend Release build; GitHub Actions run #39 / `35891666016` là `SUCCESS`. Docs alignment head `8b11e1f7706bd25e51aca6aa21c1fd8af3baa60c` có run #40 / `35893244524` `SUCCESS`. Không có schema/migration change trong Stage 6A.
 
 ### Stage 6B — C14/action/measurement/E2E
 
@@ -629,7 +629,7 @@ Implementation handoff: EOD và Today dùng chung `DailyFinancialProjection`; To
 - narrow immutable C14 experiment events và additive migration cần thiết cho approved design;
 - full frontend, SQL Server integration and real local E2E/regression.
 
-Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. Approval này không tuyên bố stage nào đã bắt đầu/completed và không thay thế implementation review sau khi code được thực hiện.
+Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. D-074 approve và complete riêng Stage 6A; Stage 6B vẫn `NOT STARTED` và tiếp tục cần implementation, verification và Product Owner review riêng.
 
 ## 17. Definition of Done proposal
 
@@ -643,7 +643,7 @@ Stage 6A/6B names, contents and order là approved implementation sequence theo 
 - Experiment events are narrow, immutable and non-transactional to business flow; per-view exposure guards prevent reactive duplicate `TodayOpened`/`SignalShown`.
 - Domain/query, SQL Server integration, frontend and real local critical E2E pass; Slice 1–5 regressions pass.
 - No AI, forecast/replenishment engine, BI dashboard, generic rule/alert/analytics platform.
-- Technical Breakdown và staging sequence đã được Product Owner approve tại D-073; implementation vẫn phải thực hiện, verify và review theo từng stage.
+- Technical Breakdown và staging sequence đã được Product Owner approve tại D-073; Stage 6A implementation đã được approve tại D-074, còn Stage 6B vẫn phải thực hiện, verify và review riêng.
 
 ## 18. Resolved Product Owner questions và review gate
 
@@ -673,5 +673,6 @@ Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../
 - D-071 — exact LowStockRisk/factual data sufficiency.
 - D-072 — active-only C14 Product candidates.
 - D-073 — Technical Breakdown Slice 6 và Stage 6A/6B implementation sequence approval.
+- D-074 — Slice 6 Stage 6A implementation approval.
 
-**Current gate:** Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 6B `NOT STARTED`. Next step là Product Owner review Stage 6A implementation; không có D-074/implementation approval trong handoff này.
+**Current gate:** Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `APPROVED FOR IMPLEMENTATION / NOT STARTED`. Next step là bắt đầu Stage 6B — C14/action/measurement/E2E theo D-073; D-074 không approve hoặc bắt đầu Stage 6B.
