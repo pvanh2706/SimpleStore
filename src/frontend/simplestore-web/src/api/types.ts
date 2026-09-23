@@ -385,6 +385,13 @@ export type TodaySourceType =
   | 'PurchasePayment'
   | 'HistoricalCogs'
 
+export type TodaySourceNavigationType = 'Sale' | 'Return' | 'Purchase'
+
+export interface TodaySourceNavigation {
+  type: TodaySourceNavigationType
+  id: string
+}
+
 export interface TodayEstimatedGrossProfit {
   netSalesRevenue: number
   historicalCogs: number
@@ -423,6 +430,7 @@ export interface TodayEvidenceSource {
   contributionCount: number | null
   title: string
   debtContribution: TodayDebtContribution | null
+  navigation: TodaySourceNavigation | null
 }
 
 export interface TodayExplanation {

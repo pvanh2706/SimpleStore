@@ -26,7 +26,7 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
         var context = await CreateOwnerContextAsync("Today shared financials");
         using var owner = context.Client;
         var product = await CreatePricedProductAsync(owner, 1_000, 10, 100);
-        await owner.CompleteSaleAsync(
+        var sale = await owner.CompleteSaleAsync(
             Guid.NewGuid(), null, [(product.Id, 1)], (1_000, "Cash"));
 
         var today = await owner.GetFromJsonAsync<TodaySummaryResult>("/api/today");
@@ -62,6 +62,25 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
                 : explanation.Items.Sum(item => item.ContributionAmount ?? 0m);
             Assert.Equal(explanation.Headline, sum);
         }
+
+        var revenue = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/revenue?pageSize=100");
+        AssertNavigation(
+            Assert.Single(revenue!.Items, item => item.SourceId == sale.Id),
+            TodaySourceNavigationTypes.Sale,
+            sale.Id);
+        var collected = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/collected?pageSize=100");
+        AssertNavigation(
+            Assert.Single(collected!.Items, item => item.SourceType == "SalePayment"),
+            TodaySourceNavigationTypes.Sale,
+            sale.Id);
+        var grossProfit = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/estimated-gross-profit?pageSize=100");
+        AssertNavigation(
+            Assert.Single(grossProfit!.Items, item => item.SourceType == "HistoricalCogs"),
+            TodaySourceNavigationTypes.Sale,
+            sale.Id);
 
         using var invalid = await owner.GetAsync("/api/today/explanations/not-a-metric");
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
@@ -142,7 +161,7 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
         var product = await CreatePricedProductAsync(owner, 1_000, 20, 100);
 
         var case1 = await CreateCreditSaleAsync(owner, product.Id, 800, "Debt case 1");
-        await owner.CreateReturnAsync(Guid.NewGuid(), case1.Sale.Id,
+        var case1Return = await owner.CreateReturnAsync(Guid.NewGuid(), case1.Sale.Id,
             [(Assert.Single(case1.Sale.Lines).Id, 0.1m, true)]);
 
         var case2 = await CreateCreditSaleAsync(owner, product.Id, 800, "Debt case 2");
@@ -150,9 +169,9 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
             [(Assert.Single(case2.Sale.Lines).Id, 0.5m, true)], "Cash");
 
         var case3 = await CreateCreditSaleAsync(owner, product.Id, 0, "Debt case 3");
-        await owner.RecordCustomerDebtPaymentAsync(
+        var case3DebtPayment = await owner.RecordCustomerDebtPaymentAsync(
             case3.CustomerId, Guid.NewGuid(), 1_000, 1_000, "Cash");
-        await owner.CreateReturnAsync(Guid.NewGuid(), case3.Sale.Id,
+        var case3Return = await owner.CreateReturnAsync(Guid.NewGuid(), case3.Sale.Id,
             [(Assert.Single(case3.Sale.Lines).Id, 0.3m, true)], "Cash");
 
         var case4 = await CreateCreditSaleAsync(owner, product.Id, 0, "Debt case 4");
@@ -210,6 +229,35 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
         Assert.Equal(500, multipleReturns.SameDayReturnObligationReduction);
         Assert.Equal(500, multipleReturns.FinalContribution);
         Assert.DoesNotContain(explanation.Items, item => item.SourceId == crossDay.Sale.Id);
+        AssertNavigation(
+            Assert.Single(explanation.Items, item => item.SourceId == case3.Sale.Id),
+            TodaySourceNavigationTypes.Sale,
+            case3.Sale.Id);
+
+        var revenue = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/revenue?pageSize=100");
+        AssertNavigation(
+            Assert.Single(revenue!.Items, item => item.SourceId == case1Return.Id),
+            TodaySourceNavigationTypes.Return,
+            case1Return.Id);
+        var collected = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/collected?pageSize=100");
+        Assert.Null(Assert.Single(collected!.Items,
+            item => item.SourceId == case3DebtPayment.Id).Navigation);
+        AssertNavigation(
+            Assert.Single(collected.Items,
+                item => item.SourceType == "ActualCustomerRefund"
+                    && item.RelatedSourceId == case3Return.Id),
+            TodaySourceNavigationTypes.Return,
+            case3Return.Id);
+        var grossProfit = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/estimated-gross-profit?pageSize=100");
+        AssertNavigation(
+            Assert.Single(grossProfit!.Items,
+                item => item.SourceType == "HistoricalCogs"
+                    && item.SourceId == Assert.Single(case1Return.Lines).Id),
+            TodaySourceNavigationTypes.Return,
+            case1Return.Id);
 
         var page = await owner.GetFromJsonAsync<TodayExplanationResult>(
             "/api/today/explanations/customer-debt-created?page=1&pageSize=2");
@@ -237,13 +285,13 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
 
         await owner.CompleteSaleAsync(Guid.NewGuid(), null, [(saleProduct.Id, 1)], (100, "Cash"));
         var partial = await owner.CompleteSaleAsync(Guid.NewGuid(), null, [(saleProduct.Id, 1)], (100, "Cash"));
-        await owner.CreateReturnAsync(Guid.NewGuid(), partial.Id,
+        var partialReturn = await owner.CreateReturnAsync(Guid.NewGuid(), partial.Id,
             [(Assert.Single(partial.Lines).Id, 0.5m, true)], "Cash");
         var full = await owner.CompleteSaleAsync(Guid.NewGuid(), null, [(saleProduct.Id, 1)], (100, "Cash"));
         await owner.CreateReturnAsync(Guid.NewGuid(), full.Id,
             [(Assert.Single(full.Lines).Id, 1m, true)], "Cash");
         var sameDayVoid = await owner.CompleteSaleAsync(Guid.NewGuid(), null, [(saleProduct.Id, 1)], (100, "Cash"));
-        await owner.VoidSaleAsync(sameDayVoid.Id, Guid.NewGuid());
+        var sameDaySaleVoid = await owner.VoidSaleAsync(sameDayVoid.Id, Guid.NewGuid());
         var priorDayVoid = await owner.CompleteSaleAsync(Guid.NewGuid(), null, [(saleProduct.Id, 1)], (100, "Cash"));
         await factory.WithDbContextAsync(async db =>
         {
@@ -300,6 +348,32 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
             && item.DebtContribution!.SameDayVoided
             && item.ContributionAmount == 0);
         Assert.DoesNotContain(supplierDebt.Items, item => item.SourceId == purchase4.Id);
+        AssertNavigation(
+            Assert.Single(supplierDebt.Items, item => item.SourceId == purchase1.Id),
+            TodaySourceNavigationTypes.Purchase,
+            purchase1.Id);
+
+        var revenue = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/revenue?pageSize=100");
+        AssertNavigation(
+            Assert.Single(revenue!.Items, item => item.SourceId == sameDaySaleVoid.Id),
+            TodaySourceNavigationTypes.Sale,
+            sameDayVoid.Id);
+        var grossProfit = await owner.GetFromJsonAsync<TodayExplanationResult>(
+            "/api/today/explanations/estimated-gross-profit?pageSize=100");
+        AssertNavigation(
+            Assert.Single(grossProfit!.Items,
+                item => item.SourceType == "HistoricalCogs"
+                    && item.SourceId == Assert.Single(partialReturn.Lines).Id),
+            TodaySourceNavigationTypes.Return,
+            partialReturn.Id);
+        AssertNavigation(
+            Assert.Single(grossProfit.Items,
+                item => item.SourceType == "HistoricalCogs"
+                    && item.SourceId == Assert.Single(sameDayVoid.Lines).Id
+                    && item.ContributionAmount > 0),
+            TodaySourceNavigationTypes.Sale,
+            sameDayVoid.Id);
 
         factory.SetUtcNow(FixedUtcNow.AddDays(-1));
         using var priorDayOwner = factory.CreateHttpsClient();
@@ -368,6 +442,16 @@ public sealed class Slice6AIntegrationTests : IClassFixture<CustomWebApplication
     {
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return body.RootElement.GetProperty("code").GetString();
+    }
+
+    private static void AssertNavigation(
+        TodayEvidenceSourceResult source,
+        string expectedType,
+        Guid expectedId)
+    {
+        Assert.NotNull(source.Navigation);
+        Assert.Equal(expectedType, source.Navigation.Type);
+        Assert.Equal(expectedId, source.Navigation.Id);
     }
 
     private sealed record OwnerContext(

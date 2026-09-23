@@ -218,26 +218,31 @@ internal static class TodayProjection
     private static TodayEvidenceSourceResult[] RevenueEvidence(TodayActivityData activity) =>
         [
             .. activity.Sales.Select(item => Evidence(
-                "Sale", item.Id, null, item.CompletedAt, item.TotalAmount, null, "Đơn bán hoàn tất")),
+                "Sale", item.Id, null, item.CompletedAt, item.TotalAmount, null, "Đơn bán hoàn tất",
+                navigation: Navigation(TodaySourceNavigationTypes.Sale, item.Id))),
             .. activity.Returns.Select(item => Evidence(
                 "CustomerReturn", item.Id, item.OriginalSaleId, item.CompletedAt,
-                -item.TotalReturnAmount, null, "Trả hàng")),
+                -item.TotalReturnAmount, null, "Trả hàng",
+                navigation: Navigation(TodaySourceNavigationTypes.Return, item.Id))),
             .. activity.SaleVoids.Select(item => Evidence(
                 "SaleVoid", item.Id, item.OriginalSaleId, item.VoidedAt,
-                -item.OriginalSaleAmount, null, "Hủy đơn bán"))
+                -item.OriginalSaleAmount, null, "Hủy đơn bán",
+                navigation: Navigation(TodaySourceNavigationTypes.Sale, item.OriginalSaleId)))
         ];
 
     private static TodayEvidenceSourceResult[] CollectedEvidence(TodayActivityData activity) =>
         [
             .. activity.SalePayments.Select(item => Evidence(
                 "SalePayment", item.Id, item.RelatedSourceId, item.OccurredAt,
-                item.Amount, null, "Thanh toán đơn bán")),
+                item.Amount, null, "Thanh toán đơn bán",
+                navigation: Navigation(TodaySourceNavigationTypes.Sale, item.RelatedSourceId))),
             .. activity.CustomerDebtPayments.Select(item => Evidence(
                 "CustomerDebtPayment", item.Id, item.RelatedSourceId, item.OccurredAt,
                 item.Amount, null, "Thu nợ khách hàng")),
             .. activity.CustomerRefunds.Select(item => Evidence(
                 "ActualCustomerRefund", item.Id, item.RelatedSourceId, item.OccurredAt,
-                -item.Amount, null, "Hoàn tiền khách hàng"))
+                -item.Amount, null, "Hoàn tiền khách hàng",
+                navigation: Navigation(TodaySourceNavigationTypes.Return, item.RelatedSourceId)))
         ];
 
     private static TodayEvidenceSourceResult[] GrossProfitEvidence(TodayActivityData activity) =>
@@ -251,7 +256,8 @@ internal static class TodayProjection
                     "RestockedReturn" => "Hoàn nhập giá vốn lịch sử",
                     "VoidedSale" => "Đảo giá vốn lịch sử khi hủy",
                     _ => "Giá vốn lịch sử"
-                }))
+                },
+                navigation: CogsNavigation(item)))
         ];
 
     private static TodayEvidenceSourceResult[] SaleCountEvidence(
@@ -263,7 +269,8 @@ internal static class TodayProjection
             item.Sale.CompletedAt,
             null,
             item.IsVoided ? 0 : 1,
-            item.IsVoided ? "Đơn bán bị hủy cùng ngày" : "Đơn bán được tính"))
+            item.IsVoided ? "Đơn bán bị hủy cùng ngày" : "Đơn bán được tính",
+            navigation: Navigation(TodaySourceNavigationTypes.Sale, item.Sale.Id)))
         .ToArray();
 
     private static TodayEvidenceSourceResult[] CustomerDebtEvidence(
@@ -282,7 +289,8 @@ internal static class TodayProjection
                 item.BaseDebt,
                 item.ReturnReduction,
                 item.IsVoided,
-                item.FinalContribution)))
+                item.FinalContribution),
+            Navigation(TodaySourceNavigationTypes.Sale, item.Sale.Id)))
         .ToArray();
 
     private static TodayEvidenceSourceResult[] SupplierDebtEvidence(
@@ -301,8 +309,20 @@ internal static class TodayProjection
                 item.BaseDebt,
                 0m,
                 item.IsVoided,
-                item.FinalContribution)))
+                item.FinalContribution),
+            Navigation(TodaySourceNavigationTypes.Purchase, item.Purchase.Id)))
         .ToArray();
+
+    private static TodaySourceNavigationResult CogsNavigation(TodayCogsActivity item) =>
+        item.Kind switch
+        {
+            "DirectSale" => Navigation(TodaySourceNavigationTypes.Sale, item.RelatedSourceId),
+            "RestockedReturn" => Navigation(TodaySourceNavigationTypes.Return, item.RelatedSourceId),
+            "VoidedSale" => Navigation(TodaySourceNavigationTypes.Sale, item.RelatedSourceId),
+            _ => throw new InvalidOperationException("Historical COGS source kind is invalid.")
+        };
+
+    private static TodaySourceNavigationResult Navigation(string type, Guid id) => new(type, id);
 
     private static TodayEvidenceSourceResult Evidence(
         string sourceType,
@@ -312,6 +332,7 @@ internal static class TodayProjection
         decimal? amount,
         int? count,
         string title,
-        TodayDebtContributionResult? debt = null) =>
-        new(sourceType, sourceId, relatedSourceId, occurredAt, amount, count, title, debt);
+        TodayDebtContributionResult? debt = null,
+        TodaySourceNavigationResult? navigation = null) =>
+        new(sourceType, sourceId, relatedSourceId, occurredAt, amount, count, title, debt, navigation);
 }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import type { RouteLocationRaw } from 'vue-router'
 import { apiRequest } from '../api/client'
-import type { TodayExplanation, TodayMetricId, TodaySummary } from '../api/types'
+import type { TodayExplanation, TodayMetricId, TodaySourceNavigation, TodaySummary } from '../api/types'
 
 const summary = ref<TodaySummary | null>(null)
 const explanation = ref<TodayExplanation | null>(null)
@@ -36,6 +37,24 @@ const cards = computed(() => {
 function localBusinessDate(value: string) {
   const [year, month, day] = value.split('-')
   return `${day}/${month}/${year}`
+}
+
+function sourceRoute(navigation: TodaySourceNavigation): RouteLocationRaw {
+  const type = navigation.type
+  switch (type) {
+    case 'Sale':
+      return { name: 'sale-detail', params: { id: navigation.id } }
+    case 'Return':
+      return { name: 'return-detail', params: { id: navigation.id } }
+    case 'Purchase':
+      return { name: 'purchase-detail', params: { id: navigation.id } }
+    default:
+      return assertNever(type)
+  }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unsupported Today source navigation type: ${String(value)}`)
 }
 
 async function loadSummary() {
@@ -151,6 +170,13 @@ onMounted(loadSummary)
               <span>Void cùng ngày: {{ item.debtContribution.sameDayVoided ? 'Có' : 'Không' }}</span>
               <span>Đóng góp cuối: {{ money(item.debtContribution.finalContribution) }}</span>
             </div>
+            <RouterLink
+              v-if="item.navigation"
+              class="mt-3 inline-block text-sm font-bold text-emerald-700"
+              :to="sourceRoute(item.navigation)"
+            >
+              Xem giao dịch nguồn
+            </RouterLink>
           </li>
         </ul>
         <div v-if="explanation.totalPages > 1" class="mt-5 flex items-center justify-between gap-3">

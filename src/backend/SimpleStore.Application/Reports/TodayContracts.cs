@@ -31,7 +31,17 @@ public sealed record TodayEvidenceSourceResult(
     decimal? ContributionAmount,
     int? ContributionCount,
     string Title,
-    TodayDebtContributionResult? DebtContribution);
+    TodayDebtContributionResult? DebtContribution,
+    TodaySourceNavigationResult? Navigation);
+
+public sealed record TodaySourceNavigationResult(string Type, Guid Id);
+
+public static class TodaySourceNavigationTypes
+{
+    public const string Sale = "Sale";
+    public const string Return = "Return";
+    public const string Purchase = "Purchase";
+}
 
 public sealed record TodayDebtContributionResult(
     decimal OriginalTotal,

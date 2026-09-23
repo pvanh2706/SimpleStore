@@ -4,7 +4,7 @@
 
 `APPROVED FOR IMPLEMENTATION`
 
-Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Approval authorize sequencing Stage 6A/6B nhưng không có nghĩa implementation đã bắt đầu; Slice 6 implementation vẫn `NOT STARTED`.
+Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Tại baseline đó, approval authorize sequencing Stage 6A/6B nhưng chưa xác nhận implementation. Trạng thái hiện tại: Stage 6A `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 6B `NOT STARTED`.
 
 Baseline đã inspect: `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`, tại đó `Slice 5 — Debt + End-of-day` là `APPROVED / COMPLETED` theo D-060.
 
@@ -109,7 +109,7 @@ Cửa sổ C14 không chứa current/in-progress day:
 
 ### 5.1 Không tạo financial definition thứ hai
 
-Không để Today controller tự viết lại Revenue/Collected/COGS SQL. Refactor proposal sau approval:
+Không để Today controller tự viết lại Revenue/Collected/COGS SQL. Stage 6A đã implement refactor được approve như sau:
 
 1. Tách Slice 5 calculation thành shared application reporting component, ví dụ `IDailyFinancialProjection`.
 2. Component nhận `storeId`, `BusinessDateWindow`, trả typed daily financial data + source evidence khi được yêu cầu.
@@ -192,7 +192,7 @@ Evidence dùng enum/discriminator, không dùng localized message làm logic:
 - `HistoricalCogs`
 - `ProductInventory`
 
-Một source row tối thiểu gồm `sourceType`, `sourceId`, `occurredAt`, typed contribution (`amount` hoặc `quantity`) và metadata trình bày tối thiểu. Frontend map `sourceType + sourceId` sang existing detail route khi route tồn tại; không build URL từ message.
+Một source row tối thiểu gồm `sourceType`, `sourceId`, `occurredAt`, typed contribution (`amount` hoặc `quantity`) và metadata trình bày tối thiểu. Khi có detail target hợp lệ, backend trả optional typed `navigation { type, id }` thuộc closed set `Sale | Return | Purchase`; backend chọn đúng aggregate đích thay vì buộc frontend suy diễn từ loại event. Frontend map `navigation.type + navigation.id` sang named detail route; không parse localized title và không build/raw-navigate URL từ message. Source không có target an toàn, như standalone `CustomerDebtPayment`, trả `navigation: null` và không hiển thị link.
 
 ### 6.2 Financial explanations
 
@@ -327,9 +327,9 @@ Constraints/index proposal:
 
 Recording failure must not block Today read or Purchase business flow. Frontend may show no user-facing business error for best-effort experiment telemetry, but implementation must log/debug failure and never fabricate success evidence.
 
-## 10. Draft API contract
+## 10. API contract
 
-All endpoints below are Owner-only and Store-scoped. Names are proposal, not implemented contract.
+All endpoints below are Owner-only and Store-scoped. Stage 6A endpoints tại 10.1–10.2 là implemented contracts đang chờ Product Owner review; Stage 6B endpoints tại 10.3–10.5 vẫn là approved design, chưa được implement.
 
 ### 10.1 `GET /api/today`
 
@@ -620,7 +620,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - D-069 new-debt-created và D-070 SaleCount projections/explainability;
 - domain/SQL integration/frontend tests.
 
-Implementation handoff: EOD và Today dùng chung `DailyFinancialProjection`; Today business date được resolve từ injected `TimeProvider` + canonical Store IANA timezone; `GET /api/today` và bounded `GET /api/today/explanations/{metric}` là Owner-only; frontend `/today` không có date picker/C14 placeholder. Local verification pass Domain 78/78, SQL Server integration 82/82, frontend 89/89 và backend/frontend Release build; không có schema/migration change. Trạng thái này không phải Product Owner approval.
+Implementation handoff: EOD và Today dùng chung `DailyFinancialProjection`; Today business date được resolve từ injected `TimeProvider` + canonical Store IANA timezone; `GET /api/today` và bounded `GET /api/today/explanations/{metric}` là Owner-only; typed optional source navigation do backend chọn và frontend map sang named Sale/Return/Purchase detail routes; frontend `/today` không có date picker/C14 placeholder. Local verification pass Domain 78/78, SQL Server integration 82/82, frontend 93/93 và backend/frontend Release build; không có schema/migration change. Trạng thái này không phải Product Owner approval.
 
 ### Stage 6B — C14/action/measurement/E2E
 

@@ -319,7 +319,7 @@ public sealed class Slice5BRepository(ApplicationDbContext dbContext)
                 && voided.VoidedAt >= startUtc && voided.VoidedAt < endUtc
             select new TodayCogsActivity(
                 line.Id,
-                voided.Id,
+                voided.OriginalSaleId,
                 voided.VoidedAt,
                 "VoidedSale",
                 Cost(line.Quantity, line.UnitCostAtSale),

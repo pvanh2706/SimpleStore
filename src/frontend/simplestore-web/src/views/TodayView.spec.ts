@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiRequest } from '../api/client'
 import TodayView from './TodayView.vue'
@@ -27,7 +27,7 @@ const summary = {
 function mountView() {
   return mount(TodayView, {
     global: {
-      stubs: { RouterLink: { template: '<a><slot /></a>' } },
+      stubs: { RouterLink: RouterLinkStub },
     },
   })
 }
@@ -73,6 +73,7 @@ describe('TodayView', () => {
           contributionAmount: 700,
           contributionCount: null,
           title: 'Nghĩa vụ nợ mới từ đơn bán',
+          navigation: { type: 'Sale', id: 'sale-1' },
           debtContribution: {
             originalTotal: 1_000,
             directPayments: 0,
@@ -97,6 +98,65 @@ describe('TodayView', () => {
     expect(wrapper.text()).toContain('Nghĩa vụ cơ sở: 1.000 ₫')
     expect(wrapper.text()).toContain('Return cùng ngày: 300 ₫')
     expect(wrapper.text()).toContain('Đóng góp cuối: 700 ₫')
+    const sourceLink = wrapper.findAllComponents(RouterLinkStub)
+      .find(link => link.text() === 'Xem giao dịch nguồn')
+    expect(sourceLink?.props('to')).toEqual({ name: 'sale-detail', params: { id: 'sale-1' } })
+  })
+
+  it.each([
+    ['Sale', 'sale-detail', 'sale-1'],
+    ['Return', 'return-detail', 'return-1'],
+    ['Purchase', 'purchase-detail', 'purchase-1'],
+  ] as const)(
+    'maps typed %s navigation to the known named route',
+    async (type, routeName, id) => {
+      request.mockImplementation(async path => {
+        if (path === '/api/today') return summary as never
+        return {
+          metric: 'revenue', headline: 10, historicalCogs: null, costReliability: null,
+          page: 1, pageSize: 20, totalCount: 1, totalPages: 1,
+          items: [{
+            sourceType: 'Sale', sourceId: 'source-1', relatedSourceId: null,
+            occurredAt: '2026-09-23T03:00:00Z', contributionAmount: 10,
+            contributionCount: null,
+            title: type === 'Sale' ? 'Hoàn nhập giá vốn lịch sử' : 'Đơn bán hoàn tất',
+            debtContribution: null,
+            navigation: { type, id },
+          }],
+        } as never
+      })
+      const wrapper = mountView()
+      await flushPromises()
+      await wrapper.findAll('button').at(0)!.trigger('click')
+      await flushPromises()
+
+      const sourceLink = wrapper.findAllComponents(RouterLinkStub)
+        .find(link => link.text() === 'Xem giao dịch nguồn')
+      expect(sourceLink?.props('to')).toEqual({ name: routeName, params: { id } })
+    },
+  )
+
+  it('does not render a broken drill-down for evidence with null navigation', async () => {
+    request.mockImplementation(async path => {
+      if (path === '/api/today') return summary as never
+      return {
+        metric: 'collected', headline: 10, historicalCogs: null, costReliability: null,
+        page: 1, pageSize: 20, totalCount: 1, totalPages: 1,
+        items: [{
+          sourceType: 'CustomerDebtPayment', sourceId: 'payment-1', relatedSourceId: 'customer-1',
+          occurredAt: '2026-09-23T03:00:00Z', contributionAmount: 10,
+          contributionCount: null, title: 'Thu nợ khách hàng', debtContribution: null,
+          navigation: null,
+        }],
+      } as never
+    })
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper.findAll('button').at(1)!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Thu nợ khách hàng')
+    expect(wrapper.text()).not.toContain('Xem giao dịch nguồn')
   })
 
   it('shows summary errors and the unavailable-cost warning', async () => {
