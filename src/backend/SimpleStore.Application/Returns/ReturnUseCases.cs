@@ -19,8 +19,7 @@ public sealed class PreviewReturnUseCase(
     ICurrentUser currentUser,
     ISlice1Repository slice1Repository,
     ISlice4Repository repository,
-    ISlice5Repository debtRepository,
-    TimeProvider timeProvider)
+    ISlice5Repository debtRepository)
 {
     public async Task<ReturnPreviewResult> ExecuteAsync(ReturnPreviewCommand command, CancellationToken cancellationToken)
     {
@@ -31,7 +30,6 @@ public sealed class PreviewReturnUseCase(
             storeId,
             command.OriginalSaleId,
             command.Lines,
-            timeProvider.GetUtcNow(),
             cancellationToken);
         return calculation.ToPreview();
     }
@@ -86,7 +84,6 @@ public sealed class CreateReturnUseCase(
                 storeId,
                 command.OriginalSaleId,
                 command.Lines,
-                now,
                 transactionToken);
             if (calculation.AggregateFinancials is not null
                 && (command.ExpectedAggregateCustomerDebt != calculation.AggregateFinancials.CurrentAggregateCustomerDebt
@@ -267,7 +264,6 @@ internal static class ReturnUseCaseSupport
         Guid storeId,
         Guid saleId,
         IReadOnlyCollection<ReturnLineCommand> commands,
-        DateTimeOffset asOf,
         CancellationToken cancellationToken)
     {
         ValidateCommandLines(commands);
@@ -336,10 +332,9 @@ internal static class ReturnUseCaseSupport
         AggregateReturnFinancials? aggregateFinancials = null;
         if (sale.CustomerId.HasValue)
         {
-            var aggregateDebt = await debtRepository.GetCustomerDebtAsync(
+            var aggregateDebt = await debtRepository.GetCurrentCustomerDebtAsync(
                 storeId,
                 sale.CustomerId.Value,
-                asOf,
                 cancellationToken)
                 ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
             try

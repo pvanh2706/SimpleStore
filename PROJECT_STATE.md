@@ -166,4 +166,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Từ implementation baseline `5115d9100b1541be21fb2d92a80a58b7acdd1142`, Stage 5A đã implement production backend/domain/persistence/tests và đang `PENDING PRODUCT OWNER REVIEW`. Stage 5B vẫn `NOT STARTED / PLANNED`; full Slice 5 chưa completed. Slice 4 giữ `APPROVED / COMPLETED`.
+2026-09-23 — Stage 5A đã harden correctness boundary giữa current debt (toàn bộ committed history, không clock cutoff) và historical debt (`event timestamp < cutoff`), gồm deterministic equal-timestamp SQL Server regression cho Return/Sale Void/Purchase Void. Stage 5A vẫn `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 5B vẫn `NOT STARTED / PLANNED`; full Slice 5 chưa completed. Slice 4 giữ `APPROVED / COMPLETED`.

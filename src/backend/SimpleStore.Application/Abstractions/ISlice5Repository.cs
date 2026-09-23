@@ -5,30 +5,38 @@ namespace SimpleStore.Application.Abstractions;
 
 public interface ISlice5Repository
 {
-    Task<DebtPartyBalance?> GetCustomerDebtAsync(
+    Task<DebtPartyBalance?> GetCurrentCustomerDebtAsync(
         Guid storeId,
         Guid customerId,
-        DateTimeOffset asOf,
         CancellationToken cancellationToken);
 
-    Task<DebtPartyBalance?> GetSupplierDebtAsync(
+    Task<DebtPartyBalance?> GetCustomerDebtAsOfAsync(
+        Guid storeId,
+        Guid customerId,
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken);
+
+    Task<DebtPartyBalance?> GetCurrentSupplierDebtAsync(
         Guid storeId,
         Guid supplierId,
-        DateTimeOffset asOf,
         CancellationToken cancellationToken);
 
-    Task<DebtPartyBalancePage> SearchCustomerDebtsAsync(
+    Task<DebtPartyBalance?> GetSupplierDebtAsOfAsync(
+        Guid storeId,
+        Guid supplierId,
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken);
+
+    Task<DebtPartyBalancePage> SearchCurrentCustomerDebtsAsync(
         Guid storeId,
         string? search,
-        DateTimeOffset asOf,
         int page,
         int pageSize,
         CancellationToken cancellationToken);
 
-    Task<DebtPartyBalancePage> SearchSupplierDebtsAsync(
+    Task<DebtPartyBalancePage> SearchCurrentSupplierDebtsAsync(
         Guid storeId,
         string? search,
-        DateTimeOffset asOf,
         int page,
         int pageSize,
         CancellationToken cancellationToken);

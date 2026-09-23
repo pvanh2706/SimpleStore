@@ -3,7 +3,10 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using SimpleStore.Application.Abstractions;
+using SimpleStore.Application.Corrections;
 using SimpleStore.Application.Debts;
+using SimpleStore.Application.Errors;
 using SimpleStore.Application.Products;
 using SimpleStore.Application.Purchases;
 using SimpleStore.Application.Returns;
@@ -387,18 +390,41 @@ public sealed class Slice5IntegrationTests(CustomWebApplicationFactory factory)
         await client.CompleteSaleAsync(Guid.NewGuid(), customer.Id, [(product.Id, 1)]);
         var payment = await client.RecordCustomerDebtPaymentAsync(
             customer.Id, Guid.NewGuid(), 40, 100);
+        var supplier = await client.CreateSupplierAsync("Historical supplier");
+        var purchase = await client.CreatePurchaseAsync(supplier.Id, (product.Id, 1, 100));
+        await client.CompletePurchaseAsync(purchase.Id, Guid.NewGuid());
+        var supplierPayment = await client.RecordSupplierDebtPaymentAsync(
+            supplier.Id, Guid.NewGuid(), 40, 100);
 
         var historical = await factory.WithDbContextAsync(async db =>
         {
             var repository = new Slice5Repository(db);
-            var beforePayment = await repository.GetCustomerDebtAsync(
+            var beforePayment = await repository.GetCustomerDebtAsOfAsync(
                 context.StoreId, customer.Id, payment.OccurredAt, CancellationToken.None);
-            var afterPayment = await repository.GetCustomerDebtAsync(
+            var afterPayment = await repository.GetCustomerDebtAsOfAsync(
                 context.StoreId, customer.Id, payment.OccurredAt.AddTicks(1), CancellationToken.None);
-            return (beforePayment, afterPayment);
+            var currentCustomer = await repository.GetCurrentCustomerDebtAsync(
+                context.StoreId, customer.Id, CancellationToken.None);
+            var supplierAtPayment = await repository.GetSupplierDebtAsOfAsync(
+                context.StoreId, supplier.Id, supplierPayment.OccurredAt, CancellationToken.None);
+            var supplierAfterPayment = await repository.GetSupplierDebtAsOfAsync(
+                context.StoreId, supplier.Id, supplierPayment.OccurredAt.AddTicks(1), CancellationToken.None);
+            var currentSupplier = await repository.GetCurrentSupplierDebtAsync(
+                context.StoreId, supplier.Id, CancellationToken.None);
+            return (
+                beforePayment,
+                afterPayment,
+                currentCustomer,
+                supplierAtPayment,
+                supplierAfterPayment,
+                currentSupplier);
         });
         Assert.Equal(100, historical.beforePayment!.OutstandingAmount);
         Assert.Equal(60, historical.afterPayment!.OutstandingAmount);
+        Assert.Equal(60, historical.currentCustomer!.OutstandingAmount);
+        Assert.Equal(100, historical.supplierAtPayment!.OutstandingAmount);
+        Assert.Equal(60, historical.supplierAfterPayment!.OutstandingAmount);
+        Assert.Equal(60, historical.currentSupplier!.OutstandingAmount);
 
         using var overpayment = await client.PostWithAntiforgeryAsync(
             $"/api/customers/{customer.Id}/debt-payments",
@@ -412,6 +438,95 @@ public sealed class Slice5IntegrationTests(CustomWebApplicationFactory factory)
             Slice5HttpClient.DebtPaymentContent(Guid.NewGuid(), 1, 0));
         Assert.Equal(HttpStatusCode.Conflict, noDebt.StatusCode);
         Assert.Equal("customer-has-no-outstanding-debt", await ReadCodeAsync(noDebt));
+    }
+
+    [Fact]
+    public async Task EqualTimestampCurrentDebtProtectsReturnAndVoidMutations()
+    {
+        var context = await CreateOwnerContextAsync("Equal timestamp debt");
+        using var client = context.Client;
+        var product = await CreatePricedProductAsync(client, 50, 10);
+
+        var returnCustomer = await client.CreateCustomerAsync("Equal timestamp return");
+        var returnSale = await client.CompleteSaleAsync(
+            Guid.NewGuid(), returnCustomer.Id, [(product.Id, 2)]);
+        var returnPayment = await client.RecordCustomerDebtPaymentAsync(
+            returnCustomer.Id, Guid.NewGuid(), 80, 100);
+
+        var voidCustomer = await client.CreateCustomerAsync("Equal timestamp sale void");
+        var voidSale = await client.CompleteSaleAsync(
+            Guid.NewGuid(), voidCustomer.Id, [(product.Id, 2)]);
+        var voidPayment = await client.RecordCustomerDebtPaymentAsync(
+            voidCustomer.Id, Guid.NewGuid(), 80, 100);
+
+        var supplier = await client.CreateSupplierAsync("Equal timestamp purchase void");
+        var purchase = await client.CreatePurchaseAsync(supplier.Id, (product.Id, 2, 50));
+        await client.CompletePurchaseAsync(purchase.Id, Guid.NewGuid());
+        var supplierPayment = await client.RecordSupplierDebtPaymentAsync(
+            supplier.Id, Guid.NewGuid(), 80, 100);
+
+        var timestamp = new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero);
+        var userId = await factory.WithDbContextAsync(db => db.Users
+            .Where(item => item.Email == context.Credentials.Email)
+            .Select(item => item.Id)
+            .SingleAsync());
+        await factory.WithDbContextAsync(async db =>
+        {
+            var paymentIds = new[] { returnPayment.Id, voidPayment.Id, supplierPayment.Id };
+            await db.DebtPayments
+                .Where(item => paymentIds.Contains(item.Id))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.OccurredAt, timestamp));
+            db.ChangeTracker.Clear();
+
+            var currentUser = new FixedCurrentUser(userId);
+            var slice1 = new Slice1Repository(db);
+            var slice4 = new Slice4Repository(db);
+            var slice5 = new Slice5Repository(db);
+            var fixedTime = new FixedTimeProvider(timestamp);
+            Assert.Equal(20, (await slice5.GetCurrentCustomerDebtAsync(
+                context.StoreId, returnCustomer.Id, CancellationToken.None))!.OutstandingAmount);
+            Assert.Equal(20, (await slice5.GetCurrentSupplierDebtAsync(
+                context.StoreId, supplier.Id, CancellationToken.None))!.OutstandingAmount);
+
+            var returnUseCase = new CreateReturnUseCase(
+                currentUser, slice1, slice4, slice5, fixedTime);
+            var completedReturn = await returnUseCase.ExecuteAsync(
+                new CreateReturnCommand(
+                    Guid.NewGuid(),
+                    returnSale.Id,
+                    [new ReturnLineCommand(Assert.Single(returnSale.Lines).Id, 1, false)],
+                    "Cash",
+                    20,
+                    30),
+                CancellationToken.None);
+            Assert.Equal(30, completedReturn.RefundAmount);
+            Assert.Equal(timestamp, completedReturn.CompletedAt);
+            Assert.Equal(timestamp, Assert.Single(completedReturn.RefundPayments).OccurredAt);
+            Assert.Equal(0, (await slice5.GetCurrentCustomerDebtAsync(
+                context.StoreId, returnCustomer.Id, CancellationToken.None))!.OutstandingAmount);
+
+            var saleVoidUseCase = new VoidSaleUseCase(
+                currentUser, slice1, slice4, slice5, fixedTime);
+            var saleVoidConflict = await Assert.ThrowsAsync<ApplicationConflictException>(() =>
+                saleVoidUseCase.ExecuteAsync(
+                    voidSale.Id,
+                    new VoidTransactionCommand(Guid.NewGuid(), "Equal timestamp guard"),
+                    CancellationToken.None));
+            Assert.Equal("customer-debt-would-become-negative", saleVoidConflict.Code);
+
+            var purchaseVoidUseCase = new VoidPurchaseUseCase(
+                currentUser, slice1, slice4, slice5, fixedTime);
+            var purchaseVoidConflict = await Assert.ThrowsAsync<ApplicationConflictException>(() =>
+                purchaseVoidUseCase.ExecuteAsync(
+                    purchase.Id,
+                    new VoidTransactionCommand(Guid.NewGuid(), "Equal timestamp guard"),
+                    CancellationToken.None));
+            Assert.Equal("supplier-debt-would-become-negative", purchaseVoidConflict.Code);
+
+            Assert.Equal(0, await db.SaleVoids.CountAsync(item => item.OriginalSaleId == voidSale.Id));
+            Assert.Equal(0, await db.PurchaseVoids.CountAsync(item => item.OriginalPurchaseId == purchase.Id));
+            return true;
+        });
     }
 
     [Fact]
@@ -694,4 +809,14 @@ public sealed class Slice5IntegrationTests(CustomWebApplicationFactory factory)
         HttpClient Client,
         Guid StoreId,
         (string Email, string Password) Credentials);
+
+    private sealed record FixedCurrentUser(Guid UserId) : ICurrentUser
+    {
+        public bool IsAuthenticated => true;
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
 }

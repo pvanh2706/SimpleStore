@@ -55,8 +55,8 @@ public sealed class VoidSaleUseCase(
             var now = timeProvider.GetUtcNow();
             if (sale.CustomerId.HasValue)
             {
-                var debt = await debtRepository.GetCustomerDebtAsync(
-                    storeId, sale.CustomerId.Value, now, token)
+                var debt = await debtRepository.GetCurrentCustomerDebtAsync(
+                    storeId, sale.CustomerId.Value, token)
                     ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
                 var activeContribution = sale.TotalAmount - sale.Payments.Sum(payment => payment.Amount);
                 var hypothetical = debt.OutstandingAmount - activeContribution;
@@ -162,7 +162,7 @@ public sealed class VoidPurchaseUseCase(
                 throw new ApplicationConflictException("purchase-already-voided", "Purchase is already voided.");
 
             var now = timeProvider.GetUtcNow();
-            var debt = await debtRepository.GetSupplierDebtAsync(storeId, purchase.SupplierId, now, token)
+            var debt = await debtRepository.GetCurrentSupplierDebtAsync(storeId, purchase.SupplierId, token)
                 ?? throw new ApplicationNotFoundException("supplier-not-found", "Supplier was not found.");
             if (debt.OutstandingAmount < 0)
             {

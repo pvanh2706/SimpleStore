@@ -11,46 +11,35 @@ namespace SimpleStore.Infrastructure.Persistence;
 
 public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Repository
 {
-    public async Task<DebtPartyBalance?> GetCustomerDebtAsync(
+    public Task<DebtPartyBalance?> GetCurrentCustomerDebtAsync(
         Guid storeId,
         Guid customerId,
-        DateTimeOffset asOf,
-        CancellationToken cancellationToken)
-    {
-        var customer = await dbContext.Customers.AsNoTracking()
-            .Where(item => item.StoreId == storeId && item.Id == customerId)
-            .Select(item => new { item.Id, item.Name })
-            .SingleOrDefaultAsync(cancellationToken);
-        return customer is null
-            ? null
-            : new DebtPartyBalance(
-                customer.Id,
-                customer.Name,
-                await GetCustomerOutstandingAsync(storeId, customer.Id, asOf, cancellationToken));
-    }
+        CancellationToken cancellationToken) =>
+        GetCustomerDebtAsync(storeId, customerId, null, cancellationToken);
 
-    public async Task<DebtPartyBalance?> GetSupplierDebtAsync(
+    public Task<DebtPartyBalance?> GetCustomerDebtAsOfAsync(
+        Guid storeId,
+        Guid customerId,
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken) =>
+        GetCustomerDebtAsync(storeId, customerId, cutoff, cancellationToken);
+
+    public Task<DebtPartyBalance?> GetCurrentSupplierDebtAsync(
         Guid storeId,
         Guid supplierId,
-        DateTimeOffset asOf,
-        CancellationToken cancellationToken)
-    {
-        var supplier = await dbContext.Suppliers.AsNoTracking()
-            .Where(item => item.StoreId == storeId && item.Id == supplierId)
-            .Select(item => new { item.Id, item.Name })
-            .SingleOrDefaultAsync(cancellationToken);
-        return supplier is null
-            ? null
-            : new DebtPartyBalance(
-                supplier.Id,
-                supplier.Name,
-                await GetSupplierOutstandingAsync(storeId, supplier.Id, asOf, cancellationToken));
-    }
+        CancellationToken cancellationToken) =>
+        GetSupplierDebtAsync(storeId, supplierId, null, cancellationToken);
 
-    public async Task<DebtPartyBalancePage> SearchCustomerDebtsAsync(
+    public Task<DebtPartyBalance?> GetSupplierDebtAsOfAsync(
+        Guid storeId,
+        Guid supplierId,
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken) =>
+        GetSupplierDebtAsync(storeId, supplierId, cutoff, cancellationToken);
+
+    public async Task<DebtPartyBalancePage> SearchCurrentCustomerDebtsAsync(
         Guid storeId,
         string? search,
-        DateTimeOffset asOf,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -71,32 +60,27 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
             .Where(sale => sale.StoreId == storeId
                 && sale.CustomerId.HasValue
                 && partyIds.Contains(sale.CustomerId.Value)
-                && sale.CompletedAt < asOf
                 && !dbContext.SaleVoids.Any(voided =>
                     voided.StoreId == storeId
-                    && voided.OriginalSaleId == sale.Id
-                    && voided.VoidedAt < asOf))
+                    && voided.OriginalSaleId == sale.Id))
             .Select(sale => new { sale.Id, CustomerId = sale.CustomerId!.Value, sale.TotalAmount })
             .ToArrayAsync(cancellationToken);
         var saleIds = activeSales.Select(item => item.Id).ToArray();
         var salePayments = await dbContext.SalePayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
-                && saleIds.Contains(payment.SaleId)
-                && payment.OccurredAt < asOf)
+                && saleIds.Contains(payment.SaleId))
             .GroupBy(payment => payment.SaleId)
             .Select(group => new { SaleId = group.Key, Amount = group.Sum(item => item.Amount) })
             .ToDictionaryAsync(item => item.SaleId, item => item.Amount, cancellationToken);
         var returns = await dbContext.Returns.AsNoTracking()
             .Where(item => item.StoreId == storeId
-                && saleIds.Contains(item.OriginalSaleId)
-                && item.CompletedAt < asOf)
+                && saleIds.Contains(item.OriginalSaleId))
             .Select(item => new { item.Id, item.OriginalSaleId, item.TotalReturnAmount })
             .ToArrayAsync(cancellationToken);
         var returnIds = returns.Select(item => item.Id).ToArray();
         var refunds = await dbContext.ReturnRefundPayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
-                && returnIds.Contains(payment.ReturnId)
-                && payment.OccurredAt < asOf)
+                && returnIds.Contains(payment.ReturnId))
             .GroupBy(payment => payment.ReturnId)
             .Select(group => new { ReturnId = group.Key, Amount = group.Sum(item => item.Amount) })
             .ToDictionaryAsync(item => item.ReturnId, item => item.Amount, cancellationToken);
@@ -104,8 +88,7 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
             .Where(payment => payment.StoreId == storeId
                 && payment.CustomerId.HasValue
                 && partyIds.Contains(payment.CustomerId.Value)
-                && payment.Purpose == DebtPaymentPurpose.CustomerDebtCollection
-                && payment.OccurredAt < asOf)
+                && payment.Purpose == DebtPaymentPurpose.CustomerDebtCollection)
             .GroupBy(payment => payment.CustomerId!.Value)
             .Select(group => new { CustomerId = group.Key, Amount = group.Sum(item => item.Amount) })
             .ToDictionaryAsync(item => item.CustomerId, item => item.Amount, cancellationToken);
@@ -136,10 +119,9 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
         return Page(balances, page, pageSize, "customer-debt-state-invalid");
     }
 
-    public async Task<DebtPartyBalancePage> SearchSupplierDebtsAsync(
+    public async Task<DebtPartyBalancePage> SearchCurrentSupplierDebtsAsync(
         Guid storeId,
         string? search,
-        DateTimeOffset asOf,
         int page,
         int pageSize,
         CancellationToken cancellationToken)
@@ -160,18 +142,15 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
             .Where(purchase => purchase.StoreId == storeId
                 && partyIds.Contains(purchase.SupplierId)
                 && purchase.Status == PurchaseStatus.Completed
-                && purchase.CompletedAt < asOf
                 && !dbContext.PurchaseVoids.Any(voided =>
                     voided.StoreId == storeId
-                    && voided.OriginalPurchaseId == purchase.Id
-                    && voided.VoidedAt < asOf))
+                    && voided.OriginalPurchaseId == purchase.Id))
             .Select(purchase => new { purchase.Id, purchase.SupplierId, purchase.TotalAmount })
             .ToArrayAsync(cancellationToken);
         var purchaseIds = activePurchases.Select(item => item.Id).ToArray();
         var purchasePayments = await dbContext.PurchasePayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
-                && purchaseIds.Contains(payment.PurchaseId)
-                && payment.PaidAt < asOf)
+                && purchaseIds.Contains(payment.PurchaseId))
             .GroupBy(payment => payment.PurchaseId)
             .Select(group => new { PurchaseId = group.Key, Amount = group.Sum(item => item.Amount) })
             .ToDictionaryAsync(item => item.PurchaseId, item => item.Amount, cancellationToken);
@@ -179,8 +158,7 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
             .Where(payment => payment.StoreId == storeId
                 && payment.SupplierId.HasValue
                 && partyIds.Contains(payment.SupplierId.Value)
-                && payment.Purpose == DebtPaymentPurpose.SupplierDebtSettlement
-                && payment.OccurredAt < asOf)
+                && payment.Purpose == DebtPaymentPurpose.SupplierDebtSettlement)
             .GroupBy(payment => payment.SupplierId!.Value)
             .Select(group => new { SupplierId = group.Key, Amount = group.Sum(item => item.Amount) })
             .ToDictionaryAsync(item => item.SupplierId, item => item.Amount, cancellationToken);
@@ -251,45 +229,81 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
         }
     }
 
+    private async Task<DebtPartyBalance?> GetCustomerDebtAsync(
+        Guid storeId,
+        Guid customerId,
+        DateTimeOffset? cutoff,
+        CancellationToken cancellationToken)
+    {
+        var customer = await dbContext.Customers.AsNoTracking()
+            .Where(item => item.StoreId == storeId && item.Id == customerId)
+            .Select(item => new { item.Id, item.Name })
+            .SingleOrDefaultAsync(cancellationToken);
+        return customer is null
+            ? null
+            : new DebtPartyBalance(
+                customer.Id,
+                customer.Name,
+                await GetCustomerOutstandingAsync(storeId, customer.Id, cutoff, cancellationToken));
+    }
+
+    private async Task<DebtPartyBalance?> GetSupplierDebtAsync(
+        Guid storeId,
+        Guid supplierId,
+        DateTimeOffset? cutoff,
+        CancellationToken cancellationToken)
+    {
+        var supplier = await dbContext.Suppliers.AsNoTracking()
+            .Where(item => item.StoreId == storeId && item.Id == supplierId)
+            .Select(item => new { item.Id, item.Name })
+            .SingleOrDefaultAsync(cancellationToken);
+        return supplier is null
+            ? null
+            : new DebtPartyBalance(
+                supplier.Id,
+                supplier.Name,
+                await GetSupplierOutstandingAsync(storeId, supplier.Id, cutoff, cancellationToken));
+    }
+
     private async Task<decimal> GetCustomerOutstandingAsync(
         Guid storeId,
         Guid customerId,
-        DateTimeOffset asOf,
+        DateTimeOffset? cutoff,
         CancellationToken cancellationToken)
     {
         var activeSales = await dbContext.Sales.AsNoTracking()
             .Where(sale => sale.StoreId == storeId
                 && sale.CustomerId == customerId
-                && sale.CompletedAt < asOf
+                && (!cutoff.HasValue || sale.CompletedAt < cutoff.Value)
                 && !dbContext.SaleVoids.Any(voided =>
                     voided.StoreId == storeId
                     && voided.OriginalSaleId == sale.Id
-                    && voided.VoidedAt < asOf))
+                    && (!cutoff.HasValue || voided.VoidedAt < cutoff.Value)))
             .Select(sale => new { sale.Id, sale.TotalAmount })
             .ToArrayAsync(cancellationToken);
         var saleIds = activeSales.Select(item => item.Id).ToArray();
         var salePayments = await dbContext.SalePayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
                 && saleIds.Contains(payment.SaleId)
-                && payment.OccurredAt < asOf)
+                && (!cutoff.HasValue || payment.OccurredAt < cutoff.Value))
             .SumAsync(payment => payment.Amount, cancellationToken);
         var returns = await dbContext.Returns.AsNoTracking()
             .Where(item => item.StoreId == storeId
                 && saleIds.Contains(item.OriginalSaleId)
-                && item.CompletedAt < asOf)
+                && (!cutoff.HasValue || item.CompletedAt < cutoff.Value))
             .Select(item => new { item.Id, item.TotalReturnAmount })
             .ToArrayAsync(cancellationToken);
         var returnIds = returns.Select(item => item.Id).ToArray();
         var refunds = await dbContext.ReturnRefundPayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
                 && returnIds.Contains(payment.ReturnId)
-                && payment.OccurredAt < asOf)
+                && (!cutoff.HasValue || payment.OccurredAt < cutoff.Value))
             .SumAsync(payment => payment.Amount, cancellationToken);
         var debtPayments = await dbContext.DebtPayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
                 && payment.CustomerId == customerId
                 && payment.Purpose == DebtPaymentPurpose.CustomerDebtCollection
-                && payment.OccurredAt < asOf)
+                && (!cutoff.HasValue || payment.OccurredAt < cutoff.Value))
             .SumAsync(payment => payment.Amount, cancellationToken);
         return activeSales.Sum(item => item.TotalAmount)
             - salePayments
@@ -301,31 +315,31 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
     private async Task<decimal> GetSupplierOutstandingAsync(
         Guid storeId,
         Guid supplierId,
-        DateTimeOffset asOf,
+        DateTimeOffset? cutoff,
         CancellationToken cancellationToken)
     {
         var activePurchases = await dbContext.Purchases.AsNoTracking()
             .Where(purchase => purchase.StoreId == storeId
                 && purchase.SupplierId == supplierId
                 && purchase.Status == PurchaseStatus.Completed
-                && purchase.CompletedAt < asOf
+                && (!cutoff.HasValue || purchase.CompletedAt < cutoff.Value)
                 && !dbContext.PurchaseVoids.Any(voided =>
                     voided.StoreId == storeId
                     && voided.OriginalPurchaseId == purchase.Id
-                    && voided.VoidedAt < asOf))
+                    && (!cutoff.HasValue || voided.VoidedAt < cutoff.Value)))
             .Select(purchase => new { purchase.Id, purchase.TotalAmount })
             .ToArrayAsync(cancellationToken);
         var purchaseIds = activePurchases.Select(item => item.Id).ToArray();
         var purchasePayments = await dbContext.PurchasePayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
                 && purchaseIds.Contains(payment.PurchaseId)
-                && payment.PaidAt < asOf)
+                && (!cutoff.HasValue || payment.PaidAt < cutoff.Value))
             .SumAsync(payment => payment.Amount, cancellationToken);
         var debtPayments = await dbContext.DebtPayments.AsNoTracking()
             .Where(payment => payment.StoreId == storeId
                 && payment.SupplierId == supplierId
                 && payment.Purpose == DebtPaymentPurpose.SupplierDebtSettlement
-                && payment.OccurredAt < asOf)
+                && (!cutoff.HasValue || payment.OccurredAt < cutoff.Value))
             .SumAsync(payment => payment.Amount, cancellationToken);
         return activePurchases.Sum(item => item.TotalAmount) - purchasePayments - debtPayments;
     }

@@ -21,11 +21,10 @@ public sealed class GetCustomerDebtUseCase(
     public async Task<DebtBalanceResult> ExecuteAsync(Guid customerId, CancellationToken cancellationToken)
     {
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
-        var asOf = timeProvider.GetUtcNow();
-        var debt = await repository.GetCustomerDebtAsync(storeId, customerId, asOf, cancellationToken)
+        var debt = await repository.GetCurrentCustomerDebtAsync(storeId, customerId, cancellationToken)
             ?? throw new ApplicationNotFoundException("customer-not-found", "Customer was not found.");
         EnsureValid(debt.OutstandingAmount, "customer-debt-state-invalid");
-        return ToResult(debt, asOf);
+        return ToResult(debt, timeProvider.GetUtcNow());
     }
 
     internal static DebtBalanceResult ToResult(DebtPartyBalance item, DateTimeOffset asOf) =>
@@ -54,10 +53,9 @@ public sealed class GetCustomerDebtsUseCase(
     {
         PaginationGuard.Validate(page, pageSize);
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
-        var asOf = timeProvider.GetUtcNow();
-        var result = await repository.SearchCustomerDebtsAsync(
-            storeId, search?.Trim(), asOf, page, pageSize, cancellationToken);
-        return ToList(result, page, pageSize, asOf);
+        var result = await repository.SearchCurrentCustomerDebtsAsync(
+            storeId, search?.Trim(), page, pageSize, cancellationToken);
+        return ToList(result, page, pageSize, timeProvider.GetUtcNow());
     }
 
     internal static DebtBalanceListResult ToList(
@@ -83,11 +81,10 @@ public sealed class GetSupplierDebtUseCase(
     public async Task<DebtBalanceResult> ExecuteAsync(Guid supplierId, CancellationToken cancellationToken)
     {
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
-        var asOf = timeProvider.GetUtcNow();
-        var debt = await repository.GetSupplierDebtAsync(storeId, supplierId, asOf, cancellationToken)
+        var debt = await repository.GetCurrentSupplierDebtAsync(storeId, supplierId, cancellationToken)
             ?? throw new ApplicationNotFoundException("supplier-not-found", "Supplier was not found.");
         GetCustomerDebtUseCase.EnsureValid(debt.OutstandingAmount, "supplier-debt-state-invalid");
-        return GetCustomerDebtUseCase.ToResult(debt, asOf);
+        return GetCustomerDebtUseCase.ToResult(debt, timeProvider.GetUtcNow());
     }
 }
 
@@ -105,10 +102,9 @@ public sealed class GetSupplierDebtsUseCase(
     {
         PaginationGuard.Validate(page, pageSize);
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
-        var asOf = timeProvider.GetUtcNow();
-        var result = await repository.SearchSupplierDebtsAsync(
-            storeId, search?.Trim(), asOf, page, pageSize, cancellationToken);
-        return GetCustomerDebtsUseCase.ToList(result, page, pageSize, asOf);
+        var result = await repository.SearchCurrentSupplierDebtsAsync(
+            storeId, search?.Trim(), page, pageSize, cancellationToken);
+        return GetCustomerDebtsUseCase.ToList(result, page, pageSize, timeProvider.GetUtcNow());
     }
 }
 
@@ -260,8 +256,8 @@ internal static class DebtPaymentUseCaseSupport
 
             var now = timeProvider.GetUtcNow();
             var debt = isCustomer
-                ? await repository.GetCustomerDebtAsync(storeId, partyId, now, token)
-                : await repository.GetSupplierDebtAsync(storeId, partyId, now, token);
+                ? await repository.GetCurrentCustomerDebtAsync(storeId, partyId, token)
+                : await repository.GetCurrentSupplierDebtAsync(storeId, partyId, token);
             if (debt is null)
             {
                 throw new ApplicationNotFoundException(
