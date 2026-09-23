@@ -25,7 +25,9 @@ describe('App navigation', () => {
 
     expect(owner.text()).toContain('Nhà cung cấp')
     expect(owner.text()).toContain('Nhập hàng')
+    expect(owner.text()).toContain('Hôm nay')
     expect(cashier.text()).not.toContain('Nhà cung cấp')
     expect(cashier.text()).not.toContain('Nhập hàng')
+    expect(cashier.text()).not.toContain('Hôm nay')
   })
 })

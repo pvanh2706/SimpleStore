@@ -20,8 +20,14 @@ async function submit() {
   submitting.value = true
   try {
     await auth.login(email.value, password.value)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
-    await router.push(redirect ?? (auth.session.hasStore ? '/products' : '/setup'))
+    const candidate = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    const redirect = candidate?.startsWith('/') && !candidate.startsWith('//') && !candidate.startsWith('/login')
+      ? candidate
+      : null
+    const defaultPath = auth.session.hasStore
+      ? (auth.session.roles.includes('Owner') ? '/today' : '/products')
+      : '/setup'
+    await router.push(redirect ?? defaultPath)
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Không thể đăng nhập.'
   } finally {

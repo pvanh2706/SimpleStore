@@ -364,6 +364,79 @@ export interface EndOfDayReport {
   }
 }
 
+export type CostReliability = 'Reliable' | 'Estimated' | 'Unavailable'
+
+export type TodayMetricId =
+  | 'revenue'
+  | 'collected'
+  | 'estimated-gross-profit'
+  | 'sale-count'
+  | 'customer-debt-created'
+  | 'supplier-debt-created'
+
+export type TodaySourceType =
+  | 'Sale'
+  | 'CustomerReturn'
+  | 'SaleVoid'
+  | 'SalePayment'
+  | 'CustomerDebtPayment'
+  | 'ActualCustomerRefund'
+  | 'Purchase'
+  | 'PurchasePayment'
+  | 'HistoricalCogs'
+
+export interface TodayEstimatedGrossProfit {
+  netSalesRevenue: number
+  historicalCogs: number
+  amount: number
+  costReliability: CostReliability
+}
+
+export interface TodaySummary {
+  businessDate: string
+  timeZoneId: string
+  startUtc: string
+  endUtc: string
+  salesRevenue: number
+  netCollected: number
+  estimatedGrossProfit: TodayEstimatedGrossProfit
+  saleCount: number
+  customerDebtCreated: number
+  supplierDebtCreated: number
+}
+
+export interface TodayDebtContribution {
+  originalTotal: number
+  directPayments: number
+  baseDebt: number
+  sameDayReturnObligationReduction: number
+  sameDayVoided: boolean
+  finalContribution: number
+}
+
+export interface TodayEvidenceSource {
+  sourceType: TodaySourceType
+  sourceId: string
+  relatedSourceId: string | null
+  occurredAt: string
+  contributionAmount: number | null
+  contributionCount: number | null
+  title: string
+  debtContribution: TodayDebtContribution | null
+}
+
+export interface TodayExplanation {
+  metric: TodayMetricId
+  headline: number
+  historicalCogs: number | null
+  costReliability: CostReliability | null
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  items: TodayEvidenceSource[]
+}
+
 export interface ReturnLine {
   id: string
   originalSaleLineId: string

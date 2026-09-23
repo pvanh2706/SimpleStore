@@ -1,13 +1,16 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAuthStore } from '../stores/auth'
 import router from './index'
 
 describe('router authentication guard', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setActivePinia(createPinia())
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response(JSON.stringify({
       isAuthenticated: false, email: null, storeId: null, roles: [], hasStore: false,
     }), { status: 200 })))
+    await router.push('/login')
+    useAuthStore().initialized = false
   })
 
   it('redirects unauthenticated users to login', async () => {
@@ -24,7 +27,7 @@ describe('router authentication guard', () => {
     expect(router.currentRoute.value.name).toBe('products')
   })
 
-  it.each(['/suppliers/debts', '/reports/end-of-day', '/settings/operations'])(
+  it.each(['/today', '/suppliers/debts', '/reports/end-of-day', '/settings/operations'])(
     'redirects a Cashier away from Owner-only Stage 5B route %s',
     async path => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
@@ -41,5 +44,29 @@ describe('router authentication guard', () => {
     }), { status: 200 })))
     await router.push('/customers/debts')
     expect(router.currentRoute.value.name).toBe('customer-debts')
+  })
+
+  it('uses Today as the Owner default landing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      isAuthenticated: true, email: 'owner@test', storeId: 'store-1', roles: ['Owner'], hasStore: true,
+    }), { status: 200 })))
+    await router.push('/')
+    expect(router.currentRoute.value.name).toBe('today')
+  })
+
+  it('keeps Products as the Cashier operational landing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      isAuthenticated: true, email: 'cashier@test', storeId: 'store-1', roles: ['Cashier'], hasStore: true,
+    }), { status: 200 })))
+    await router.push('/')
+    expect(router.currentRoute.value.name).toBe('products')
+  })
+
+  it('honors an explicit safe authorized redirect instead of forcing Today', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      isAuthenticated: true, email: 'owner@test', storeId: 'store-1', roles: ['Owner'], hasStore: true,
+    }), { status: 200 })))
+    await router.push({ name: 'login', query: { redirect: '/reports/end-of-day' } })
+    expect(router.currentRoute.value.name).toBe('end-of-day')
   })
 })

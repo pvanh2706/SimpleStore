@@ -25,37 +25,24 @@ public sealed class GetEndOfDayReportUseCase(
         EnsureNonnegative(data.EndingCustomerDebt, "customer-debt-state-invalid");
         EnsureNonnegative(data.EndingSupplierDebt, "supplier-debt-state-invalid");
 
-        var netRevenue = data.CompletedSales - data.CompletedReturns - data.VoidedSales;
-        var salePayments = data.SalePaymentsCash + data.SalePaymentsTransfer;
-        var customerDebtPayments = data.CustomerDebtPaymentsCash + data.CustomerDebtPaymentsTransfer;
-        var refunds = data.RefundsCash + data.RefundsTransfer;
-        var grossCollected = salePayments + customerDebtPayments;
+        var financial = DailyFinancialProjection.Project(data);
         var purchasePayments = data.PurchasePaymentsCash + data.PurchasePaymentsTransfer;
         var supplierDebtPayments = data.SupplierDebtPaymentsCash + data.SupplierDebtPaymentsTransfer;
-        var cogs = data.DirectSaleCogs - data.RestockedReturnValue - data.VoidedSaleCogs;
 
         return new EndOfDayReportResult(
             businessDate,
             window.TimeZoneId,
             window.StartUtc,
             window.EndUtc,
-            netRevenue,
-            new CollectedResult(
-                salePayments,
-                customerDebtPayments,
-                refunds,
-                grossCollected - refunds),
+            financial.SalesRevenue,
+            financial.Collected,
             data.EndingCustomerDebt,
             new SupplierPaymentsResult(
                 purchasePayments,
                 supplierDebtPayments,
                 purchasePayments + supplierDebtPayments),
             data.EndingSupplierDebt,
-            new EstimatedGrossProfitResult(
-                netRevenue,
-                cogs,
-                netRevenue - cogs,
-                data.CostReliability.ToString()));
+            financial.EstimatedGrossProfit);
     }
 
     private static void EnsureNonnegative(decimal value, string code)

@@ -6,7 +6,8 @@ using SimpleStore.Domain.Purchases;
 
 namespace SimpleStore.Infrastructure.Persistence;
 
-public sealed class Slice5BRepository(ApplicationDbContext dbContext) : ISlice5BRepository
+public sealed class Slice5BRepository(ApplicationDbContext dbContext)
+    : ISlice5BRepository, ISlice6ARepository
 {
     public async Task<EndOfDayData> GetEndOfDayAsync(
         Guid storeId,
@@ -189,4 +190,152 @@ public sealed class Slice5BRepository(ApplicationDbContext dbContext) : ISlice5B
 
     private static decimal Cost(decimal quantity, decimal unitCost) =>
         decimal.Round(quantity * unitCost, 2, MidpointRounding.AwayFromZero);
+
+    public async Task<TodayActivityData> GetTodayActivityAsync(
+        Guid storeId,
+        DateTimeOffset startUtc,
+        DateTimeOffset endUtc,
+        CancellationToken cancellationToken)
+    {
+        var sales = await dbContext.Sales.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.CompletedAt >= startUtc && item.CompletedAt < endUtc)
+            .Select(item => new TodaySaleActivity(
+                item.Id,
+                item.CompletedAt,
+                item.TotalAmount,
+                dbContext.SalePayments
+                    .Where(payment => payment.StoreId == storeId && payment.SaleId == item.Id)
+                    .Sum(payment => (decimal?)payment.Amount) ?? 0m))
+            .ToArrayAsync(cancellationToken);
+
+        var returns = await dbContext.Returns.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.CompletedAt >= startUtc && item.CompletedAt < endUtc)
+            .Select(item => new TodayReturnActivity(
+                item.Id,
+                item.OriginalSaleId,
+                item.CompletedAt,
+                item.TotalReturnAmount))
+            .ToArrayAsync(cancellationToken);
+
+        var saleVoids = await (
+            from voided in dbContext.SaleVoids.AsNoTracking()
+            join sale in dbContext.Sales.AsNoTracking() on voided.OriginalSaleId equals sale.Id
+            where voided.StoreId == storeId && sale.StoreId == storeId
+                && voided.VoidedAt >= startUtc && voided.VoidedAt < endUtc
+            select new TodaySaleVoidActivity(
+                voided.Id,
+                voided.OriginalSaleId,
+                voided.VoidedAt,
+                sale.TotalAmount))
+            .ToArrayAsync(cancellationToken);
+
+        var salePayments = await dbContext.SalePayments.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.OccurredAt >= startUtc && item.OccurredAt < endUtc)
+            .Select(item => new TodayMoneyActivity(
+                item.Id, item.SaleId, item.OccurredAt, item.Amount))
+            .ToArrayAsync(cancellationToken);
+
+        var customerDebtPayments = await dbContext.DebtPayments.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.Purpose == DebtPaymentPurpose.CustomerDebtCollection
+                && item.OccurredAt >= startUtc && item.OccurredAt < endUtc)
+            .Select(item => new TodayMoneyActivity(
+                item.Id, item.CustomerId!.Value, item.OccurredAt, item.Amount))
+            .ToArrayAsync(cancellationToken);
+
+        var customerRefunds = await dbContext.ReturnRefundPayments.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.OccurredAt >= startUtc && item.OccurredAt < endUtc)
+            .Select(item => new TodayMoneyActivity(
+                item.Id, item.ReturnId, item.OccurredAt, item.Amount))
+            .ToArrayAsync(cancellationToken);
+
+        var purchases = await dbContext.Purchases.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.Status == PurchaseStatus.Completed
+                && item.CompletedAt >= startUtc && item.CompletedAt < endUtc)
+            .Select(item => new TodayPurchaseActivity(
+                item.Id,
+                item.CompletedAt!.Value,
+                item.TotalAmount,
+                dbContext.PurchasePayments
+                    .Where(payment => payment.StoreId == storeId && payment.PurchaseId == item.Id)
+                    .Sum(payment => (decimal?)payment.Amount) ?? 0m))
+            .ToArrayAsync(cancellationToken);
+
+        var purchasePayments = await dbContext.PurchasePayments.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.PaidAt >= startUtc && item.PaidAt < endUtc)
+            .Select(item => new TodayMoneyActivity(
+                item.Id, item.PurchaseId, item.PaidAt, item.Amount))
+            .ToArrayAsync(cancellationToken);
+
+        var purchaseVoids = await dbContext.PurchaseVoids.AsNoTracking()
+            .Where(item => item.StoreId == storeId
+                && item.VoidedAt >= startUtc && item.VoidedAt < endUtc)
+            .Select(item => new TodayPurchaseVoidActivity(
+                item.Id, item.OriginalPurchaseId, item.VoidedAt))
+            .ToArrayAsync(cancellationToken);
+
+        var directCogs = await (
+            from line in dbContext.SaleLines.AsNoTracking()
+            join sale in dbContext.Sales.AsNoTracking() on line.SaleId equals sale.Id
+            where sale.StoreId == storeId
+                && sale.CompletedAt >= startUtc && sale.CompletedAt < endUtc
+            select new TodayCogsActivity(
+                line.Id,
+                sale.Id,
+                sale.CompletedAt,
+                "DirectSale",
+                -Cost(line.Quantity, line.UnitCostAtSale),
+                line.CostReliability))
+            .ToArrayAsync(cancellationToken);
+
+        var returnCogs = await (
+            from line in dbContext.ReturnLines.AsNoTracking()
+            join customerReturn in dbContext.Returns.AsNoTracking()
+                on line.ReturnId equals customerReturn.Id
+            join originalLine in dbContext.SaleLines.AsNoTracking()
+                on line.OriginalSaleLineId equals originalLine.Id
+            where customerReturn.StoreId == storeId
+                && customerReturn.CompletedAt >= startUtc && customerReturn.CompletedAt < endUtc
+            select new TodayCogsActivity(
+                line.Id,
+                customerReturn.Id,
+                customerReturn.CompletedAt,
+                "RestockedReturn",
+                line.RestockedInventoryValue,
+                originalLine.CostReliability))
+            .ToArrayAsync(cancellationToken);
+
+        var voidCogs = await (
+            from voided in dbContext.SaleVoids.AsNoTracking()
+            join line in dbContext.SaleLines.AsNoTracking()
+                on voided.OriginalSaleId equals line.SaleId
+            where voided.StoreId == storeId
+                && voided.VoidedAt >= startUtc && voided.VoidedAt < endUtc
+            select new TodayCogsActivity(
+                line.Id,
+                voided.Id,
+                voided.VoidedAt,
+                "VoidedSale",
+                Cost(line.Quantity, line.UnitCostAtSale),
+                line.CostReliability))
+            .ToArrayAsync(cancellationToken);
+
+        return new TodayActivityData(
+            sales,
+            returns,
+            saleVoids,
+            salePayments,
+            customerDebtPayments,
+            customerRefunds,
+            purchases,
+            purchasePayments,
+            purchaseVoids,
+            [.. directCogs, .. returnCogs, .. voidCogs]);
+    }
 }

@@ -15,13 +15,14 @@ async function logout() {
   <div class="min-h-screen bg-stone-50 text-slate-900">
     <header v-if="auth.session.isAuthenticated" class="border-b border-stone-200 bg-white">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-5 px-5 py-4">
-        <RouterLink class="text-xl font-black tracking-tight text-emerald-800" to="/products">SimpleStore</RouterLink>
+        <RouterLink class="text-xl font-black tracking-tight text-emerald-800" to="/">SimpleStore</RouterLink>
         <nav v-if="auth.session.hasStore" class="flex flex-1 gap-4 text-sm font-semibold">
           <RouterLink class="nav-link" to="/sales/new">Bán hàng</RouterLink>
           <RouterLink class="nav-link" to="/sales">Đơn bán</RouterLink>
           <RouterLink class="nav-link" to="/products">Sản phẩm</RouterLink>
           <RouterLink class="nav-link" to="/customers/debts">Công nợ khách</RouterLink>
           <template v-if="auth.session.roles.includes('Owner')">
+            <RouterLink class="nav-link" to="/today">Hôm nay</RouterLink>
             <RouterLink class="nav-link" to="/suppliers/debts">Công nợ NCC</RouterLink>
             <RouterLink class="nav-link" to="/reports/end-of-day">Cuối ngày</RouterLink>
             <RouterLink class="nav-link" to="/import">Nhập từ CSV</RouterLink>

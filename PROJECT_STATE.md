@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 6 — Understand & Act: Product Owner decisions D-061–D-072 `APPROVED`; Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; implementation `NOT STARTED`**
+**Slice 6 — Understand & Act: Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 6B `NOT STARTED`**
 
 Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -58,7 +58,9 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-073 — Technical Breakdown Slice 6 Approval — là `APPROVED` ngày 2026-09-23 tại reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`; Technical Breakdown và sequencing Stage 6A/6B chuyển thành `APPROVED FOR IMPLEMENTATION`.
 - GitHub Actions run #36 / `35881101954` tại approved baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280` là `SUCCESS`: backend restore, Release build và `dotnet test` pass; frontend `pnpm install`, build và tests pass. Không ghi nhận real Slice 6 E2E vì implementation chưa bắt đầu.
 - S6-Q1–S6-Q4 đã được resolve tại D-069–D-072 và chuyển sang resolved trong `OPEN_QUESTIONS.md`; không còn known Product Owner blocker cho Slice 6 technical semantics.
-- Slice 6 implementation là `NOT STARTED`: chưa có backend/frontend code, migration, schema hoặc API cho Slice 6; D-073 authorize implementation sequence nhưng không đánh dấu Stage 6A/6B đã bắt đầu hoặc hoàn tất.
+- Stage 6A là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`: shared EOD/Today financial projection, backend-authoritative Store-local Today, Owner-only summary/explanations, D-069 new-debt-created, D-070 SaleCount, `/today` UI và role-aware default landing đã được implement. Không có schema/migration mới.
+- Stage 6A local verification: backend restore và Release build pass với 0 warnings; Domain tests 78/78; SQL Server integration tests 82/82; frontend frozen install/build pass và tests 89/89. Đây chưa phải Product Owner approval và chưa có GitHub Actions evidence cho implementation commit.
+- Stage 6B là `NOT STARTED`: chưa có C14 calculation/attention API, experiment events/telemetry, Product → Purchase preselection, C14 migration hoặc Stage 6B E2E.
 
 ## Tiến độ
 
@@ -170,7 +172,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Begin Stage 6A implementation according to D-073.** Stage 6A chưa bắt đầu hoặc hoàn tất tại thời điểm approval tài liệu.
+**Product Owner review Stage 6A implementation.** Không tự approve Stage 6A và không bắt đầu Stage 6B trong handoff này.
 
 ## Chưa triển khai
 
@@ -180,4 +182,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Product Owner approve Technical Breakdown Slice 6 tại D-073 và reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`; GitHub Actions run #36 / `35881101954` `SUCCESS`. Technical Breakdown cùng sequencing Stage 6A/6B là `APPROVED FOR IMPLEMENTATION`; S6-Q1–S6-Q4 đã resolved, Slice 6 implementation vẫn `NOT STARTED`, và Slice 5 giữ `APPROVED / COMPLETED` tại D-060. Bước tiếp theo là bắt đầu Stage 6A theo D-073.
+2026-09-23 — Stage 6A được implement theo D-073 và chuyển thành `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; shared financial semantics, backend-authoritative Today, D-069/D-070, typed explainability và Owner `/today` đã hoàn tất với Domain 78/78, SQL Server integration 82/82, frontend 89/89 và cả hai build pass. Không có migration/schema change; Stage 6B vẫn `NOT STARTED`; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.

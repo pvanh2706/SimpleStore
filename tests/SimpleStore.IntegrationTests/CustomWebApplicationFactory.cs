@@ -15,6 +15,7 @@ namespace SimpleStore.IntegrationTests;
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly string _connectionString = CreateConnectionString();
+    private readonly MutableTimeProvider _timeProvider = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,6 +32,8 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         });
         builder.ConfigureServices(services =>
         {
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(_timeProvider);
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
@@ -44,6 +47,8 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         BaseAddress = new Uri("https://localhost"),
         HandleCookies = true
     });
+
+    public void SetUtcNow(DateTimeOffset? utcNow) => _timeProvider.SetUtcNow(utcNow);
 
     public async Task<(string Email, string Password)> CreateOwnerAsync()
         => await CreateUserAsync(ApplicationRoles.Owner);
@@ -136,4 +141,13 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     private static string FormatErrors(IdentityResult result) =>
         string.Join("; ", result.Errors.Select(error => error.Description));
+
+    private sealed class MutableTimeProvider : TimeProvider
+    {
+        private DateTimeOffset? _utcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow ?? TimeProvider.System.GetUtcNow();
+
+        public void SetUtcNow(DateTimeOffset? utcNow) => _utcNow = utcNow;
+    }
 }

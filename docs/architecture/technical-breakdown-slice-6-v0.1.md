@@ -611,7 +611,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 
 ### Stage 6A — Today/C12/C13 reporting foundation
 
-`APPROVED FOR IMPLEMENTATION` — sequence đã được authorize; Stage 6A implementation vẫn `NOT STARTED`:
+`IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`:
 
 - shared daily financial projection reused by EOD/Today;
 - current Store-local date/window service orchestration;
@@ -620,9 +620,11 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - D-069 new-debt-created và D-070 SaleCount projections/explainability;
 - domain/SQL integration/frontend tests.
 
+Implementation handoff: EOD và Today dùng chung `DailyFinancialProjection`; Today business date được resolve từ injected `TimeProvider` + canonical Store IANA timezone; `GET /api/today` và bounded `GET /api/today/explanations/{metric}` là Owner-only; frontend `/today` không có date picker/C14 placeholder. Local verification pass Domain 78/78, SQL Server integration 82/82, frontend 89/89 và backend/frontend Release build; không có schema/migration change. Trạng thái này không phải Product Owner approval.
+
 ### Stage 6B — C14/action/measurement/E2E
 
-`APPROVED FOR IMPLEMENTATION` — sequence đã được authorize; Stage 6B implementation vẫn `NOT STARTED`:
+`APPROVED FOR IMPLEMENTATION / NOT STARTED`:
 
 - D-071 exact full-history/factual sufficiency và D-072 active-only C14 projection;
 - attention preview/list/detail and evidence;
@@ -675,4 +677,4 @@ Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../
 - D-072 — active-only C14 Product candidates.
 - D-073 — Technical Breakdown Slice 6 và Stage 6A/6B implementation sequence approval.
 
-**Current gate:** `APPROVED FOR IMPLEMENTATION` tại D-073. Slice 6 implementation is `NOT STARTED`; next step là bắt đầu Stage 6A theo approved sequence.
+**Current gate:** Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Stage 6B `NOT STARTED`. Next step là Product Owner review Stage 6A implementation; không có D-074/implementation approval trong handoff này.

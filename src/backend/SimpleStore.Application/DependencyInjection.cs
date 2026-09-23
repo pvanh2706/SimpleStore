@@ -62,6 +62,9 @@ public static class DependencyInjection
         services.AddScoped<GetSupplierDebtsUseCase>();
         services.AddScoped<RecordSupplierDebtPaymentUseCase>();
         services.AddScoped<GetEndOfDayReportUseCase>();
+        services.AddScoped<TodayContextResolver>();
+        services.AddScoped<GetTodaySummaryUseCase>();
+        services.AddScoped<GetTodayExplanationUseCase>();
 
         return services;
     }
