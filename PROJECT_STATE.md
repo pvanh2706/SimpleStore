@@ -2,9 +2,9 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 5 — Debt + End-of-day: `APPROVED / COMPLETED` tại D-060**
+**Slice 6 — Understand & Act: Product Owner scope decisions D-061–D-068 `APPROVED`; Technical Breakdown `DRAFT / PENDING PRODUCT OWNER REVIEW`; implementation `NOT STARTED`**
 
-Slice 4 — Return / Void / Recovery giữ trạng thái `APPROVED / COMPLETED`; baseline trước Slice 5 là commit `5876082a`.
+Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
 ## Primary Persona
 
@@ -53,6 +53,10 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - GitHub Actions run #31 / `35848666879` là `SUCCESS`: Domain tests 78/78, SQL Server integration tests 78/78, frontend tests 82/82 và frontend build pass. Real Stage 5B Playwright E2E đã pass local; CI không được ghi nhận là đã chạy real E2E.
 - Stage 5A giữ `APPROVED / COMPLETED` tại D-058, Stage 5B giữ `APPROVED / COMPLETED` tại D-059, và final Slice 5 approval đã hoàn tất tại D-060; toàn bộ approval gate của Slice 5 đã đóng.
 - Slice 5 Definition of Done đã được final-review: happy path, important failure/recovery paths, authorization, Store isolation, domain/SQL Server integration/frontend tests, EOD/debt semantics và real local critical Stage 5B E2E evidence. GitHub CI không chạy real Playwright E2E.
+- D-061–D-068 — Owner Today landing, summary semantics, C13 explainability, C14 7 completed-business-day velocity, threshold/data sufficiency, intentionally thin attention UI, action transition và experiment measurement — được Product Owner `APPROVED` ngày 2026-09-23.
+- Technical Breakdown Slice 6 v0.1 đã được tạo ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; staging 6A/6B chỉ là proposal và chưa được approve.
+- Các semantic còn mở cho Product Owner được ghi trong `OPEN_QUESTIONS.md`: correction/unallocated payment trong new debt created, Sale count với Void/Return, exact 7-day data sufficiency/factual evidence và active/inactive Product trong C14.
+- Slice 6 implementation là `NOT STARTED`: chưa có backend/frontend code, migration, schema, API hoặc Technical Breakdown approval.
 
 ## Tiến độ
 
@@ -164,14 +168,14 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Next: Product Owner bắt đầu Slice 6 — Understand & Act theo quy trình discovery/decision/technical breakdown hiện tại.** Planned scope: “Hôm nay cửa hàng thế nào?” và C14 experiment nguy cơ sắp hết hàng; không AI, không dashboard lớn, không generic rule engine framework. Slice 6 chưa được bắt đầu hoặc approve bởi D-060.
+**Review Technical Breakdown Slice 6 và resolve các Product Owner open questions còn lại.** Không bắt đầu implementation cho tới khi Technical Breakdown được Product Owner approve và sequencing được chốt.
 
 ## Chưa triển khai
 
 - Ngoài phạm vi: General Ledger, accounting close/reopen, full cashbook, debt aging, invoice-level settlement allocation, customer credit balance, supplier advance, financial statements, operating-expense accounting, net profit, BI dashboard và AI.
-- C14, HĐĐT và các capability ngoài Slice 1.
+- Slice 6 implementation (Today/C12/C13/C14), HĐĐT và các capability chưa được triển khai khác.
 - Real Slice 1–5B Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Product Owner final-approve `Slice 5 — Debt + End-of-day` tại D-060. Stage 5A/D-058 và Stage 5B/D-059 giữ `APPROVED / COMPLETED`; toàn bộ Slice 5 là `APPROVED / COMPLETED`. Final reviewed Stage 5B implementation head là `84f6f8d61bff19f6845204207ccb034bd9219bcd`, approval documentation commit là `ec93b9a673ccd638c280cd40745009fd9d06935e`. Tiếp theo là Product Owner bắt đầu Slice 6 discovery/decision/technical breakdown; D-060 không bắt đầu hoặc approve Slice 6.
+2026-09-23 — Product Owner approve Slice 6 scope decisions D-061–D-068. Technical Breakdown Slice 6 v0.1 được tạo ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; các ambiguity còn lại được ghi vào `OPEN_QUESTIONS.md`. Slice 6 implementation vẫn `NOT STARTED`; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.

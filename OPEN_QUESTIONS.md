@@ -44,7 +44,7 @@ C14 — Attention & Decision Support đã được phê duyệt là một phần
 
 Các câu hỏi này không mở lại phạm vi Step 6 và không tự tạo thêm capability hoặc feature:
 
-- Step 7 đã chọn duy nhất hypothesis C14: nguy cơ sắp hết hàng từ tồn hiện tại và tốc độ bán gần đây. Cửa sổ dữ liệu, ngưỡng và điều kiện dữ liệu đủ tin cậy nào phù hợp cho pilot? Bằng chứng nào đủ để đánh giá value/willingness-to-pay?
+- Step 7 đã chọn duy nhất hypothesis C14: nguy cơ sắp hết hàng từ tồn hiện tại và tốc độ bán gần đây. D-064/D-065 đã chốt cửa sổ 7 completed business days và ngưỡng `DaysOfCover <= 3`; exact data-sufficiency rule vẫn cần Product Owner trả lời cho Technical Breakdown Slice 6. Bằng chứng nào đủ để đánh giá value/willingness-to-pay vẫn phải được kiểm chứng bằng pilot/research theo D-068.
 - C17 đã chốt keyboard scanner phổ biến và in bill. Model thiết bị/khổ giấy mục tiêu nào cần hỗ trợ trong pilot? Integration C19 cụ thể nào thực sự cần cho vòng MVP?
 - Step 7 đã chốt C7 chỉ yêu cầu domain sale đủ sạch để sau này ánh xạ sang request của service API HĐĐT hiện có mà không phá cấu trúc giao dịch. Chi tiết ánh xạ chỉ làm rõ ở bước thiết kế phù hợp sau này; không xây capability HĐĐT nội bộ hoặc kết nối service ngay trong MVP.
 
@@ -81,6 +81,45 @@ Toàn bộ sáu Product Owner questions chặn ban đầu của Slice 5 đã đ�
 Không còn Product Owner Open Question nào đang chặn Technical Breakdown Slice 5. Các lựa chọn schema, EF mapping, timezone conversion compatibility, SQL lock resource và index là implementation details phải tuân theo các decision đã approve, không phải Product Owner questions mới.
 
 [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) đã được Product Owner final-approve tại D-057 và hiện là `APPROVED FOR IMPLEMENTATION`; không còn Product Owner blocker trước Stage 5A.
+
+## Slice 6 — Product Owner questions cần giải quyết trước Technical Breakdown approval
+
+D-061–D-068 đã `APPROVED` toàn bộ scope A–H. Các câu hỏi dưới đây không mở lại những quyết định đó; chúng chỉ chặn semantic/API/test contract chính xác của draft [Technical Breakdown Slice 6 v0.1](docs/architecture/technical-breakdown-slice-6-v0.1.md).
+
+### S6-Q1 — New debt created và correction/unallocated DebtPayment
+
+Metric “công nợ mới phát sinh hôm nay” phải phản ánh thế nào khi Return, Sale Void hoặc Purchase Void xảy ra trong ngày khác ngày transaction gốc, và standalone `DebtPayment` không được allocate vào invoice theo D-047?
+
+Điểm cần Product Owner chốt:
+
+- correction được ghi như negative obligation event của ngày correction, được hồi tố về ngày transaction gốc, hay chỉ xuất hiện trong explainability breakdown mà không đổi gross new-debt-created của ngày;
+- mọi standalone Customer/Supplier `DebtPayment` có bị loại khỏi metric vì không thể chứng minh nó cover debt hôm nay hay debt cũ, hay cần một aggregate allocation rule mới (rule mới sẽ tác động D-047 và không được tự suy diễn).
+
+Quyết định này ảnh hưởng việc metric có thể âm, historical Today có thay đổi hồi tố hay không, source evidence và exact SQL tests.
+
+### S6-Q2 — Exact Sale count với Void và Return
+
+“Số đơn bán” là:
+
+- gross số Sale Completed trong business-date window;
+- số Sale Completed trong window còn hiệu lực sau Void;
+- hay event-day net count có Sale Void adjustment?
+
+Return một phần/toàn phần có giữ nguyên count và chỉ xuất hiện trong explanation, hay full Return loại Sale khỏi count? Cần chốt để tránh một transaction bị trình bày khác nhau giữa Summary và source evidence, đặc biệt khi Sale và correction nằm ở hai business dates khác nhau.
+
+### S6-Q3 — Exact data sufficiency cho 7 completed business days
+
+Một Product được coi là có “đủ 7 completed business days dữ liệu” khi nào?
+
+- Product phải tồn tại từ trước boundary đầu của cửa sổ và Store phải có lịch sử capture đủ cả 7 ngày;
+- chỉ cần Product tồn tại đủ 7 local calendar days, kể cả ngày không có Sale;
+- hay cần ít nhất một số ngày có Sale/operation evidence?
+
+Đồng thời, factual `CurrentStock <= 0` cần cùng full-history condition hay chỉ cần recent positive net-sales evidence trong cửa sổ? D-065 yêu cầu “recent sales evidence phù hợp” nhưng chưa định nghĩa exact minimum. Quyết định này ảnh hưởng Product mới tạo, zero-sale days, Store mới onboarding và việc tránh cảnh báo stock-out nhiễu.
+
+### S6-Q4 — Active/inactive Product trong C14
+
+C14 chỉ đánh giá Product `IsActive = true`, hay inactive Product vẫn có thể xuất hiện ở factual stock-out/negative-stock attention? Vì action `Tạo phiếu nhập` hiện hướng tới active-product Purchase flow, việc đưa inactive Product vào risk/replenishment attention có thể mâu thuẫn ý định ngừng bán. Technical Breakdown không tự chọn policy này.
 
 ## Đã giải quyết tại Step 9 — APPROVED
 
@@ -122,7 +161,7 @@ Các câu hỏi này là technical/design detail hoặc validation tiếp theo, 
 
 - Định dạng template cụ thể trong phạm vi các rule Step 11 và nhu cầu nhiều barcode cho một sản phẩm trong pilot.
 - Thiết bị/khổ giấy pilot và lựa chọn browser print, local print agent hay printer service.
-- Rule window, threshold và điều kiện dữ liệu đủ tin cậy cho C14; value/willingness-to-pay vẫn cần kiểm chứng.
+- D-064/D-065 đã chốt C14 window, formula và threshold; exact data-sufficiency/factual-evidence rule còn mở tại S6-Q3. Value/willingness-to-pay vẫn cần pilot/research theo D-068.
 - Chi tiết cấu hình Identity/Auth + secure HttpOnly cookie; deployment topology, backup, monitoring, secrets và CI/CD. Authentication direction đã chốt tại Step 11.
 - Request mapping, lifecycle/status và retry/dispatch mechanism nếu HĐĐT integration được bổ sung sau MVP core.
 

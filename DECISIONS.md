@@ -645,3 +645,82 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn/phạm vi:** D-043–D-059 giữ nguyên historical meaning và trạng thái `APPROVED`. D-060 không mở rộng ra ngoài Slice 5 và không bắt đầu hoặc approve Slice 6.
 - **Tiếp theo:** Product Owner bắt đầu Slice 6 — Understand & Act theo quy trình discovery/decision/technical breakdown hiện tại; planned scope là “Hôm nay cửa hàng thế nào?” và C14 experiment nguy cơ sắp hết hàng, không AI, không dashboard lớn, không generic rule engine framework.
 - **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — toàn bộ Slice 5 `APPROVED / COMPLETED`.
+
+### D-061 — Slice 6 / Owner “Today” landing experience
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Slice 6 có entry point riêng cho câu hỏi “Hôm nay cửa hàng thế nào?”, dự kiến route `/today`, và đây là default landing page của Owner sau login. Cashier tiếp tục operational/sales flow phù hợp và không mặc định vào financial Owner summary.
+- **Business date:** “Hôm nay” là current Store-local business date theo `Store.TimeZoneId`; browser timezone và application-server timezone không phải authority. Today không có date picker và không hiển thị historical date; historical reporting tiếp tục dùng End-of-day capability Slice 5.
+- **Boundary:** Today không trở thành historical reporting dashboard. Backend authorization vẫn là authority.
+
+### D-062 — Slice 6 / Today summary semantics
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Minimum summary:** Doanh thu hôm nay; Tiền thu thuần hôm nay; Lãi gộp ước tính; Số đơn bán; công nợ Customer/Supplier mới phát sinh hôm nay; attention signal C14.
+- **Reuse:** Metric đã có semantic tại Slice 5 phải reuse semantic đã `APPROVED`, không tạo định nghĩa cạnh tranh.
+- **New debt created:** Đây không phải ending outstanding debt. Customer/Supplier new debt là nghĩa vụ mới từ Sale/Purchase trong business date chưa được actual payment cover. Thu Customer debt cũ hoặc trả Supplier debt cũ không được tính là new debt created; ending debt vẫn thuộc EOD/debt views.
+- **Correction boundary:** Technical Breakdown phải làm rõ correction/Return/Void theo approved transaction history và D-043–D-060. Ambiguity chưa được Product Owner quyết định phải vào `OPEN_QUESTIONS.md`, không tự invent rule.
+
+### D-063 — Slice 6 / Explainability: Summary → Why → Source data
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Pattern:** C13 trong Slice 6 dùng `Summary → Vì sao? → Dữ liệu nguồn`, không xây report builder hoặc BI dashboard.
+- **Financial evidence:** Revenue giải thích từ Sale/Return/Sale Void; Collected từ Sale Payment/Customer Debt Payment/Actual Customer Refund; Estimated Gross Profit từ Net Revenue/historical COGS/`CostReliability`; debt created từ transaction tạo obligation; Sale count từ transaction được tính.
+- **C14 evidence:** Giải thích từ current inventory và recent sales evidence. Khi phù hợp, user điều hướng tới existing source transaction/detail.
+- **Boundary:** Không parse human-readable message để quyết định logic; source kind/reference phải typed.
+
+### D-064 — Slice 6 / C14 sales velocity uses 7 completed business days
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Hypothesis:** C14 chỉ thử nghiệm `Nguy cơ sắp hết hàng`.
+- **Window:** Sales velocity dùng đúng 7 completed business days theo `Store.TimeZoneId`; current/in-progress business date không vào denominator. `AverageDailySales = NetSoldQuantityLast7CompletedBusinessDays / 7`.
+- **Net sold quantity:** Completed Sale tăng; Sale Void reverse quantity Sale tương ứng; Return giảm theo approved correction history; Purchase/InventoryAdjustment không tham gia sales velocity.
+- **Days of cover:** Chỉ tính khi `AverageDailySales > 0`; `DaysOfCover = CurrentStock / AverageDailySales`.
+- **Boundary:** Đây là deterministic operational signal, không forecasting engine, machine learning, AI, seasonal model hoặc demand-planning subsystem. Window boundary dùng Store timezone, không browser/server timezone.
+
+### D-065 — Slice 6 / C14 threshold and data sufficiency
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Threshold:** Risk threshold cố định `DaysOfCover <= 3`; không có per-Store/per-Product configurable threshold trong MVP Slice 6.
+- **Factual inventory attention:** Khi `CurrentStock <= 0` và có recent sales evidence phù hợp, hiển thị factual state `Đã hết hàng` hoặc `Tồn kho đang âm`; đây không phải forecast.
+- **Risk attention:** Khi `CurrentStock > 0`, `AverageDailySales > 0`, `DaysOfCover <= 3` và data sufficiency rule đạt, hiển thị `Nguy cơ sắp hết hàng`.
+- **Insufficient data:** Chưa đủ 7 completed business days thì không đưa strong low-stock conclusion; UI thể hiện dữ liệu chưa đủ khi phù hợp và không giả vờ forecast chính xác. Technical Breakdown phải định nghĩa data sufficiency từ domain hiện có hoặc nêu Product Owner Open Question nếu cần.
+
+### D-066 — Slice 6 / Attention UI stays intentionally thin
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Today UI:** Có section `Cần chú ý`, hiển thị tối đa 3 Product attention items chính. Factual out-of-stock/negative-stock đứng trước, sau đó risk theo `DaysOfCover` thấp nhất; nếu còn item thì hiển thị `Xem tất cả X mặt hàng`.
+- **Evidence per risk:** Product, current stock, average sales/day từ 7 completed days, estimated days of cover và action `Xem vì sao`.
+- **Neutral empty state:** Khi data đủ nhưng không có signal, dùng wording hẹp như `Chưa thấy mặt hàng có nguy cơ sắp hết theo quy tắc hiện tại`, không tuyên bố toàn bộ kho “ổn”.
+- **Boundary:** Không notification center, push/email alert, background alert subsystem hoặc generic alert framework.
+
+### D-067 — Slice 6 / Information can lead to action without deciding for Owner
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Actions:** Từ C14 detail, Owner có thể `Xem sản phẩm` hoặc `Tạo phiếu nhập`; Create Purchase có thể preselect Product để giảm thao tác.
+- **Owner authority:** Không tự chọn Supplier, tính/recommend quantity, tạo Purchase, auto-order, commit transaction hoặc khẳng định “nên nhập X đơn vị”. Existing Purchase business rules vẫn áp dụng; Owner quyết định Supplier, quantity và có nhập hay không.
+- **Nguyên tắc:** `Information should lead toward action` không đồng nghĩa software quyết định thay user.
+
+### D-068 — Slice 6 / C14 experiment must be measurable
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Experiment status:** C14 vẫn là `EXPERIMENT`; nhu cầu, value và willingness-to-pay chưa được validated.
+- **Minimum measurement:** Có khả năng đo Owner mở Today; C14 signal được shown; Owner bấm `Xem vì sao`; Owner bấm `Tạo phiếu nhập` từ C14 flow. Technical Breakdown có thể đề xuất immutable C14-specific experiment-event model tối thiểu nếu chứng minh cần thiết.
+- **Boundary:** Không analytics platform, generic event-tracking framework, data warehouse hoặc telemetry product lớn.
+- **Interpretation:** `click != validated product value`. Product Owner vẫn phải pilot/research xem signal có phát hiện việc chưa chú ý, có evidence đáng tin, có ảnh hưởng quyết định nhập hàng, có được tiếp tục dùng và có willingness-to-pay hay không; CTR/event count không tự động là validation.
