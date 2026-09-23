@@ -135,8 +135,8 @@ Per-Sale Customer contribution:
 1. Chọn Sale có `CompletedAt` trong `[startUtc, endUtc)`.
 2. `BaseCustomerDebt = max(Sale.TotalAmount - sum(DirectSalePayments tied to Sale), 0)`.
 3. Nếu Sale có SaleVoid với `VoidedAt` trong cùng window, contribution của Sale là `0`.
-4. Nếu có Return của chính Sale với `CompletedAt` trong cùng window, authoritative debt reduction của mỗi Return là `max(Return.TotalReturnAmount - Return.RefundAmount, 0)`. Actual refund không phải debt reduction và không được trừ lần hai.
-5. `SaleCustomerDebtCreated = max(BaseCustomerDebt - sum(SameDayReturnDebtReduction), 0)`.
+4. Nếu có Return của chính Sale với `CompletedAt` trong cùng window, `SameDayReturnObligationReduction = sum(Return.TotalReturnAmount)`. Toàn bộ `TotalReturnAmount` là correction của obligation do original Sale tạo ra, không phụ thuộc Return đã refund bằng tiền bao nhiêu.
+5. `SaleCustomerDebtCreated = 0` nếu có same-day SaleVoid; nếu không, `SaleCustomerDebtCreated = max(BaseCustomerDebt - SameDayReturnObligationReduction, 0)`.
 6. `CustomerDebtCreated = sum(SaleCustomerDebtCreated)`.
 
 Per-Purchase Supplier contribution:
@@ -148,14 +148,16 @@ Per-Purchase Supplier contribution:
 
 Hard boundaries:
 
-- Customer/Supplier standalone `DebtPayment` luôn bị loại, kể cả occurred cùng ngày; không FIFO, invoice allocation hoặc aggregate allocation ngầm.
+- Customer/Supplier standalone `DebtPayment` luôn bị loại, kể cả occurred cùng ngày và bất kể xảy ra trước hay sau Return/Void; không FIFO, invoice allocation hoặc aggregate allocation ngầm.
 - Same-day Return/Void chỉ giảm contribution của actual `OriginalSaleId`/`OriginalPurchaseId`; không net correction vào transaction khác.
-- D-056 authoritative Return split được reuse: `TotalReturnAmount - RefundAmount` là obligation/debt reduction đã commit; actual refund chỉ giải thích Collected.
-- Same-day correction floor từng transaction tại `0`, nên không hidden credit hoặc negative new-debt-created.
+- Nhiều same-day Return của cùng original Sale cộng toàn bộ `Return.TotalReturnAmount`, sau đó floor contribution của Sale tại `0`; phần correction vượt `BaseCustomerDebt` không chuyển sang Sale khác, không tạo credit và không tạo negative new-debt-created.
+- D-056 vẫn giữ nguyên authoritative aggregate semantics của Return: actual aggregate debt reduction, required actual refund và không hidden Customer credit. Riêng projection D-069, `RefundAmount` **không** là input của new-debt-created: trường này chỉ tiếp tục phục vụ cash refund, Net Collected, aggregate correctness theo D-056 và Return explainability. Không lấy phần Return chưa refund làm transaction-local obligation correction.
 - Correction khác business date không tham gia contribution của Today, không rewrite historical result và không tạo negative metric ở correction date.
 - Cross-day correction vẫn hiện trong Revenue/Collected/COGS/correction explanation theo event-date semantics tương ứng, không overload new-debt-created.
 
-Explainability per transaction hiển thị original total, direct payment, same-day authoritative debt reduction/void exclusion và final contribution; không gán standalone DebtPayment cho Sale/Purchase.
+Ví dụ bắt buộc: Sale `1,000,000`, direct Sale payment `0`, standalone Customer Debt Payment `1,000,000`, rồi same-day Return `300,000` với `RefundAmount` có thể là `300,000` thì Customer debt created của Sale vẫn là `700,000`. Standalone payment không đổi base/contribution; refund không quyết định Return obligation correction.
+
+Explainability per Sale hiển thị original total, direct Sale payments, `BaseCustomerDebt`, tổng same-day Return obligation correction bằng `Return.TotalReturnAmount`, same-day Void exclusion và final contribution. Standalone DebtPayment không được allocate vào Sale; `RefundAmount` có thể xuất hiện trong Return/cash evidence nhưng không được trình bày như input quyết định contribution. Explainability per Purchase tương ứng hiển thị original total, direct Purchase payments, base, same-day Void exclusion và final contribution.
 
 ### 5.4 Sale count — D-070 exact projection
 
@@ -197,7 +199,7 @@ Một source row tối thiểu gồm `sourceType`, `sourceId`, `occurredAt`, typ
 - Revenue: groups/totals cho Sale, Return, Sale Void và source transaction references.
 - Collected: Sale Payment, Customer Debt Payment, Actual Customer Refund với direction rõ.
 - Estimated Gross Profit: net Revenue, historical COGS, reliability và source Sale/Return/Void lines.
-- New debt created: per-transaction direct unpaid obligation, same-day correction inputs và final nonnegative contribution theo D-069; standalone DebtPayment không xuất hiện như allocated source.
+- New debt created: per-transaction direct unpaid obligation, full `Return.TotalReturnAmount` same-day obligation correction, Void exclusion và final nonnegative contribution theo D-069; standalone DebtPayment không xuất hiện như allocated source và `RefundAmount` không phải calculation input.
 - Sale count: typed counted Sale và same-day-voided excluded Sale theo D-070; Return chỉ là related correction evidence, không thay count.
 
 Pagination được dùng cho source list nếu vượt page size; Today summary response không nhúng toàn bộ lịch sử.
@@ -358,7 +360,7 @@ No date parameter.
 }
 ```
 
-`saleCount` follows D-070. `customerDebtCreated`/`supplierDebtCreated` follow D-069 and never use standalone DebtPayment. `riskEvaluationStatus` is typed (`Sufficient`, `InsufficientStoreHistory`, `PartiallyInsufficientProductHistory`) so UI does not infer sufficiency from text.
+`saleCount` follows D-070. `customerDebtCreated`/`supplierDebtCreated` follow D-069 and never use standalone DebtPayment; `customerDebtCreated` also never uses `RefundAmount` as a calculation input. `riskEvaluationStatus` is typed (`Sufficient`, `InsufficientStoreHistory`, `PartiallyInsufficientProductHistory`) so UI does not infer sufficiency from text.
 
 ### 10.2 `GET /api/today/explanations/{metric}`
 
@@ -516,8 +518,14 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - Sale Completed today + same-day SaleVoid → count `0`, with typed exclusion evidence and no negative row.
 - Sale yesterday + SaleVoid today → Today count unchanged, no `-1`, historical count not rewritten.
 - Customer base debt is `SaleTotal - DirectSalePayments`; Supplier base debt is `PurchaseTotal - DirectPurchasePayments`.
-- Same-day Return reduces only its original Sale using `TotalReturnAmount - RefundAmount`, floors contribution at zero and does not double-count actual refund.
-- Same-day SaleVoid/PurchaseVoid zeroes only original transaction contribution.
+- Sale `1,000`, direct Sale payments `800`, same-day Return `100` → Customer debt created `100`.
+- Sale `1,000`, direct Sale payments `800`, same-day Return `500` → Customer debt created `0`, không negative/credit.
+- Sale `1,000`, direct Sale payments `0`, standalone Customer Debt Payment `1,000`, rồi same-day Return `300` (kể cả `RefundAmount = 300`) → Customer debt created `700`.
+- Cùng dữ liệu trên nhưng standalone Customer Debt Payment xảy ra sau Return → Customer debt created vẫn `700`.
+- Customer base debt `1,000`, hai same-day Return `200` và `300` của cùng original Sale → Customer debt created `500`.
+- Prior-day Sale, Today Return `300` → không tạo `-300` Today và không rewrite new-debt-created của ngày hôm qua.
+- Cùng một `Return.TotalReturnAmount` với các `RefundAmount` khác nhau tạo cùng new-debt-created contribution; full `Return.TotalReturnAmount` chỉ giảm original Sale cùng business date.
+- Same-day SaleVoid/PurchaseVoid zeroes only original transaction contribution; standalone Customer/Supplier DebtPayment before or after the Void does not change that result.
 - Standalone Customer/Supplier DebtPayment, including same-day payment, never reduces new-debt-created and is never allocated in explanation.
 - Cross-day Return/SaleVoid/PurchaseVoid neither rewrites original-day new debt nor creates negative new debt on correction date.
 - Multiple same-day Returns/corrections remain bounded by original transaction contribution; no hidden credit or negative total.
@@ -556,11 +564,13 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - Source references cannot cross Store.
 - query uses half-open boundaries at SQL precision.
 - shared financial projection regression against Slice 5 integration cases.
+- D-069 Sale/direct-payment/Return/standalone-payment matrix in 15.2 executes against SQL Server and reconciles summary with per-Sale explanation, including payment-before-Return, payment-after-Return, multiple Return and cross-day cases.
 - proposed additive indexes/migration, if approved, upgrade safely from Slice 5 schema.
 
 ### 15.5 Explainability/navigation tests
 
 - Revenue/Collected/Gross Profit components reconcile exactly to headline.
+- New-debt explanation exposes original total, direct payments, base, full same-day `Return.TotalReturnAmount` correction, Void exclusion and final contribution; UI never derives contribution from `RefundAmount` or standalone DebtPayment.
 - typed source kinds/ids map to correct existing detail routes when available.
 - no client logic parses title/detail/localized message.
 - C14 evidence reconciles quantity/window/formula.
@@ -593,7 +603,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - summary labels/reliability and explanation flows.
 - attention max 3, full-count link, full/partial-history, factual/risk/no-positive-evidence/neutral states and active-only filter.
 - Product detail and preselected Purchase transition with no Supplier/quantity recommendation.
-- real E2E: seed exact Today Sale/Purchase/direct payments/standalone DebtPayments/same-day and cross-day corrections; verify D-069/D-070 summary and explanations.
+- real E2E: seed exact Today Sale/Purchase/direct payments/standalone DebtPayments/same-day and cross-day corrections, including the `1,000,000 - 0 - 300,000 = 700,000` required case; verify D-069/D-070 summary and explanations and prove refund/payment timing does not change new-debt-created.
 - real E2E: seed 7 completed Store-local days, partial Store/Product history, active/inactive Products, Sale/Return/Void quantity and stock; verify D-071/D-072 attention, action transition and deduplicated measurement rows through Vue → API → SQL Server.
 - full Slice 1–5 backend/frontend/real-flow regressions remain green; no test deletion/skip to force green.
 
