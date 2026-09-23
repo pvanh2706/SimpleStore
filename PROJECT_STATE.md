@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 6 — Understand & Act: Product Owner scope decisions D-061–D-068 `APPROVED`; Technical Breakdown `DRAFT / PENDING PRODUCT OWNER REVIEW`; implementation `NOT STARTED`**
+**Slice 6 — Understand & Act: Product Owner decisions D-061–D-072 `APPROVED`; Technical Breakdown `DRAFT / PENDING PRODUCT OWNER REVIEW`; implementation `NOT STARTED`**
 
 Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -54,8 +54,9 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Stage 5A giữ `APPROVED / COMPLETED` tại D-058, Stage 5B giữ `APPROVED / COMPLETED` tại D-059, và final Slice 5 approval đã hoàn tất tại D-060; toàn bộ approval gate của Slice 5 đã đóng.
 - Slice 5 Definition of Done đã được final-review: happy path, important failure/recovery paths, authorization, Store isolation, domain/SQL Server integration/frontend tests, EOD/debt semantics và real local critical Stage 5B E2E evidence. GitHub CI không chạy real Playwright E2E.
 - D-061–D-068 — Owner Today landing, summary semantics, C13 explainability, C14 7 completed-business-day velocity, threshold/data sufficiency, intentionally thin attention UI, action transition và experiment measurement — được Product Owner `APPROVED` ngày 2026-09-23.
+- D-069–D-072 — exact new-debt-created, SaleCount, C14 full-history/factual sufficiency và active-only Product semantics — được Product Owner `APPROVED` ngày 2026-09-23.
 - Technical Breakdown Slice 6 v0.1 đã được tạo ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; staging 6A/6B chỉ là proposal và chưa được approve.
-- Các semantic còn mở cho Product Owner được ghi trong `OPEN_QUESTIONS.md`: correction/unallocated payment trong new debt created, Sale count với Void/Return, exact 7-day data sufficiency/factual evidence và active/inactive Product trong C14.
+- S6-Q1–S6-Q4 đã được resolve tại D-069–D-072 và chuyển sang resolved trong `OPEN_QUESTIONS.md`; không còn known Product Owner blocker cho Slice 6 technical semantics.
 - Slice 6 implementation là `NOT STARTED`: chưa có backend/frontend code, migration, schema, API hoặc Technical Breakdown approval.
 
 ## Tiến độ
@@ -168,7 +169,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Review Technical Breakdown Slice 6 và resolve các Product Owner open questions còn lại.** Không bắt đầu implementation cho tới khi Technical Breakdown được Product Owner approve và sequencing được chốt.
+**Product Owner reviews the updated Technical Breakdown Slice 6 for approval.** Không bắt đầu Stage 6A/6B hoặc implementation cho tới khi Technical Breakdown được Product Owner approve và sequencing được chốt.
 
 ## Chưa triển khai
 
@@ -178,4 +179,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Product Owner approve Slice 6 scope decisions D-061–D-068. Technical Breakdown Slice 6 v0.1 được tạo ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; các ambiguity còn lại được ghi vào `OPEN_QUESTIONS.md`. Slice 6 implementation vẫn `NOT STARTED`; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.
+2026-09-23 — Product Owner approve D-069–D-072, resolve S6-Q1–S6-Q4 và hoàn thiện exact new-debt-created, SaleCount, C14 sufficiency/factual evidence và active-only semantics. Technical Breakdown Slice 6 v0.1 đã được cập nhật nhưng vẫn `DRAFT / PENDING PRODUCT OWNER REVIEW`; Slice 6 implementation vẫn `NOT STARTED`, Stage 6A/6B chưa được approve, và Slice 5 giữ `APPROVED / COMPLETED` tại D-060.

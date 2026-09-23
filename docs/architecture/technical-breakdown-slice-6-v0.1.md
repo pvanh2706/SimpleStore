@@ -4,7 +4,7 @@
 
 `DRAFT / PENDING PRODUCT OWNER REVIEW`
 
-Product Owner đã approve product decisions D-061–D-068 ngày 2026-09-23. Tài liệu này là technical proposal chưa được Product Owner approve, không bắt đầu Slice 6 implementation và không approve staging 6A/6B.
+Product Owner đã approve product decisions D-061–D-072 ngày 2026-09-23. Tài liệu này là technical proposal chưa được Product Owner approve, không bắt đầu Slice 6 implementation và không approve staging 6A/6B.
 
 Baseline đã inspect: `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`, tại đó `Slice 5 — Debt + End-of-day` là `APPROVED / COMPLETED` theo D-060.
 
@@ -14,7 +14,7 @@ Slice 6 thêm một Owner experience trả lời nhanh “Hôm nay cửa hàng t
 
 `Domain behavior → DB changes → API contract → UI flow → Test cases → Implementation stages`
 
-Mọi quyết định D-001–D-060 tiếp tục được bảo toàn. Các điểm chưa được D-061–D-068 quyết định đủ chính xác nằm trong `OPEN_QUESTIONS.md`; draft này không tự invent câu trả lời.
+Mọi quyết định D-001–D-060 tiếp tục được bảo toàn. D-069–D-072 đã resolve S6-Q1–S6-Q4; không còn known Product Owner blocker cho technical semantics. Draft này vẫn cần Product Owner review/approval riêng trước implementation.
 
 ## 1. Trace Product Owner decisions
 
@@ -28,6 +28,10 @@ Mọi quyết định D-001–D-060 tiếp tục được bảo toàn. Các đi�
 | D-066 | `Cần chú ý` tối đa 3 item, factual trước rồi lowest DaysOfCover, evidence mỏng và full list |
 | D-067 | Product/Purchase transition chỉ giảm thao tác; Owner vẫn quyết định Supplier/quantity/commit |
 | D-068 | C14-specific minimum immutable measurement; click không đồng nghĩa validated value |
+| D-069 | New debt created dùng direct unpaid obligation theo transaction; same-day correction only; standalone DebtPayment excluded |
+| D-070 | SaleCount đếm same-day Completed Sale không bị same-day Void; Return không giảm count |
+| D-071 | Full-history risk coverage và earlier factual state với recent positive net-sales evidence |
+| D-072 | C14 candidate set chỉ gồm active Product |
 
 ## 2. Scope
 
@@ -65,7 +69,7 @@ Baseline hiện có:
 - `SaleLine` giữ Product snapshot, quantity, price, historical unit cost và `CostReliability`.
 - `ReturnLine` giữ original SaleLine, Product, quantity và restock-independent returned quantity.
 - `InventoryBalance` là current materialized state theo Store + Main Warehouse + Product; `InventoryMovement` là audit ledger.
-- `Product.CreatedAt` và `Store.CreatedAt` có thể hỗ trợ data-coverage checks, nhưng exact sufficiency vẫn là Product Owner question S6-Q3.
+- `Product.CreatedAt` và `Store.CreatedAt` là authoritative coverage timestamps cho exact D-071 sufficiency gate.
 - Owner-only reporting convention dùng backend role authorization; frontend `ownerOnly` chỉ hỗ trợ navigation UX.
 - Purchase Create hiện yêu cầu Owner tự chọn Supplier, Product, quantity và unit price; preselection phải đi qua flow này, không bypass API rules.
 - Chưa có experiment-event persistence hoặc generic analytics abstraction.
@@ -122,23 +126,51 @@ Refactor này chỉ chia sẻ projection/calculation; không thay source-of-trut
 
 Today response có thể trình bày headline gọn nhưng không đổi calculation hoặc label Estimated.
 
-### 5.3 New debt created — semantic gate
+### 5.3 New debt created — D-069 exact projection
 
-Metric này là obligation created, không phải current/ending outstanding debt và không phải DebtPayment cash movement.
+Metric này là direct unpaid obligation do transaction mới trong Today window tạo ra, không phải current/ending outstanding debt và không phải net movement của aggregate debt.
 
-Các source có thể query:
+Per-Sale Customer contribution:
 
-- Customer: Completed credit Sale trong Today window, Sale payments gắn trực tiếp với Sale, Return/Sale Void correction evidence.
-- Supplier: Completed Purchase trong Today window, Purchase payments gắn trực tiếp với Purchase, Purchase Void evidence.
-- Standalone `DebtPayment` không có invoice allocation theo D-047.
+1. Chọn Sale có `CompletedAt` trong `[startUtc, endUtc)`.
+2. `BaseCustomerDebt = max(Sale.TotalAmount - sum(DirectSalePayments tied to Sale), 0)`.
+3. Nếu Sale có SaleVoid với `VoidedAt` trong cùng window, contribution của Sale là `0`.
+4. Nếu có Return của chính Sale với `CompletedAt` trong cùng window, authoritative debt reduction của mỗi Return là `max(Return.TotalReturnAmount - Return.RefundAmount, 0)`. Actual refund không phải debt reduction và không được trừ lần hai.
+5. `SaleCustomerDebtCreated = max(BaseCustomerDebt - sum(SameDayReturnDebtReduction), 0)`.
+6. `CustomerDebtCreated = sum(SaleCustomerDebtCreated)`.
 
-Exact cross-day correction và standalone DebtPayment treatment chưa được D-062 quyết định đủ để chốt công thức. S6-Q1 phải được Product Owner resolve trước Technical Breakdown approval. Không implement một aggregate allocation ngầm và không cho field này reuse ending debt.
+Per-Purchase Supplier contribution:
 
-### 5.4 Sale count — semantic gate
+1. Chọn Purchase Completed có `CompletedAt` trong Today window.
+2. `BaseSupplierDebt = max(Purchase.TotalAmount - sum(DirectPurchasePayments tied to Purchase), 0)`.
+3. Nếu Purchase có PurchaseVoid với `VoidedAt` trong cùng window, contribution là `0`; nếu không, contribution là `BaseSupplierDebt`.
+4. `SupplierDebtCreated = sum(PurchaseSupplierDebtCreated)`.
 
-Candidate sources là Completed Sale, Sale Void và Return. Gross count, currently-active cohort và event-day-net count cho kết quả khác nhau, đặc biệt khi correction xảy ra ở business date khác. Partial/full Return behavior cũng chưa được approve.
+Hard boundaries:
 
-S6-Q2 phải được resolve trước khi `saleCount` contract/test oracle trở thành final. Draft API giữ field dự kiến nhưng đánh dấu semantic blocked; implementation không bắt đầu với assumption tạm.
+- Customer/Supplier standalone `DebtPayment` luôn bị loại, kể cả occurred cùng ngày; không FIFO, invoice allocation hoặc aggregate allocation ngầm.
+- Same-day Return/Void chỉ giảm contribution của actual `OriginalSaleId`/`OriginalPurchaseId`; không net correction vào transaction khác.
+- D-056 authoritative Return split được reuse: `TotalReturnAmount - RefundAmount` là obligation/debt reduction đã commit; actual refund chỉ giải thích Collected.
+- Same-day correction floor từng transaction tại `0`, nên không hidden credit hoặc negative new-debt-created.
+- Correction khác business date không tham gia contribution của Today, không rewrite historical result và không tạo negative metric ở correction date.
+- Cross-day correction vẫn hiện trong Revenue/Collected/COGS/correction explanation theo event-date semantics tương ứng, không overload new-debt-created.
+
+Explainability per transaction hiển thị original total, direct payment, same-day authoritative debt reduction/void exclusion và final contribution; không gán standalone DebtPayment cho Sale/Purchase.
+
+### 5.4 Sale count — D-070 exact projection
+
+`SaleCount`:
+
+```text
+COUNT(Sale completed in [startUtc, endUtc)
+      WHERE NOT EXISTS SaleVoid for that Sale in [startUtc, endUtc))
+```
+
+- Partial Return và full Return không giảm count.
+- Same-day SaleVoid loại đúng original Sale khỏi count.
+- Sale từ ngày trước bị Void hôm nay không tạo `-1` và không thuộc candidate Completed Sale hôm nay.
+- Cross-day Void không rewrite historical count của ngày Sale.
+- Explainability có hai typed sets: counted Completed Sales và same-day-voided Sales excluded from count. Excluded Sale mang contribution `0`, không phải negative count row.
 
 ## 6. Explainability — Summary → Vì sao? → Dữ liệu nguồn
 
@@ -165,8 +197,8 @@ Một source row tối thiểu gồm `sourceType`, `sourceId`, `occurredAt`, typ
 - Revenue: groups/totals cho Sale, Return, Sale Void và source transaction references.
 - Collected: Sale Payment, Customer Debt Payment, Actual Customer Refund với direction rõ.
 - Estimated Gross Profit: net Revenue, historical COGS, reliability và source Sale/Return/Void lines.
-- New debt created: source obligation transactions theo semantic sau khi S6-Q1 được quyết định.
-- Sale count: exact included/excluded source transactions theo S6-Q2.
+- New debt created: per-transaction direct unpaid obligation, same-day correction inputs và final nonnegative contribution theo D-069; standalone DebtPayment không xuất hiện như allocated source.
+- Sale count: typed counted Sale và same-day-voided excluded Sale theo D-070; Return chỉ là related correction evidence, không thay count.
 
 Pagination được dùng cho source list nếu vượt page size; Today summary response không nhúng toàn bộ lịch sử.
 
@@ -196,29 +228,31 @@ Query trực tiếp approved transaction history trong `[velocityStartUtc, veloc
 - `- original SaleLine.Quantity` khi SaleVoid `VoidedAt` trong window;
 - Purchase, Opening Balance, Purchase Void và inventory adjustment không tham gia velocity.
 
-Event-date projection này làm correction của prior Sale có thể tạo negative contribution trong window. Tổng `NetSoldQuantity <= 0` không tạo risk vì `AverageDailySales > 0` là điều kiện bắt buộc. Cách correction ảnh hưởng new-debt-created và Sale count là câu hỏi riêng, không được suy từ C14.
+Event-date projection này làm correction của prior Sale có thể tạo negative contribution trong window. Tổng `NetSoldQuantity <= 0` không tạo risk vì `AverageDailySales > 0` là điều kiện bắt buộc. D-069/D-070 định nghĩa new-debt-created và SaleCount riêng; không suy hai metric đó từ C14 quantity.
 
 ### 7.2 Current stock
 
-Current stock đọc `InventoryBalance.QuantityOnHand` cho current Store + Main Warehouse + Product. Missing balance được xử lý như zero current stock trong query projection, nhưng chỉ được attention nếu data/evidence policy sau S6-Q3 cho phép. Không cộng lại movement history để tạo current state cạnh tranh.
+Current stock đọc `InventoryBalance.QuantityOnHand` cho current Store + Main Warehouse + active Product. Missing balance được xử lý như zero current stock trong query projection, nhưng D-071 vẫn yêu cầu recent positive net-sales evidence trước factual attention. Không cộng lại movement history để tạo current state cạnh tranh.
 
 ### 7.3 Data sufficiency
 
-Response cần typed status dự kiến:
+Evaluation dùng typed dimensions thay vì localized text:
 
-- `Sufficient`
-- `InsufficientHistory`
-- `NoRecentSalesEvidence`
+- `historyCoverage`: `FullSevenCompletedDays` khi cả `Store.CreatedAt <= velocityStartUtc` và `Product.CreatedAt <= velocityStartUtc`; nếu không là `PartialObservation`.
+- `recentSalesEvidence`: `PositiveNetSold` khi `NetSoldQuantity > 0`; nếu không là `NoPositiveNetSold`.
+- `riskEvaluation`: `InsufficientFullHistory` khi coverage partial; nếu full history thì `Eligible` khi positive net sold, ngược lại `NoPositiveSalesEvidence`. `recentSalesEvidence` vẫn giữ evidence state riêng cho factual evaluation trong partial window.
 
-Exact transition giữa các status bị chặn bởi S6-Q3. `Store.CreatedAt`, `Product.CreatedAt` và seven-day boundaries có sẵn, nhưng draft không tự chọn “Product tồn tại đủ ngày” hay “có N ngày bán”. Factual stock-out/negative-stock có thể có sufficiency khác risk; Product Owner phải chốt.
+Zero-sale days vẫn thuộc full observation và có quantity `0`; không yêu cầu Sale ở đủ 7 ngày hoặc N ngày. Store/Product created đúng `velocityStartUtc` được tính full coverage. Không giả định data trước `Store.CreatedAt`/`Product.CreatedAt`.
+
+Factual stock attention không cần full history. Active Product với current stock `<= 0` và `PositiveNetSold` trong observable part của same 7-day window có thể flag dù Product mới tạo sau start. Current stock `<= 0` + `NoPositiveNetSold` không tạo attention.
 
 ### 7.4 Classification
 
-Sau khi data-sufficiency gate được resolve:
+Sau active-product filter:
 
-1. `CurrentStock < 0` + required evidence → `NegativeStock` factual attention.
-2. `CurrentStock == 0` + required evidence → `OutOfStock` factual attention.
-3. `CurrentStock > 0`, `AverageDailySales > 0`, sufficient data, `DaysOfCover <= 3` → `LowStockRisk`.
+1. `CurrentStock < 0` + `PositiveNetSold` → `NegativeStock` factual attention, kể cả partial history.
+2. `CurrentStock == 0` + `PositiveNetSold` → `OutOfStock` factual attention, kể cả partial history.
+3. `CurrentStock > 0`, full history, `AverageDailySales > 0`, `DaysOfCover <= 3` → `LowStockRisk`.
 4. Các trường hợp còn lại không tạo strong attention; insufficient state có thể hiển thị neutral explanatory state ở full view.
 
 `DaysOfCover` dùng decimal calculation, không round trước comparison. `== 3` phải flag. Rounding chỉ để presentation sau classification.
@@ -233,9 +267,9 @@ Deterministic ordering proposal không thêm business priority ngoài D-066:
 
 Today lấy first 3 sau ordering. `totalAttentionCount` là tổng trước limit; nếu `> 3`, UI hiển thị `Xem tất cả X mặt hàng`. Alphabetical/ProductId tie-break chỉ đảm bảo stable presentation, không tuyên bố severity khác.
 
-### 7.6 Product lifecycle gate
+### 7.6 Active-only Product candidates
 
-Product inactive có tồn hoặc sales history nhưng replenishment action có thể mâu thuẫn `IsActive = false`. S6-Q4 phải chốt active-only hay factual exception trước khi candidate query final.
+D-072 filter `Product.IsActive = true` trước mọi C14 classification. Inactive Product không xuất hiện trong Today preview, full list, detail/action entry hoặc experiment `SignalShown`, dù stock âm/zero, recent sales hoặc low DaysOfCover. Inactive-inventory anomaly detection là capability khác ngoài Slice 6.
 
 ## 8. Read model/query approach
 
@@ -317,14 +351,14 @@ No date parameter.
     "supplierDebtCreated": 0
   },
   "attention": {
-    "evaluationStatus": "Sufficient",
+    "riskEvaluationStatus": "Sufficient",
     "totalCount": 0,
     "items": []
   }
 }
 ```
 
-`saleCount` and new-debt-created fields remain blocked by S6-Q1/S6-Q2. Contract is not final until those questions are resolved.
+`saleCount` follows D-070. `customerDebtCreated`/`supplierDebtCreated` follow D-069 and never use standalone DebtPayment. `riskEvaluationStatus` is typed (`Sufficient`, `InsufficientStoreHistory`, `PartiallyInsufficientProductHistory`) so UI does not infer sufficiency from text.
 
 ### 10.2 `GET /api/today/explanations/{metric}`
 
@@ -349,11 +383,13 @@ Attention item proposal:
   "netSoldQuantity": 28,
   "averageDailySales": 4,
   "daysOfCover": 1.5,
-  "dataSufficiency": "Sufficient"
+  "historyCoverage": "FullSevenCompletedDays",
+  "recentSalesEvidence": "PositiveNetSold",
+  "riskEvaluation": "Eligible"
 }
 ```
 
-For factual zero/negative stock, `daysOfCover` may be null; UI must not represent factual state as forecast.
+Only active Products are returned. For factual zero/negative stock, `daysOfCover` may be null and `historyCoverage` may be `PartialObservation`; `PositiveNetSold` remains required. UI must not represent factual state as forecast.
 
 ### 10.4 `GET /api/today/attention/{productId}`
 
@@ -426,12 +462,21 @@ No Purchase is created by merely navigating from C14.
 
 ### 13.1 Event meaning
 
-- `TodayOpened`: Today data successfully rendered for Owner.
-- `SignalShown`: one qualifying C14 Product item actually rendered, one event per rendered item and render occurrence.
-- `WhyOpened`: Owner opened C14 explanation for a Product.
-- `PurchaseDraftStarted`: Owner invoked `Tạo phiếu nhập` from that Product's C14 flow.
+- `TodayOpened`: một successful user-visible Today page presentation/view instance; không emit lại do reactive render, computed recalculation, loading transition, unrelated state update hoặc refresh dữ liệu trong cùng view instance.
+- `SignalShown`: một active Product attention item thực sự được trình bày visible trong view; mỗi `ProductId + AttentionKind` emit tối đa một lần trong một Today view instance.
+- `WhyOpened`: explicit user action mở C14 explanation cho Product.
+- `PurchaseDraftStarted`: explicit user action chọn `Tạo phiếu nhập` từ Product's C14 flow.
 
-Client-generated EventId protects network retry only; a later genuine interaction creates a new EventId. Event count is descriptive telemetry, not business outcome.
+Frontend tạo per-view ephemeral exposure guard:
+
+- boolean/identity cho `TodayOpened`;
+- `Set<ProductId + AttentionKind>` cho `SignalShown`;
+- chỉ add/emit sau successful data state và item thuộc visible presented list;
+- không emit từ generic DOM/Vue render hook;
+- reactive re-render, parent re-render hoặc unrelated state update không clear guard;
+- page reload, navigation away/back hoặc independently mounted/loaded Today view tạo guard mới và event identities mới.
+
+Không cần analytics-session framework hoặc persisted view session. Client-generated EventId bảo vệ network retry của một exposure/action; same EventId retry không duplicate DB row. Một later genuine view/action dùng EventId mới. Event count là descriptive telemetry, không phải business outcome.
 
 ### 13.2 Non-interpretation rule
 
@@ -445,7 +490,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - C14 aggregates only 7 completed days, current Store and Main Warehouse.
 - Exact decimal values drive threshold/order; display rounding is separate.
 - No background job/cache is required for MVP. If query performance is insufficient, inspect SQL/query plan before adding indexes or cache.
-- Experiment-event write is isolated from business mutation; no failure may rollback/read-block Today or create/commit Purchase.
+- Experiment-event write is isolated from business mutation; failure không block Today presentation, Product navigation hoặc Purchase flow và không được ảnh hưởng correctness của business transaction.
 - Logs include correlation, typed error and Store-safe identifiers without sensitive arbitrary payload.
 
 ## 15. Test plan
@@ -462,12 +507,20 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 ### 15.2 Today summary consistency
 
 - Same Store/date data gives identical Revenue, net Collected, Gross Profit amount and `CostReliability` through Today and Slice 5 EOD projection.
-- Sale exactly at start included; exactly at end excluded.
 - Sale Payment, Customer Debt Payment and actual refund component consistency.
 - Return Restock/NoRestock and Sale Void historical COGS behavior unchanged.
 - Empty Today produces zero financial summary and appropriate reliability.
-- Sale-count tests follow S6-Q2 resolution; no placeholder assumption.
-- Customer/Supplier new-debt tests follow S6-Q1 resolution, including same-day/cross-day correction and standalone DebtPayment.
+- Sale Completed today → SaleCount `+1`; Sale exactly at start included; exactly at end excluded.
+- Sale Completed today + partial Return today → count remains `1`.
+- Sale Completed today + full Return today → count remains `1`.
+- Sale Completed today + same-day SaleVoid → count `0`, with typed exclusion evidence and no negative row.
+- Sale yesterday + SaleVoid today → Today count unchanged, no `-1`, historical count not rewritten.
+- Customer base debt is `SaleTotal - DirectSalePayments`; Supplier base debt is `PurchaseTotal - DirectPurchasePayments`.
+- Same-day Return reduces only its original Sale using `TotalReturnAmount - RefundAmount`, floors contribution at zero and does not double-count actual refund.
+- Same-day SaleVoid/PurchaseVoid zeroes only original transaction contribution.
+- Standalone Customer/Supplier DebtPayment, including same-day payment, never reduces new-debt-created and is never allocated in explanation.
+- Cross-day Return/SaleVoid/PurchaseVoid neither rewrites original-day new debt nor creates negative new debt on correction date.
+- Multiple same-day Returns/corrections remain bounded by original transaction contribution; no hidden credit or negative total.
 
 ### 15.3 C14 query/domain tests
 
@@ -477,10 +530,14 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - Return quantity decreases net sold for Restock and NoRestock.
 - Sale Void reverses original quantity by Void event date.
 - Purchase/Opening/PurchaseVoid/adjustment do not affect velocity.
+- Store/Product `CreatedAt <= velocityStartUtc` gives full seven-day observation; zero-sale days count and denominator remains `7`.
+- One/few Sale days across seven completed dates still use denominator `7`.
 - zero/negative net velocity yields no DaysOfCover risk.
-- negative stock factual state.
-- zero stock factual state.
-- insufficient Store/Product history per S6-Q3.
+- Product created after velocityStart yields `PartialObservation` and no strong LowStockRisk.
+- Store created after velocityStart yields insufficient full history and no LowStockRisk.
+- active recent Product + positive net sold + stock `== 0` yields factual OutOfStock even without full Product history.
+- active Product + positive net sold + stock `< 0` yields factual NegativeStock even without full Product history.
+- stock `<= 0` + no positive net sold yields no factual attention.
 - `DaysOfCover == 3` flags.
 - `DaysOfCover < 3` flags.
 - `DaysOfCover > 3` does not flag.
@@ -488,7 +545,7 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - deterministic factual/risk ordering and ProductName/ProductId ties.
 - Today preview max 3 and full count/list consistent.
 - no signal when rule is not satisfied.
-- inactive Product behavior follows S6-Q4 resolution.
+- inactive Product never appears in factual/risk attention or C14 action even with stock `<= 0`, recent sales or low DaysOfCover.
 
 ### 15.4 SQL Server integration/security tests
 
@@ -518,8 +575,15 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - EventId reuse with different identity rejects.
 - immutable row; no update/delete endpoint.
 - Cashier/cross-Store Product rejected.
-- event-write failure does not mutate/block Product, inventory or Purchase.
-- UI emits `TodayOpened`, rendered `SignalShown`, `WhyOpened`, `PurchaseDraftStarted` at defined interactions.
+- event-write failure does not mutate/block Today, Product navigation, inventory or Purchase flow.
+- one successful visible Today view emits one `TodayOpened`; reactive/loading/unrelated rerenders do not duplicate it.
+- initial visible Product attention emits exactly one `SignalShown`.
+- reactive component/parent rerender keeps exactly one SignalShown for the same Product/attention identity.
+- unrelated state update keeps exactly one SignalShown.
+- multiple different visible Products emit one SignalShown per Product/attention identity.
+- genuine reload/navigation-away-and-back/new independently loaded view can emit new exposure identities.
+- network retry reuses exact same EventId and persists one row.
+- `WhyOpened` and `PurchaseDraftStarted` emit only from explicit user actions.
 
 ### 15.7 Frontend and real E2E
 
@@ -527,9 +591,10 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - Cashier not routed to/allowed Today.
 - Today has no date picker and shows Store date/timezone.
 - summary labels/reliability and explanation flows.
-- attention max 3, full-count link, factual/risk/insufficient/neutral states.
+- attention max 3, full-count link, full/partial-history, factual/risk/no-positive-evidence/neutral states and active-only filter.
 - Product detail and preselected Purchase transition with no Supplier/quantity recommendation.
-- real E2E: seed 7 completed Store-local days, Sale/Return/Void history and stock; verify summary, explanation, attention, action transition and measurement rows through Vue → API → SQL Server.
+- real E2E: seed exact Today Sale/Purchase/direct payments/standalone DebtPayments/same-day and cross-day corrections; verify D-069/D-070 summary and explanations.
+- real E2E: seed 7 completed Store-local days, partial Store/Product history, active/inactive Products, Sale/Return/Void quantity and stock; verify D-071/D-072 attention, action transition and deduplicated measurement rows through Vue → API → SQL Server.
 - full Slice 1–5 backend/frontend/real-flow regressions remain green; no test deletion/skip to force green.
 
 ## 16. Proposed implementation staging — chưa approved
@@ -542,14 +607,14 @@ Proposal only:
 - current Store-local date/window service orchestration;
 - Today summary and typed financial explanations;
 - Owner `/today` route/default landing;
-- Sale count/new-debt semantics only after S6-Q1/S6-Q2 resolution;
+- D-069 new-debt-created và D-070 SaleCount projections/explainability;
 - domain/SQL integration/frontend tests.
 
 ### Stage 6B — C14/action/measurement/E2E
 
 Proposal only:
 
-- seven-completed-day C14 projection after S6-Q3/S6-Q4 resolution;
+- D-071 exact full-history/factual sufficiency và D-072 active-only C14 projection;
 - attention preview/list/detail and evidence;
 - Product/Purchase transition without recommendation/automation;
 - narrow immutable C14 experiment events and migration if approved;
@@ -559,26 +624,26 @@ Stage 6A/6B names, contents and sequence are not authorized implementation seque
 
 ## 17. Definition of Done proposal
 
-- D-061–D-068 traceable in implementation/tests.
-- S6-Q1–S6-Q4 resolved and incorporated before Technical Breakdown approval.
+- D-061–D-072 traceable in implementation/tests.
+- S6-Q1–S6-Q4 resolutions D-069–D-072 incorporated without reopening approved scope.
 - Today uses Store-local current date, no historical picker and no duplicate Slice 5 financial semantics.
 - Summary and source evidence reconcile.
 - C14 formula/window/classification/order/sufficiency are deterministic and explainable.
 - Owner-only authorization and Store isolation are backend-enforced.
 - Action transition never decides Supplier/quantity or creates/commits Purchase automatically.
-- Experiment events are narrow, immutable and non-transactional to business flow.
+- Experiment events are narrow, immutable and non-transactional to business flow; per-view exposure guards prevent reactive duplicate `TodayOpened`/`SignalShown`.
 - Domain/query, SQL Server integration, frontend and real local critical E2E pass; Slice 1–5 regressions pass.
 - No AI, forecast/replenishment engine, BI dashboard, generic rule/alert/analytics platform.
 - Product Owner separately reviews/approves Technical Breakdown and implementation stages before code begins.
 
-## 18. Open Product Owner gates
+## 18. Resolved Product Owner questions và review gate
 
-- S6-Q1 — new-debt-created correction and unallocated DebtPayment semantics.
-- S6-Q2 — exact Sale count with Void/Return.
-- S6-Q3 — exact 7-day sufficiency and factual-stock evidence requirement.
-- S6-Q4 — active/inactive Product eligibility for C14.
+- S6-Q1 resolved by D-069 — per-transaction new-debt-created, same-day correction only, no standalone allocation.
+- S6-Q2 resolved by D-070 — same-day Completed Sale excluding same-day Void; Return does not reduce count.
+- S6-Q3 resolved by D-071 — exact full-history risk gate and earlier factual state with positive evidence.
+- S6-Q4 resolved by D-072 — active-only C14 candidates.
 
-Các câu hỏi nằm trong [`OPEN_QUESTIONS.md`](../../OPEN_QUESTIONS.md). Tài liệu này phải được cập nhật theo decision mới trước khi chuyển khỏi `DRAFT / PENDING PRODUCT OWNER REVIEW`.
+Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../../OPEN_QUESTIONS.md). Technical Breakdown vẫn `DRAFT / PENDING PRODUCT OWNER REVIEW`; Product Owner phải approve tài liệu và staging riêng trước implementation.
 
 ## 19. Related decisions
 
@@ -594,5 +659,9 @@ Các câu hỏi nằm trong [`OPEN_QUESTIONS.md`](../../OPEN_QUESTIONS.md). Tài
 - D-066 — intentionally thin attention UI.
 - D-067 — information-to-action without auto-decision.
 - D-068 — measurable but still-unvalidated C14 experiment.
+- D-069 — exact per-transaction new-debt-created and correction boundaries.
+- D-070 — exact SaleCount with same-day Void and Return behavior.
+- D-071 — exact LowStockRisk/factual data sufficiency.
+- D-072 — active-only C14 Product candidates.
 
 **Current gate:** `DRAFT / PENDING PRODUCT OWNER REVIEW`. Slice 6 implementation is `NOT STARTED`. No Technical Breakdown approval decision exists.

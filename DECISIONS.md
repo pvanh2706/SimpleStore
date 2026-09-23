@@ -724,3 +724,48 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Minimum measurement:** Có khả năng đo Owner mở Today; C14 signal được shown; Owner bấm `Xem vì sao`; Owner bấm `Tạo phiếu nhập` từ C14 flow. Technical Breakdown có thể đề xuất immutable C14-specific experiment-event model tối thiểu nếu chứng minh cần thiết.
 - **Boundary:** Không analytics platform, generic event-tracking framework, data warehouse hoặc telemetry product lớn.
 - **Interpretation:** `click != validated product value`. Product Owner vẫn phải pilot/research xem signal có phát hiện việc chưa chú ý, có evidence đáng tin, có ảnh hưởng quyết định nhập hàng, có được tiếp tục dùng và có willingness-to-pay hay không; CTR/event count không tự động là validation.
+
+### D-069 — Slice 6 / New debt created today semantics
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Metric:** Customer/Supplier debt created today đo new obligation do Sale/Purchase trong current Store-local business-date tạo ra, không phải ending debt hoặc net movement của aggregate debt.
+- **Customer:** Tại Sale completion, `CustomerDebtCreated = max(SaleTotal - DirectSalePayments, 0)` cho Sale trong current business-date window.
+- **Supplier:** Tại Purchase completion, `SupplierDebtCreated = max(PurchaseTotal - DirectPurchasePayments, 0)` cho Purchase trong current business-date window.
+- **Standalone debt payment:** Customer/Supplier `DebtPayment` không giảm new-debt-created kể cả cùng ngày, vì D-047 không allocate payment vào transaction cụ thể. Không tạo aggregate FIFO/allocation rule.
+- **Same-business-date correction:** Return/Sale Void chỉ có thể giảm Customer debt created của actual original Sale khi Sale và correction cùng business date; Purchase Void tương tự cho actual original Purchase. Reuse authoritative obligation reduction, không double-count actual refund/payment, không hidden credit và floor contribution từng transaction tại `0`.
+- **Cross-business-date correction:** Không rewrite historical new-debt-created của ngày transaction và không tạo negative new debt trong ngày correction. Correction vẫn xuất hiện ở financial/correction explainability phù hợp.
+- **Meaning:** Metric trả lời “Hôm nay các giao dịch mới đã tạo ra bao nhiêu nghĩa vụ nợ mới?”, không trả lời “Hôm nay tổng công nợ thay đổi bao nhiêu?”.
+
+### D-070 — Slice 6 / Sale count semantics
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Count:** `SaleCount` đếm Sale Completed trong current Store-local business-date window và loại Sale bị SaleVoid trong cùng business date.
+- **Return:** Partial Return và full Return đều không giảm SaleCount.
+- **Cross-day correction:** Sale ngày trước bị Void hôm nay không tạo `-1` hôm nay và không rewrite SaleCount lịch sử. Sale Completed và Void cùng ngày không được tính hôm nay.
+- **Other metrics:** Return/Void vẫn phản ánh trong Revenue, Collected, COGS và explainability theo approved semantics.
+- **Meaning:** SaleCount trả lời “Có bao nhiêu đơn bán được hoàn tất hôm nay và không bị hủy ngay trong cùng business date?”, không phải gross transaction-event count.
+
+### D-071 — Slice 6 / Exact C14 data sufficiency
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **LowStockRisk full-history gate:** Store và Product đều phải có `CreatedAt <= velocityStartUtc`, để hệ thống có khả năng quan sát đủ toàn bộ 7 completed Store-local business days. Không yêu cầu Sale ở đủ 7 ngày, N ngày hoặc mỗi ngày có transaction; zero-sale day hợp lệ và denominator vẫn là `7`.
+- **Risk calculation:** Sau sufficiency gate, `AverageDailySales = NetSoldQuantity / 7`; chỉ khi average `> 0` mới tính DaysOfCover/risk.
+- **Factual state:** `OutOfStock`/`NegativeStock` không yêu cầu Product tồn tại đủ 7 ngày nhưng yêu cầu `NetSoldQuantity > 0` trong phần observable của cùng seven-completed-day window. Product mới có recent positive sales evidence có thể được factual attention sớm.
+- **Noise prevention:** Current stock `<= 0` mà không có recent positive net-sales evidence không tạo C14 factual attention.
+- **Store onboarding:** Không giả định lịch sử trước `Store.CreatedAt`; LowStockRisk chỉ sau full 7-day Store coverage, factual state có thể sớm hơn khi có positive evidence.
+- **Typed evaluation:** Phân biệt bằng typed state giữa insufficient full history, no recent positive sales evidence và sufficient; localized text không làm business logic.
+
+### D-072 — Slice 6 / C14 evaluates active Products only
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Candidate set:** Chỉ `Product.IsActive = true` được đánh giá cho `LowStockRisk`, `OutOfStock` và `NegativeStock`.
+- **Inactive Product:** Không xuất hiện trong Today `Cần chú ý`, full C14 list hoặc action `Tạo phiếu nhập` từ C14, vì inactive thể hiện ý định không tiếp tục operationally sell/replenish Product.
+- **Boundary:** Detect inactive Product có tồn âm/data bất thường là data-integrity capability riêng ngoài C14/Slice 6 hiện tại; không mở rộng scope để xử lý.
