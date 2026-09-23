@@ -43,6 +43,7 @@ onMounted(async () => {
 })
 
 const voidErrors: Record<string, string> = {
+  'customer-debt-would-become-negative': 'Không thể hủy vì khoản thu nợ đã làm nghĩa vụ khách hàng thấp hơn giá trị đơn cần đảo.',
   'sale-already-voided': 'Đơn bán đã bị hủy trước đó.',
   'sale-has-returns': 'Không thể hủy trực tiếp vì đơn đã có giao dịch trả hàng.',
   'void-reason-required': 'Vui lòng nhập lý do hủy.',

@@ -14,24 +14,18 @@ $env:DevelopmentOwner__Email = "owner-$runId@example.test"
 $env:DevelopmentOwner__Password = "E2E-$runId!aA1"
 $env:SIMPLESTORE_E2E_EMAIL = $env:DevelopmentOwner__Email
 $env:SIMPLESTORE_E2E_PASSWORD = $env:DevelopmentOwner__Password
+$env:SIMPLESTORE_E2E_RUN_ID = $runId
 
 Push-Location $repositoryRoot
 try {
     dotnet ef database update --project $infrastructureProject --startup-project $apiProject --configuration Release
-    if ($LASTEXITCODE -ne 0) {
-        throw "Could not migrate the temporary E2E database '$databaseName'."
-    }
+    if ($LASTEXITCODE -ne 0) { throw "Could not migrate temporary database '$databaseName'." }
 
-    pnpm --dir tests/e2e exec playwright test --config playwright.real.config.ts --grep 'Owner initializes a store'
-    if ($LASTEXITCODE -ne 0) {
-        throw 'The real Slice 1 Playwright flow failed.'
-    }
+    pnpm --dir tests/e2e exec playwright test --config playwright.real.config.ts --grep 'Slice 5B real debt and end-of-day flows'
+    if ($LASTEXITCODE -ne 0) { throw 'The real Slice 5B Playwright flow failed.' }
 }
 finally {
     dotnet ef database drop --force --project $infrastructureProject --startup-project $apiProject --configuration Release --no-build
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Could not drop temporary E2E database '$databaseName'."
-    }
-
+    if ($LASTEXITCODE -ne 0) { Write-Warning "Could not drop temporary database '$databaseName'." }
     Pop-Location
 }

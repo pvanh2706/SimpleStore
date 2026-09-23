@@ -73,6 +73,9 @@ public sealed class Store
         return audit;
     }
 
+    public void ChangeTimeZone(string timeZoneId) =>
+        TimeZoneId = NormalizeTimeZoneId(timeZoneId);
+
     private static string NormalizeTimeZoneId(string? timeZoneId)
     {
         var normalized = timeZoneId?.Trim() ?? string.Empty;

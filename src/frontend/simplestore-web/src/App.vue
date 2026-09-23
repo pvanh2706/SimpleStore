@@ -20,7 +20,10 @@ async function logout() {
           <RouterLink class="nav-link" to="/sales/new">Bán hàng</RouterLink>
           <RouterLink class="nav-link" to="/sales">Đơn bán</RouterLink>
           <RouterLink class="nav-link" to="/products">Sản phẩm</RouterLink>
+          <RouterLink class="nav-link" to="/customers/debts">Công nợ khách</RouterLink>
           <template v-if="auth.session.roles.includes('Owner')">
+            <RouterLink class="nav-link" to="/suppliers/debts">Công nợ NCC</RouterLink>
+            <RouterLink class="nav-link" to="/reports/end-of-day">Cuối ngày</RouterLink>
             <RouterLink class="nav-link" to="/import">Nhập từ CSV</RouterLink>
             <RouterLink class="nav-link" to="/suppliers">Nhà cung cấp</RouterLink>
             <RouterLink class="nav-link" to="/purchases">Nhập hàng</RouterLink>

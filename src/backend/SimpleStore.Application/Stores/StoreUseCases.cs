@@ -13,6 +13,8 @@ public sealed record StoreResult(
 
 public sealed record StoreOperationalSettingsResult(bool AllowNegativeStock);
 
+public sealed record StoreTimeZoneResult(string TimeZoneId);
+
 public sealed class InitializeStoreUseCase(
     ICurrentUser currentUser,
     ISlice1Repository repository,
@@ -143,6 +145,24 @@ public sealed class UpdateNegativeStockPolicyUseCase(
         }
 
         return new StoreOperationalSettingsResult(store.AllowNegativeStock);
+    }
+}
+
+public sealed class UpdateStoreTimeZoneUseCase(
+    ICurrentUser currentUser,
+    ISlice1Repository repository)
+{
+    public async Task<StoreTimeZoneResult> ExecuteAsync(
+        string timeZoneId,
+        CancellationToken cancellationToken)
+    {
+        var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(
+            currentUser, repository, cancellationToken);
+        var store = await repository.GetStoreAsync(storeId, cancellationToken)
+            ?? throw new ApplicationNotFoundException("store-not-found", "Store was not found.");
+        store.ChangeTimeZone(timeZoneId);
+        await repository.SaveChangesAsync(cancellationToken);
+        return new StoreTimeZoneResult(store.TimeZoneId);
     }
 }
 

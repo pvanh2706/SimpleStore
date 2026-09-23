@@ -12,7 +12,8 @@ public sealed class StoreController(
     InitializeStoreUseCase initializeStore,
     GetCurrentStoreUseCase getCurrentStore,
     GetStoreOperationalSettingsUseCase getOperationalSettings,
-    UpdateNegativeStockPolicyUseCase updateNegativeStockPolicy) : ControllerBase
+    UpdateNegativeStockPolicyUseCase updateNegativeStockPolicy,
+    UpdateStoreTimeZoneUseCase updateTimeZone) : ControllerBase
 {
     [HttpGet("current")]
     public async Task<ActionResult<StoreResult?>> Current(CancellationToken cancellationToken) =>
@@ -38,8 +39,17 @@ public sealed class StoreController(
         Ok(await updateNegativeStockPolicy.ExecuteAsync(
             request.AllowNegativeStock,
             cancellationToken));
+
+    [HttpPut("timezone")]
+    [Authorize(Roles = ApplicationRoles.Owner)]
+    public async Task<ActionResult<StoreTimeZoneResult>> UpdateTimeZone(
+        UpdateStoreTimeZoneRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await updateTimeZone.ExecuteAsync(request.TimeZoneId, cancellationToken));
 }
 
 public sealed record InitializeStoreRequest(string Name);
 
 public sealed record UpdateNegativeStockRequest(bool AllowNegativeStock);
+
+public sealed record UpdateStoreTimeZoneRequest(string TimeZoneId);

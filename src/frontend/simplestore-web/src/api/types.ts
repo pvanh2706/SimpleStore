@@ -305,6 +305,65 @@ export interface StoreOperationalSettings {
   allowNegativeStock: boolean
 }
 
+export interface DebtBalance {
+  partyId: string
+  partyName: string
+  phone: string | null
+  outstandingAmount: number
+  asOf: string
+}
+
+export interface DebtBalancePage {
+  items: DebtBalance[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  asOf: string
+}
+
+export interface DebtPaymentResult {
+  id: string
+  partyId: string
+  direction: 'MoneyIn' | 'MoneyOut'
+  purpose: 'CustomerDebtCollection' | 'SupplierDebtSettlement'
+  amount: number
+  method: 'Cash' | 'Transfer'
+  note: string | null
+  occurredAt: string
+  performedByUserId: string
+  outstandingBefore: number
+  outstandingAfter: number
+  wasAlreadyRecorded: boolean
+}
+
+export interface EndOfDayReport {
+  businessDate: string
+  timeZoneId: string
+  startUtc: string
+  endUtc: string
+  salesRevenue: number
+  collected: {
+    salePayments: number
+    customerDebtPayments: number
+    customerRefunds: number
+    netAmount: number
+  }
+  customerOutstandingDebtAtEnd: number
+  supplierPayments: {
+    purchasePayments: number
+    supplierDebtPayments: number
+    totalAmount: number
+  }
+  supplierOutstandingDebtAtEnd: number
+  estimatedGrossProfit: {
+    netSalesRevenue: number
+    historicalCogs: number
+    amount: number
+    costReliability: 'Reliable' | 'Estimated' | 'Unavailable'
+  }
+}
+
 export interface ReturnLine {
   id: string
   originalSaleLineId: string

@@ -9,6 +9,7 @@ using SimpleStore.Application.Sales;
 using SimpleStore.Application.Returns;
 using SimpleStore.Application.Corrections;
 using SimpleStore.Application.Debts;
+using SimpleStore.Application.Reports;
 
 namespace SimpleStore.Application;
 
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<GetSalesUseCase>();
         services.AddScoped<GetStoreOperationalSettingsUseCase>();
         services.AddScoped<UpdateNegativeStockPolicyUseCase>();
+        services.AddScoped<UpdateStoreTimeZoneUseCase>();
         services.AddScoped<PreviewReturnUseCase>();
         services.AddScoped<CreateReturnUseCase>();
         services.AddScoped<GetReturnUseCase>();
@@ -59,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<GetSupplierDebtUseCase>();
         services.AddScoped<GetSupplierDebtsUseCase>();
         services.AddScoped<RecordSupplierDebtPaymentUseCase>();
+        services.AddScoped<GetEndOfDayReportUseCase>();
 
         return services;
     }

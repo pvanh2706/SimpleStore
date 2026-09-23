@@ -41,6 +41,7 @@ function completed(result: Purchase) { purchase.value = result }
 function voidCompleted() { showVoid.value = false }
 
 const voidErrors: Record<string, string> = {
+  'supplier-debt-would-become-negative': 'Không thể hủy vì khoản trả nợ đã làm nghĩa vụ nhà cung cấp thấp hơn giá trị phiếu cần đảo.',
   'purchase-void-reversal-basis-unavailable': 'Phiếu nhập cũ này không có đủ bằng chứng để hủy trực tiếp một cách an toàn.',
   'purchase-void-reversal-basis-invalid': 'Bằng chứng đảo phiếu nhập không còn hợp lệ. Phiếu không được hủy.',
   'purchase-void-downstream-inventory-dependency': 'Tồn kho đã thay đổi sau phiếu nhập này nên hủy trực tiếp không còn an toàn.',

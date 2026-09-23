@@ -53,7 +53,7 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
         }
 
         var parties = await query.OrderBy(item => item.Name).ThenBy(item => item.Id)
-            .Select(item => new { item.Id, item.Name })
+            .Select(item => new { item.Id, item.Name, item.Phone })
             .ToArrayAsync(cancellationToken);
         var partyIds = parties.Select(item => item.Id).ToArray();
         var activeSales = await dbContext.Sales.AsNoTracking()
@@ -114,6 +114,7 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
         var balances = parties.Select(party => new DebtPartyBalance(
             party.Id,
             party.Name,
+            party.Phone,
             saleDebtByCustomer.GetValueOrDefault(party.Id)
                 - debtPayments.GetValueOrDefault(party.Id))).ToArray();
         return Page(balances, page, pageSize, "customer-debt-state-invalid");
@@ -135,7 +136,7 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
         }
 
         var parties = await query.OrderBy(item => item.Name).ThenBy(item => item.Id)
-            .Select(item => new { item.Id, item.Name })
+            .Select(item => new { item.Id, item.Name, item.Phone })
             .ToArrayAsync(cancellationToken);
         var partyIds = parties.Select(item => item.Id).ToArray();
         var activePurchases = await dbContext.Purchases.AsNoTracking()
@@ -169,6 +170,7 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
         var balances = parties.Select(party => new DebtPartyBalance(
             party.Id,
             party.Name,
+            party.Phone,
             purchaseDebtBySupplier.GetValueOrDefault(party.Id)
                 - debtPayments.GetValueOrDefault(party.Id))).ToArray();
         return Page(balances, page, pageSize, "supplier-debt-state-invalid");
@@ -237,13 +239,14 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
     {
         var customer = await dbContext.Customers.AsNoTracking()
             .Where(item => item.StoreId == storeId && item.Id == customerId)
-            .Select(item => new { item.Id, item.Name })
+            .Select(item => new { item.Id, item.Name, item.Phone })
             .SingleOrDefaultAsync(cancellationToken);
         return customer is null
             ? null
             : new DebtPartyBalance(
                 customer.Id,
                 customer.Name,
+                customer.Phone,
                 await GetCustomerOutstandingAsync(storeId, customer.Id, cutoff, cancellationToken));
     }
 
@@ -255,13 +258,14 @@ public sealed class Slice5Repository(ApplicationDbContext dbContext) : ISlice5Re
     {
         var supplier = await dbContext.Suppliers.AsNoTracking()
             .Where(item => item.StoreId == storeId && item.Id == supplierId)
-            .Select(item => new { item.Id, item.Name })
+            .Select(item => new { item.Id, item.Name, item.Phone })
             .SingleOrDefaultAsync(cancellationToken);
         return supplier is null
             ? null
             : new DebtPartyBalance(
                 supplier.Id,
                 supplier.Name,
+                supplier.Phone,
                 await GetSupplierOutstandingAsync(storeId, supplier.Id, cutoff, cancellationToken));
     }
 

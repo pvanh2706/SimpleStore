@@ -269,6 +269,12 @@ const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
 
     <section v-if="preview" class="card grid gap-3" aria-label="Xem trước trả hàng">
       <h2 class="text-xl font-black">Kết quả từ máy chủ</h2>
+      <div class="grid gap-3 sm:grid-cols-3">
+        <p>Giảm nghĩa vụ giao dịch<br><strong>{{ money(preview.returnObligationReduction) }} ₫</strong></p>
+        <p v-if="preview.currentAggregateCustomerDebt !== null">Công nợ khách trước trả<br><strong>{{ money(preview.currentAggregateCustomerDebt) }} ₫</strong></p>
+        <p v-if="preview.debtReduction !== null">Giảm công nợ<br><strong>{{ money(preview.debtReduction) }} ₫</strong></p>
+        <p>Hoàn tiền thực tế<br><strong>{{ money(preview.requiredActualRefund) }} ₫</strong></p>
+      </div>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <p>Giá trị trả lần này<br><strong>{{ money(preview.currentReturnValue) }} ₫</strong></p>
         <p>Tổng đã trả hàng<br><strong>{{ money(preview.cumulativeReturnedValue) }} ₫</strong></p>

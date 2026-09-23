@@ -28,7 +28,7 @@ public sealed class GetCustomerDebtUseCase(
     }
 
     internal static DebtBalanceResult ToResult(DebtPartyBalance item, DateTimeOffset asOf) =>
-        new(item.PartyId, item.PartyName, item.OutstandingAmount, asOf);
+        new(item.PartyId, item.PartyName, item.Phone, item.OutstandingAmount, asOf);
 
     internal static void EnsureValid(decimal outstanding, string code)
     {

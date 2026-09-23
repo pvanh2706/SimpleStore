@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<ISlice3Repository, Slice3Repository>();
         services.AddScoped<ISlice4Repository, Slice4Repository>();
         services.AddScoped<ISlice5Repository, Slice5Repository>();
+        services.AddScoped<ISlice5BRepository, Slice5BRepository>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>

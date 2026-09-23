@@ -22,7 +22,10 @@ const router = createRouter({
     { path: '/sales/:id', name: 'sale-detail', component: () => import('../views/SaleDetailView.vue') },
     { path: '/sales/:id/return', name: 'sale-return', component: () => import('../views/ReturnCreateView.vue'), meta: { ownerOnly: true } },
     { path: '/returns/:id', name: 'return-detail', component: () => import('../views/ReturnDetailView.vue'), meta: { ownerOnly: true } },
-    { path: '/settings/operations', name: 'operational-settings', component: () => import('../views/OperationalSettingsView.vue') },
+    { path: '/customers/debts', name: 'customer-debts', component: () => import('../views/DebtManagementView.vue'), props: { kind: 'customer' } },
+    { path: '/suppliers/debts', name: 'supplier-debts', component: () => import('../views/DebtManagementView.vue'), props: { kind: 'supplier' }, meta: { ownerOnly: true } },
+    { path: '/reports/end-of-day', name: 'end-of-day', component: () => import('../views/EndOfDayView.vue'), meta: { ownerOnly: true } },
+    { path: '/settings/operations', name: 'operational-settings', component: () => import('../views/OperationalSettingsView.vue'), meta: { ownerOnly: true } },
   ],
 })
 

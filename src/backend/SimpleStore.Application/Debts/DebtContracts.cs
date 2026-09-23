@@ -10,6 +10,7 @@ public sealed record DebtPaymentCommand(
 public sealed record DebtBalanceResult(
     Guid PartyId,
     string PartyName,
+    string? Phone,
     decimal OutstandingAmount,
     DateTimeOffset AsOf);
 

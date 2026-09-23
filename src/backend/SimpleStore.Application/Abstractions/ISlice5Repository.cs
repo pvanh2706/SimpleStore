@@ -61,7 +61,11 @@ public interface ISlice5Repository
         CancellationToken cancellationToken);
 }
 
-public sealed record DebtPartyBalance(Guid PartyId, string PartyName, decimal OutstandingAmount);
+public sealed record DebtPartyBalance(
+    Guid PartyId,
+    string PartyName,
+    string? Phone,
+    decimal OutstandingAmount);
 
 public sealed record DebtPartyBalancePage(
     IReadOnlyList<DebtPartyBalance> Items,
