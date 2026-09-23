@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 5 — Stage 5A Debt backend/domain/persistence/tests: `APPROVED / COMPLETED`; Stage 5B: `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`**
+**Slice 5 — Stage 5A Debt backend/domain/persistence/tests: `APPROVED / COMPLETED`; Stage 5B: `APPROVED / COMPLETED`; final Slice-level Product Owner approval: `PENDING`**
 
 Slice 4 — Return / Void / Recovery giữ trạng thái `APPROVED / COMPLETED`; baseline trước Slice 5 là commit `5876082a`.
 
@@ -43,11 +43,14 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Toàn bộ sáu Product Owner Open Questions chặn ban đầu của Slice 5 đã được giải quyết; không còn known Product Owner blocker trong `OPEN_QUESTIONS.md` cho Slice 5.
 - D-057 — Technical Breakdown Slice 5 Approval — là `APPROVED` ngày 2026-09-22; D-043–D-056 giữ nguyên `APPROVED`.
 - D-058 — Slice 5 Stage 5A Implementation Approval — là `APPROVED` ngày 2026-09-23 tại reviewed baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`.
+- D-059 — Slice 5 Stage 5B Implementation Approval — là `APPROVED` ngày 2026-09-23 tại approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`.
 - Technical Breakdown Slice 5 v0.1 là `APPROVED FOR IMPLEMENTATION`.
 - Slice 5 Stage 5A là `APPROVED / COMPLETED`: derived Customer/Supplier debt, shared immutable DebtPayment, debt read/payment APIs, BusinessOperation recovery, party-level SQL serialization, D-056 Return/Void integration, Store IANA timezone persistence foundation, additive migration và automated domain/SQL Server tests đã được Product Owner final-approve tại D-058.
 - Stage 5A giữ invariant đã review: current/authoritative debt đọc toàn bộ committed history, không dùng clock cutoff; historical/as-of debt giữ strict `event timestamp < cutoff` cho future half-open business-date reporting.
 - Approved head `49098e94c4f44acf3762f3e33ce6be3dfc00758f`; GitHub Actions run #28 / `35805222057` `SUCCESS` với backend restore, Release build, full `dotnet test`, frontend build và frontend tests. Không có manual Stage 5A E2E evidence được ghi nhận.
-- Stage 5B đã implement End-of-day query/UI, configurable Store IANA timezone, Customer/Supplier debt screens, immutable retry/stale UX, Return/Void typed UX và automated/real-local verification trên baseline `493c5cc61d4d0a61d65b9bcc2887ad979fb719af`. Trạng thái là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`, không phải approval/completion; toàn bộ Slice 5 chưa được đánh dấu completed.
+- Slice 5 Stage 5B là `APPROVED / COMPLETED` tại D-059 và approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`: End-of-day query/UI, configurable Store IANA timezone, historical COGS + `CostReliability`, Customer/Supplier debt screens, immutable retry/recovery, stale-balance UX, D-056 Return/Void typed guidance và SQL Server/frontend verification đã được review.
+- GitHub Actions run #31 / `35848666879` là `SUCCESS`: Domain tests 78/78, SQL Server integration tests 78/78, frontend tests 82/82 và frontend build pass. Real Stage 5B Playwright E2E đã pass local; CI không được ghi nhận là đã chạy real E2E.
+- Stage 5A giữ `APPROVED / COMPLETED` tại D-058 và Stage 5B là `APPROVED / COMPLETED` tại D-059. Final Slice-level Product Owner approval vẫn pending; toàn bộ Slice 5 chưa được tự động đánh dấu `APPROVED / COMPLETED`.
 
 ## Tiến độ
 
@@ -159,7 +162,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review Stage 5B.** Implementation hiện ở trạng thái `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`: End-of-day theo Store-local business date/timezone, Revenue/Collected/ending debt/Supplier payments/historical-cost Estimated Gross Profit, debt frontend, recovery UX và test/E2E evidence đã có. Không tự suy diễn trạng thái này thành Stage 5B hoặc Slice 5 approval/completion.
+**Product Owner final review / approval của toàn bộ Slice 5.** Stage 5A và Stage 5B đều đã `APPROVED / COMPLETED` tại D-058/D-059; final Slice-level approval là gate riêng và chưa được Product Owner tạo.
 
 ## Chưa triển khai
 
@@ -169,4 +172,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Stage 5B đã được implement từ baseline `493c5cc61d4d0a61d65b9bcc2887ad979fb719af`, có local domain/SQL Server/frontend/build/Playwright evidence và không thêm schema migration. Trạng thái Stage 5B là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`, chưa APPROVED/COMPLETED; full Slice 5 chưa completed. Stage 5A giữ `APPROVED / COMPLETED` tại D-058 và Slice 4 giữ `APPROVED / COMPLETED`.
+2026-09-23 — Product Owner approve Stage 5B tại D-059 và approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`; GitHub Actions run #31 / `35848666879` `SUCCESS`. Stage 5B chuyển thành `APPROVED / COMPLETED`, Stage 5A giữ `APPROVED / COMPLETED` tại D-058, và không có schema migration mới ở Stage 5B. Final Slice-level Product Owner approval vẫn pending nên toàn bộ Slice 5 chưa được đánh dấu `APPROVED / COMPLETED`.

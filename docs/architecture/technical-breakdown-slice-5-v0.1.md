@@ -4,7 +4,7 @@
 
 `APPROVED FOR IMPLEMENTATION`
 
-Product Owner final-approved tài liệu ngày 2026-09-22 tại D-057. Implementation phải tuân thủ D-043–D-058. Stage 5A được Product Owner `APPROVED / COMPLETED` ngày 2026-09-23 tại D-058, approved baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`. Stage 5B đã được implement trên baseline `493c5cc61d4d0a61d65b9bcc2887ad979fb719af` và đang `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; đây không phải Product Owner approval và toàn bộ Slice 5 chưa completed.
+Product Owner final-approved tài liệu ngày 2026-09-22 tại D-057. Implementation phải tuân thủ D-043–D-059. Stage 5A được Product Owner `APPROVED / COMPLETED` ngày 2026-09-23 tại D-058, approved baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`. Stage 5B được Product Owner `APPROVED / COMPLETED` ngày 2026-09-23 tại D-059, approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`. Final Slice-level Product Owner approval vẫn là gate riêng đang pending, vì vậy toàn bộ Slice 5 chưa completed.
 
 ## Mục tiêu và quy trình
 
@@ -1005,7 +1005,9 @@ Stage 5A không tự mở rộng sang toàn bộ frontend hoặc End-of-day UI �
 
 ### Stage 5B — End-of-day + frontend + E2E/recovery
 
-**Implementation status:** `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`.
+**Implementation status:** `APPROVED / COMPLETED` tại D-059.
+
+**Approved head:** `84f6f8d61bff19f6845204207ccb034bd9219bcd`.
 
 - Store configurable IANA timezone theo D-054.
 - EOD aggregation/query và historical COGS reliability.
@@ -1022,8 +1024,10 @@ Implementation evidence trên baseline `493c5cc61d4d0a61d65b9bcc2887ad979fb719af
 - Debt-payment UI giữ immutable operation snapshot, status recovery/exact retry, và reload-without-auto-resubmit cho stale/overpay conflicts.
 - Return preview hiển thị aggregate debt reduction/actual refund; Sale/Purchase Void có typed aggregate-debt guard messages.
 - Domain, SQL Server integration, frontend và real-local E2E evidence được ghi nhận trong implementation handoff; không có schema migration mới ở Stage 5B.
+- Product Owner review hardening tại commit `84f6f8d61bff19f6845204207ccb034bd9219bcd` khóa search/pagination trong ambiguous debt recovery, format EOD boundary theo Store timezone, và hoàn thiện D-056 typed Return/Void guidance.
+- GitHub Actions run #31 / `35848666879` `SUCCESS`: Domain tests 78/78, SQL Server integration tests 78/78, frontend tests 82/82 và frontend build pass. Real Stage 5B Playwright E2E là local evidence; CI không được ghi nhận là đã chạy real E2E.
 
-Stage 5A/5B sequencing được approve tại D-057. Stage 5A implementation được final-approve tại D-058; Stage 5B đã được implement và đang chờ Product Owner review. Trạng thái này không phải approval/completion. Approval Stage 5A không đánh dấu toàn bộ Slice 5 completed.
+Stage 5A/5B sequencing được approve tại D-057. Stage 5A implementation được final-approve tại D-058 và Stage 5B implementation được approve tại D-059. Cả hai stage là `APPROVED / COMPLETED`, nhưng các stage approval không tự đánh dấu toàn bộ Slice 5 completed; final Slice-level Product Owner approval vẫn pending.
 
 ## 15. Resolved Product Owner questions và approval gate
 
@@ -1035,7 +1039,7 @@ Sáu Product Owner questions chặn ban đầu đã được giải quyết đ�
 - Debt Payment Note/no Reference: D-055;
 - correction sau unallocated debt payment: D-056.
 
-Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Product Owner đã cấp Technical Breakdown approval tại D-057 và Stage 5A Implementation Approval tại D-058. Stage 5A là `APPROVED / COMPLETED`; Stage 5B là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`, vì vậy toàn bộ Slice 5 chưa completed.
+Không còn Product Owner Open Question nào được biết đang chặn Slice 5. `OPEN_QUESTIONS.md` ghi các mục này là resolved. Product Owner đã cấp Technical Breakdown approval tại D-057, Stage 5A Implementation Approval tại D-058 và Stage 5B Implementation Approval tại D-059. Stage 5A và Stage 5B đều là `APPROVED / COMPLETED`; final Slice-level Product Owner approval vẫn pending, vì vậy toàn bộ Slice 5 chưa completed.
 
 ## 16. Definition of Done
 
@@ -1062,5 +1066,6 @@ Không còn Product Owner Open Question nào được biết đang chặn Slice 
 - D-051–D-056 — approved authorization, net Collected, IANA timezone, immutable Note và correction/aggregate-debt behavior.
 - D-057 — Technical Breakdown Slice 5 Approval và implementation sequencing.
 - D-058 — Slice 5 Stage 5A Implementation Approval tại baseline `49098e94c4f44acf3762f3e33ce6be3dfc00758f`.
+- D-059 — Slice 5 Stage 5B Implementation Approval tại approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`.
 
-Tài liệu này là `APPROVED FOR IMPLEMENTATION` theo D-057. D-058 ghi nhận Stage 5A `APPROVED / COMPLETED`; Stage 5B hiện `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`, chưa được ghi nhận approval/completion, và toàn bộ Slice 5 chưa completed.
+Tài liệu này là `APPROVED FOR IMPLEMENTATION` theo D-057. D-058 ghi nhận Stage 5A `APPROVED / COMPLETED`; D-059 ghi nhận Stage 5B `APPROVED / COMPLETED`. Final Slice-level Product Owner approval chưa được tạo, nên toàn bộ Slice 5 chưa được đánh dấu `APPROVED / COMPLETED`.

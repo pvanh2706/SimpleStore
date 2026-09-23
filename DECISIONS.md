@@ -615,3 +615,16 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn/phạm vi:** D-043–D-057 giữ nguyên `APPROVED`. Approval chỉ áp dụng cho Stage 5A; toàn bộ Slice 5 chưa completed. Stage 5B giữ `NOT STARTED / PLANNED`. Không mở rộng sang General Ledger, accounting close/reopen, full cashbook, debt aging, invoice-level settlement allocation, customer credit balance, supplier advance, financial statements, operating-expense accounting, net profit, BI dashboard hoặc AI.
 - **Tiếp theo:** Stage 5B — End-of-day + frontend + E2E/recovery theo sequencing và phạm vi đã approve; D-058 không bắt đầu Stage 5B.
 - **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — Stage 5A `APPROVED / COMPLETED`, Stage 5B `NOT STARTED / PLANNED`.
+
+### D-059 — Slice 5 Stage 5B Implementation Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner approve implementation `Slice 5 — Stage 5B: End-of-day + frontend + E2E/recovery` tại approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`. Stage 5B chuyển thành `APPROVED / COMPLETED`.
+- **Cơ sở approval:** Technical Breakdown đã approve tại D-057; Stage 5A đã approve tại D-058; implementation commit `42842e17b54a396f40ad6ef7ad55da59c160161a`; hardening commit `84f6f8d61bff19f6845204207ccb034bd9219bcd`; toàn bộ Product Owner review findings cho Stage 5B đã được fix.
+- **Approved implementation:** Store configurable canonical IANA timezone; End-of-day aggregation/query; historical SaleLine COGS và `CostReliability`; Customer debt frontend; Supplier debt frontend; EOD frontend; immutable retry/recovery; stale-balance UX; D-056 typed guidance cho Return/Void; SQL Server integration và frontend tests.
+- **Verification:** GitHub Actions run #31 / `35848666879` — `SUCCESS` tại approved head; Domain tests 78/78, SQL Server integration tests 78/78, frontend tests 82/82 và frontend build pass. Real Stage 5B Playwright E2E đã pass local; GitHub CI không được ghi nhận là đã chạy real Playwright E2E.
+- **Bảo toàn/phạm vi:** D-043–D-058 giữ nguyên `APPROVED`. Approval này hoàn tất Stage 5B nhưng không tự approve hoặc complete toàn bộ Slice 5; final Slice-level Product Owner approval vẫn là gate riêng đang pending. Không mở rộng scope và không thêm schema migration ở Stage 5B.
+- **Tiếp theo:** Product Owner final review / approval của toàn bộ Slice 5.
+- **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — Stage 5A và Stage 5B đều `APPROVED / COMPLETED`; final Slice 5 approval chưa được tạo.
