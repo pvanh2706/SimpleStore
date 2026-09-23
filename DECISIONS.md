@@ -628,3 +628,20 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Bảo toàn/phạm vi:** D-043–D-058 giữ nguyên `APPROVED`. Approval này hoàn tất Stage 5B nhưng không tự approve hoặc complete toàn bộ Slice 5; final Slice-level Product Owner approval vẫn là gate riêng đang pending. Không mở rộng scope và không thêm schema migration ở Stage 5B.
 - **Tiếp theo:** Product Owner final review / approval của toàn bộ Slice 5.
 - **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — Stage 5A và Stage 5B đều `APPROVED / COMPLETED`; final Slice 5 approval chưa được tạo.
+
+### D-060 — Slice 5 Final Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Quyết định:** Product Owner final-approve toàn bộ `Slice 5 — Debt + End-of-day` sau Technical Breakdown Approval D-057, Stage 5A Implementation Approval D-058 và Stage 5B Implementation Approval D-059. Slice 5 chuyển thành `APPROVED / COMPLETED`.
+- **Reviewed heads:** Stage 5A approved head `49098e94c4f44acf3762f3e33ce6be3dfc00758f`; Stage 5B final reviewed implementation head `84f6f8d61bff19f6845204207ccb034bd9219bcd`; Stage 5B approval documentation commit `ec93b9a673ccd638c280cd40745009fd9d06935e`.
+- **Final-approved debt scope:** Derived Customer/Supplier outstanding debt; partial/full Customer Debt Payment và Supplier Debt Payment; immutable `DebtPayment`; no overpayment, customer credit hoặc supplier advance; Store-scoped authorization/isolation; current debt khác historical/as-of debt semantics; D-056 correction integration.
+- **Final-approved EOD scope:** Configurable canonical IANA Store timezone; End-of-day query theo Store-local business date; Revenue, Collected, Customer refunds, ending Customer debt, Supplier payments, ending Supplier debt; historical-cost Estimated Gross Profit và `CostReliability`.
+- **Final-approved UI/recovery scope:** Customer/Supplier debt frontend; End-of-day frontend; immutable retry/recovery; stale-balance UX; Return/Void typed recovery guidance; SQL Server integration tests, frontend tests và real local Stage 5B E2E evidence.
+- **Stage 5A evidence:** D-058; approved head `49098e94c4f44acf3762f3e33ce6be3dfc00758f`; GitHub Actions run #28 / `35805222057` — `SUCCESS`.
+- **Stage 5B evidence:** D-059; approved head `84f6f8d61bff19f6845204207ccb034bd9219bcd`; GitHub Actions run #31 / `35848666879` — `SUCCESS`; Domain tests 78/78; SQL Server integration tests 78/78; frontend tests 82/82; frontend build pass. Real Stage 5B Playwright E2E là local evidence; GitHub CI không chạy real Playwright E2E.
+- **Definition of Done:** Happy path, important failure/recovery paths, authorization, Store isolation, domain/integration/frontend tests, EOD/debt semantics, real local critical Stage 5B E2E evidence và toàn bộ Product Owner approval gates D-057–D-060 đã được review hoàn tất.
+- **Bảo toàn/phạm vi:** D-043–D-059 giữ nguyên historical meaning và trạng thái `APPROVED`. D-060 không mở rộng ra ngoài Slice 5 và không bắt đầu hoặc approve Slice 6.
+- **Tiếp theo:** Product Owner bắt đầu Slice 6 — Understand & Act theo quy trình discovery/decision/technical breakdown hiện tại; planned scope là “Hôm nay cửa hàng thế nào?” và C14 experiment nguy cơ sắp hết hàng, không AI, không dashboard lớn, không generic rule engine framework.
+- **Tài liệu:** [Technical Breakdown Slice 5 v0.1](docs/architecture/technical-breakdown-slice-5-v0.1.md) — toàn bộ Slice 5 `APPROVED / COMPLETED`.
