@@ -769,3 +769,25 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Candidate set:** Chỉ `Product.IsActive = true` được đánh giá cho `LowStockRisk`, `OutOfStock` và `NegativeStock`.
 - **Inactive Product:** Không xuất hiện trong Today `Cần chú ý`, full C14 list hoặc action `Tạo phiếu nhập` từ C14, vì inactive thể hiện ý định không tiếp tục operationally sell/replenish Product.
 - **Boundary:** Detect inactive Product có tồn âm/data bất thường là data-integrity capability riêng ngoài C14/Slice 6 hiện tại; không mở rộng scope để xử lý.
+
+### D-073 — Technical Breakdown Slice 6 Approval
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-23
+- **Người phê duyệt:** Product Owner
+- **Approval:** Product Owner approve [Technical Breakdown Slice 6 v0.1](docs/architecture/technical-breakdown-slice-6-v0.1.md) tại reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`; trạng thái tài liệu chuyển từ `DRAFT / PENDING PRODUCT OWNER REVIEW` sang `APPROVED FOR IMPLEMENTATION`.
+- **Decision basis:** Approval bao gồm D-061–D-068 cho Slice 6 Product Owner scope, D-069 exact new-debt-created semantics, D-070 SaleCount semantics, D-071 C14 data sufficiency và D-072 active-only C14 candidate policy. S6-Q1–S6-Q4 đã được resolve trước approval; D-061–D-072 giữ nguyên `APPROVED`.
+- **Today / C12:** Owner-only `/today` là default Owner landing cho current Store-local business date theo canonical `Store.TimeZoneId`, không có date picker; historical reporting tiếp tục dùng Slice 5 End-of-day.
+- **Shared financial semantics:** Today reuse/shared projection với Slice 5 cho Revenue, Net Collected, Estimated Gross Profit và `CostReliability`; không tạo financial source of truth thứ hai.
+- **D-069:** New debt created là direct unpaid obligation của Sale/Purchase hôm nay; direct transaction payment tham gia base calculation, standalone DebtPayment không được allocate. Same-day Return giảm transaction-local contribution của đúng original Sale bằng full `Return.TotalReturnAmount`, `RefundAmount` không phải input; same-day Void zero contribution; cross-day correction không rewrite historical metric; contribution floor tại `0`.
+- **D-070:** SaleCount đếm Completed Sale trong Today, loại Sale có same-day SaleVoid; Return không giảm count; cross-day Void không tạo negative count hoặc rewrite ngày cũ.
+- **C13 explainability:** Giữ pattern `Summary → Vì sao? → Dữ liệu nguồn` với typed evidence/source references; localized message không được parse để điều khiển logic.
+- **C14:** Dùng đúng 7 completed Store-local business days, current day excluded và denominator luôn `7` khi full-history gate đạt; quantity theo Sale/Return/SaleVoid, CurrentStock từ InventoryBalance, risk threshold `DaysOfCover <= 3`, factual OutOfStock/NegativeStock, D-071 sufficiency, D-072 active-only candidates, deterministic ordering, Today preview tối đa 3 và full attention list/detail.
+- **Action transition:** Cho phép Product detail và preselect Product khi đi tới Create Purchase; không tự chọn Supplier, recommend quantity, auto-create hoặc auto-commit Purchase.
+- **Experiment measurement:** Chỉ authorize bốn immutable C14-specific events `TodayOpened`, `SignalShown`, `WhyOpened`, `PurchaseDraftStarted`. Reactive render không duplicate `TodayOpened`; mỗi `ProductId + AttentionKind` tối đa một `SignalShown` trong một Today view instance; genuine reload/navigation/new view có thể là exposure mới; EventId retry không duplicate persisted row; measurement failure không ảnh hưởng business transaction; `click != validated value`. Không tạo generic analytics platform.
+- **Approved staging:** Stage 6A — Today/C12/C13 reporting foundation — và Stage 6B — C14/action/measurement/E2E — được authorize làm implementation sequence với trạng thái `APPROVED FOR IMPLEMENTATION`. D-073 không có nghĩa Stage 6A/6B đã bắt đầu hoặc hoàn tất; Slice 6 implementation vẫn `NOT STARTED`.
+- **Stage 6A scope:** Shared daily financial projection; current Store-local Today orchestration; Today summary; D-069 new-debt-created; D-070 SaleCount; typed financial explanations; Owner `/today` và default landing; domain, SQL Server integration và frontend tests.
+- **Stage 6B scope:** D-071 data sufficiency; D-072 active-only candidate set; C14 preview/list/detail và evidence; Product → Purchase transition; narrow immutable experiment events; frontend/integration tests và critical real local E2E/regression.
+- **Verification:** GitHub Actions run #36 / `35881101954` tại head `daffb39c8f4d75f8bae0d83ba12be0484ce99280` — `SUCCESS`; backend restore, Release build và `dotnet test` pass; frontend `pnpm install`, build và tests pass. Slice 6 implementation chưa bắt đầu và chưa có real Slice 6 E2E evidence.
+- **Boundaries:** Không AI/ML, forecasting/seasonality/replenishment engine, recommendation quantity/Supplier, auto-order, generic rule/alert/analytics/event platform, BI dashboard, notification center hoặc push/email alerts.
+- **Tiếp theo:** Bắt đầu Stage 6A implementation theo D-073; không suy diễn rằng approval tài liệu là implementation approval.

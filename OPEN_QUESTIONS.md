@@ -84,7 +84,7 @@ Không còn Product Owner Open Question nào đang chặn Technical Breakdown Sl
 
 ## Đã giải quyết cho Slice 6 — APPROVED
 
-D-061–D-068 đã approve scope A–H; D-069–D-072 đã resolve toàn bộ bốn semantic questions phát hiện trong draft [Technical Breakdown Slice 6 v0.1](docs/architecture/technical-breakdown-slice-6-v0.1.md). Không còn known Product Owner blocker cho technical semantics; Technical Breakdown vẫn cần Product Owner review/approval riêng.
+D-061–D-068 đã approve scope A–H; D-069–D-072 đã resolve toàn bộ bốn semantic questions phát hiện trong [Technical Breakdown Slice 6 v0.1](docs/architecture/technical-breakdown-slice-6-v0.1.md). Không còn known Product Owner semantic blocker; Technical Breakdown đã được Product Owner approve tại D-073 với trạng thái `APPROVED FOR IMPLEMENTATION`. Các câu hỏi nghiên cứu dài hạn về C14 value/willingness-to-pay vẫn intentionally unresolved và không chặn implementation.
 
 ### S6-Q1 — New debt created và correction/unallocated DebtPayment — RESOLVED by D-069
 

@@ -2,9 +2,9 @@
 
 ## Trạng thái
 
-`DRAFT / PENDING PRODUCT OWNER REVIEW`
+`APPROVED FOR IMPLEMENTATION`
 
-Product Owner đã approve product decisions D-061–D-072 ngày 2026-09-23. Tài liệu này là technical proposal chưa được Product Owner approve, không bắt đầu Slice 6 implementation và không approve staging 6A/6B.
+Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Approval authorize sequencing Stage 6A/6B nhưng không có nghĩa implementation đã bắt đầu; Slice 6 implementation vẫn `NOT STARTED`.
 
 Baseline đã inspect: `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`, tại đó `Slice 5 — Debt + End-of-day` là `APPROVED / COMPLETED` theo D-060.
 
@@ -14,7 +14,7 @@ Slice 6 thêm một Owner experience trả lời nhanh “Hôm nay cửa hàng t
 
 `Domain behavior → DB changes → API contract → UI flow → Test cases → Implementation stages`
 
-Mọi quyết định D-001–D-060 tiếp tục được bảo toàn. D-069–D-072 đã resolve S6-Q1–S6-Q4; không còn known Product Owner blocker cho technical semantics. Draft này vẫn cần Product Owner review/approval riêng trước implementation.
+Mọi quyết định D-001–D-060 tiếp tục được bảo toàn. D-069–D-072 đã resolve S6-Q1–S6-Q4; không còn known Product Owner blocker cho technical semantics. D-073 approve Technical Breakdown và implementation sequence mà không reopen D-061–D-072.
 
 ## 1. Trace Product Owner decisions
 
@@ -607,11 +607,11 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - real E2E: seed 7 completed Store-local days, partial Store/Product history, active/inactive Products, Sale/Return/Void quantity and stock; verify D-071/D-072 attention, action transition and deduplicated measurement rows through Vue → API → SQL Server.
 - full Slice 1–5 backend/frontend/real-flow regressions remain green; no test deletion/skip to force green.
 
-## 16. Proposed implementation staging — chưa approved
+## 16. Approved implementation staging — D-073
 
 ### Stage 6A — Today/C12/C13 reporting foundation
 
-Proposal only:
+`APPROVED FOR IMPLEMENTATION` — sequence đã được authorize; Stage 6A implementation vẫn `NOT STARTED`:
 
 - shared daily financial projection reused by EOD/Today;
 - current Store-local date/window service orchestration;
@@ -622,15 +622,15 @@ Proposal only:
 
 ### Stage 6B — C14/action/measurement/E2E
 
-Proposal only:
+`APPROVED FOR IMPLEMENTATION` — sequence đã được authorize; Stage 6B implementation vẫn `NOT STARTED`:
 
 - D-071 exact full-history/factual sufficiency và D-072 active-only C14 projection;
 - attention preview/list/detail and evidence;
 - Product/Purchase transition without recommendation/automation;
-- narrow immutable C14 experiment events and migration if approved;
+- narrow immutable C14 experiment events và additive migration cần thiết cho approved design;
 - full frontend, SQL Server integration and real local E2E/regression.
 
-Stage 6A/6B names, contents and sequence are not authorized implementation sequencing until Product Owner approves this Technical Breakdown.
+Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. Approval này không tuyên bố stage nào đã bắt đầu/completed và không thay thế implementation review sau khi code được thực hiện.
 
 ## 17. Definition of Done proposal
 
@@ -644,7 +644,7 @@ Stage 6A/6B names, contents and sequence are not authorized implementation seque
 - Experiment events are narrow, immutable and non-transactional to business flow; per-view exposure guards prevent reactive duplicate `TodayOpened`/`SignalShown`.
 - Domain/query, SQL Server integration, frontend and real local critical E2E pass; Slice 1–5 regressions pass.
 - No AI, forecast/replenishment engine, BI dashboard, generic rule/alert/analytics platform.
-- Product Owner separately reviews/approves Technical Breakdown and implementation stages before code begins.
+- Technical Breakdown và staging sequence đã được Product Owner approve tại D-073; implementation vẫn phải thực hiện, verify và review theo từng stage.
 
 ## 18. Resolved Product Owner questions và review gate
 
@@ -653,7 +653,7 @@ Stage 6A/6B names, contents and sequence are not authorized implementation seque
 - S6-Q3 resolved by D-071 — exact full-history risk gate and earlier factual state with positive evidence.
 - S6-Q4 resolved by D-072 — active-only C14 candidates.
 
-Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../../OPEN_QUESTIONS.md). Technical Breakdown vẫn `DRAFT / PENDING PRODUCT OWNER REVIEW`; Product Owner phải approve tài liệu và staging riêng trước implementation.
+Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../../OPEN_QUESTIONS.md). S6-Q1–S6-Q4 đã resolved trước khi Product Owner approve Technical Breakdown và staging tại D-073.
 
 ## 19. Related decisions
 
@@ -673,5 +673,6 @@ Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../
 - D-070 — exact SaleCount with same-day Void and Return behavior.
 - D-071 — exact LowStockRisk/factual data sufficiency.
 - D-072 — active-only C14 Product candidates.
+- D-073 — Technical Breakdown Slice 6 và Stage 6A/6B implementation sequence approval.
 
-**Current gate:** `DRAFT / PENDING PRODUCT OWNER REVIEW`. Slice 6 implementation is `NOT STARTED`. No Technical Breakdown approval decision exists.
+**Current gate:** `APPROVED FOR IMPLEMENTATION` tại D-073. Slice 6 implementation is `NOT STARTED`; next step là bắt đầu Stage 6A theo approved sequence.
