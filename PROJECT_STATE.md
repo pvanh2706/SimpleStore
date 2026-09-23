@@ -59,7 +59,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - GitHub Actions run #36 / `35881101954` tại approved baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280` là `SUCCESS`: backend restore, Release build và `dotnet test` pass; frontend `pnpm install`, build và tests pass. Không ghi nhận real Slice 6 E2E vì implementation chưa bắt đầu.
 - S6-Q1–S6-Q4 đã được resolve tại D-069–D-072 và chuyển sang resolved trong `OPEN_QUESTIONS.md`; không còn known Product Owner blocker cho Slice 6 technical semantics.
 - Stage 6A là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`: shared EOD/Today financial projection, backend-authoritative Store-local Today, Owner-only summary/explanations, D-069 new-debt-created, D-070 SaleCount, backend-selected typed source drill-down, `/today` UI và role-aware default landing đã được implement. Không có schema/migration mới.
-- Stage 6A local verification sau source drill-down hardening: backend restore và Release build pass với 0 warnings; Domain tests 78/78; SQL Server integration tests 82/82; frontend frozen install/build pass và tests 93/93. Implementation head trước hardening `c6337b09a3ed25a349b596576c74a86108bf3ee6` đã có GitHub Actions run #38 / `35888651387` `SUCCESS`; evidence này không phải Product Owner approval.
+- Stage 6A final reviewed hardening head `14703c54882f10eceaee69fa41f09e2315eab8ac`: backend restore và Release build pass với 0 warnings; Domain tests 78/78; SQL Server integration tests 82/82; frontend frozen install/build pass và tests 93/93. GitHub Actions run #39 / `35891666016` tại head này là `SUCCESS`; evidence này không phải Product Owner approval.
 - Stage 6B là `NOT STARTED`: chưa có C14 calculation/attention API, experiment events/telemetry, Product → Purchase preselection, C14 migration hoặc Stage 6B E2E.
 
 ## Tiến độ
@@ -182,4 +182,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-23 — Stage 6A được implement theo D-073 và giữ `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; shared financial semantics, backend-authoritative Today, D-069/D-070, typed explainability/source drill-down và Owner `/today` đã hoàn tất với Domain 78/78, SQL Server integration 82/82, frontend 93/93 và cả hai build pass. Không có migration/schema change; Stage 6B vẫn `NOT STARTED`; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.
+2026-09-24 — Stage 6A final reviewed hardening head `14703c54882f10eceaee69fa41f09e2315eab8ac` giữ `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; GitHub Actions run #39 / `35891666016` là `SUCCESS` với Domain 78/78, SQL Server integration 82/82, frontend 93/93 và cả hai build pass. `/api/today` flat Stage 6A contract và typed source drill-down đã được đồng bộ trong tài liệu; không có migration/schema change; Stage 6B vẫn `NOT STARTED`; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.

@@ -335,36 +335,33 @@ All endpoints below are Owner-only and Store-scoped. Stage 6A endpoints tại 10
 
 No date parameter.
 
+Stage 6A hiện chỉ trả summary của current Store-local business date theo flat contract dưới đây. C14 attention chỉ được bổ sung trong Stage 6B theo approved design tại 10.3–10.5; Stage 6A không trả fake empty `attention` state hoặc C14 placeholder.
+
 ```json
 {
   "businessDate": "2026-09-23",
   "timeZoneId": "Asia/Ho_Chi_Minh",
   "startUtc": "2026-09-22T17:00:00Z",
   "endUtc": "2026-09-23T17:00:00Z",
-  "summary": {
-    "salesRevenue": 0,
-    "netCollected": 0,
-    "estimatedGrossProfit": {
-      "amount": 0,
-      "costReliability": "Reliable"
-    },
-    "saleCount": 0,
-    "customerDebtCreated": 0,
-    "supplierDebtCreated": 0
+  "salesRevenue": 0,
+  "netCollected": 0,
+  "estimatedGrossProfit": {
+    "netSalesRevenue": 0,
+    "historicalCogs": 0,
+    "amount": 0,
+    "costReliability": "Reliable"
   },
-  "attention": {
-    "riskEvaluationStatus": "Sufficient",
-    "totalCount": 0,
-    "items": []
-  }
+  "saleCount": 0,
+  "customerDebtCreated": 0,
+  "supplierDebtCreated": 0
 }
 ```
 
-`saleCount` follows D-070. `customerDebtCreated`/`supplierDebtCreated` follow D-069 and never use standalone DebtPayment; `customerDebtCreated` also never uses `RefundAmount` as a calculation input. `riskEvaluationStatus` is typed (`Sufficient`, `InsufficientStoreHistory`, `PartiallyInsufficientProductHistory`) so UI does not infer sufficiency from text.
+`saleCount` follows D-070. `customerDebtCreated`/`supplierDebtCreated` follow D-069 and never use standalone DebtPayment; `customerDebtCreated` also never uses `RefundAmount` as a calculation input.
 
 ### 10.2 `GET /api/today/explanations/{metric}`
 
-Allowed typed metric values are a closed set such as `revenue`, `collected`, `estimated-gross-profit`, `sale-count`, `customer-debt-created`, `supplier-debt-created`. Response contains summary total, component totals, reliability when relevant and paged typed sources.
+Allowed typed metric values are the closed set `revenue`, `collected`, `estimated-gross-profit`, `sale-count`, `customer-debt-created`, `supplier-debt-created`. Implemented response contains `metric`, `headline`, nullable `historicalCogs`, nullable `costReliability`, `page`, `pageSize`, `totalCount`, `totalPages` và paged typed evidence `items`. Mỗi evidence item có nullable typed `navigation`; khi existing detail route phù hợp, navigation type thuộc closed set `Sale | Return | Purchase`, nếu không thì là `null`.
 
 Unknown metric returns typed validation error. Frontend never sends/branches on localized label.
 
