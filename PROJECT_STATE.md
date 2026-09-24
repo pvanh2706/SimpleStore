@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 6 — Understand & Act: Stage 6A `APPROVED / COMPLETED — D-074`; Stage 6B `APPROVED / COMPLETED — D-075`; final whole-Slice approval pending**
+**Slice 6 — Understand & Act: `APPROVED / COMPLETED — D-076`**
 
 Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -59,13 +59,15 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - GitHub Actions run #36 / `35881101954` tại approved baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280` là `SUCCESS`: backend restore, Release build và `dotnet test` pass; frontend `pnpm install`, build và tests pass. Không ghi nhận real Slice 6 E2E vì implementation chưa bắt đầu.
 - S6-Q1–S6-Q4 đã được resolve tại D-069–D-072 và chuyển sang resolved trong `OPEN_QUESTIONS.md`; không còn known Product Owner blocker cho Slice 6 technical semantics.
 - D-074 — Slice 6 Stage 6A Implementation Approval — là `APPROVED` ngày 2026-09-23; Stage 6A chuyển thành `APPROVED / COMPLETED`. Không còn known Stage 6A blocker.
-- D-075 — Slice 6 Stage 6B Implementation Approval — là `APPROVED` ngày 2026-09-24 tại final reviewed head `844af703173070872219c1cf729afa04d16fa4b4`; Stage 6B chuyển thành `APPROVED / COMPLETED`. Không còn known Stage 6A/6B implementation blocker; final approval cho toàn bộ Slice 6 vẫn là Product Owner gate riêng.
+- D-075 — Slice 6 Stage 6B Implementation Approval — là `APPROVED` ngày 2026-09-24 tại final reviewed head `844af703173070872219c1cf729afa04d16fa4b4`; Stage 6B chuyển thành `APPROVED / COMPLETED`. Không còn known Stage 6A/6B implementation blocker.
+- D-076 — Final Slice 6 Approval — là `APPROVED` ngày 2026-09-24; toàn bộ Slice 6 chuyển thành `APPROVED / COMPLETED`. Stage 6A giữ `APPROVED / COMPLETED — D-074`, Stage 6B giữ `APPROVED / COMPLETED — D-075`; không còn known Slice 6 implementation blocker.
 - Stage 6A approved scope gồm shared EOD/Today financial projection, backend-authoritative Store-local Today, Owner-only summary/explanations, D-069 new-debt-created, D-070 SaleCount, backend-selected typed source drill-down, `/today` UI và role-aware default landing. Không có schema/migration mới.
 - Reviewed implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac` pass backend restore/Release build với 0 warnings, Domain 78/78, SQL Server integration 82/82, frontend frozen install/build và tests 93/93; GitHub Actions run #39 / `35891666016` là `SUCCESS`. Final docs/state head trước approval `8b11e1f7706bd25e51aca6aa21c1fd8af3baa60c` có run #40 / `35893244524` `SUCCESS`.
 - Approved Stage 6A baseline `0b3a77992a3a01ff0881f598ed2c4e14f86855c8` có GitHub Actions run #41 / `35894463232` `SUCCESS` cho backend và frontend.
 - Stage 6B là `APPROVED / COMPLETED — D-075` tại final reviewed head `844af703173070872219c1cf729afa04d16fa4b4`: deterministic C14 trên đúng 7 completed Store-local days; D-071 history sufficiency; D-072 active-only candidates; SQL-aggregated Sale − Return − SaleVoid velocity; current Main Warehouse balance; Owner-only preview/list/detail/evidence APIs và UI; Product → Purchase identity-only preselection; narrow immutable `C14ExperimentEvents`; best-effort/deduplicated telemetry; additive migration `20260924010903_ImplementSlice6Stage6BC14`; SQL Server/frontend/real E2E verification.
 - Local full regression sau review hardening: backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88; frontend build pass và tests 100/100; real Slice 6 Playwright 2/2 pass qua Vue → ASP.NET Core → temporary LocalDB. Real coverage gồm D-069 required case `1,000,000 - 0 - 300,000 = 700,000` với standalone CustomerDebtPayment/refund không làm sai new-debt-created; D-070 partial/full Return vẫn count, same-day Void count `0`, cross-day Void không tạo count âm/Today contribution; Supplier `500,000 - 200,000 = 300,000` và standalone SupplierDebtPayment không giảm metric; cùng C14/action/measurement flow hiện có. Clean migration/app startup được thực thi bởi real runner; current-schema upgrade/data preservation được cover bởi SQL Server migration integration test. CI không được ghi nhận là chạy real Playwright E2E.
-- Giới hạn có chủ ý: C14 là descriptive deterministic experiment, không AI/forecast/replenishment/recommendation; measurement failure không chặn business flow và event counts không tự chứng minh product value. Local Node 22 phát engine warning vì workspace yêu cầu Node >=24, nhưng frozen install/build/tests đều pass.
+- GitHub Actions #42 / `35944048457`, #43 / `35944540478`, #44 / `35948003969` và #45 / `35996028241` đều `SUCCESS`; run #45 là CI của Stage 6B approval head với backend/frontend `SUCCESS`. GitHub CI không chạy real Playwright E2E; evidence đó vẫn là local temporary-database verification riêng.
+- Giới hạn có chủ ý: C14 là descriptive deterministic experiment, không AI/forecast/replenishment/recommendation; measurement failure không chặn business flow và event counts không tự chứng minh discovery, trust, decision influence, continued use, product value hoặc willingness-to-pay. Local Node 22 phát engine warning vì workspace yêu cầu Node >=24, nhưng frozen install/build/tests đều pass.
 
 ## Tiến độ
 
@@ -177,14 +179,14 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Perform final Slice 6 review and request explicit Product Owner approval for the whole Slice 6.** Stage 6A và Stage 6B đã complete tại D-074/D-075, nhưng D-075 không tự final-approve toàn bộ Slice 6.
+**Begin MVP / pilot-readiness planning and validation.** Slice 6 đã final-approved/completed tại D-076; bước tiếp theo không phải một implementation stage khác của Slice 6. Không suy diễn rằng MVP đã release, production-ready, pilot đã hoàn tất hoặc C14 hypothesis đã validated.
 
 ## Chưa triển khai
 
 - Ngoài phạm vi: General Ledger, accounting close/reopen, full cashbook, debt aging, invoice-level settlement allocation, customer credit balance, supplier advance, financial statements, operating-expense accounting, net profit, BI dashboard và AI.
-- HĐĐT và các capability chưa được triển khai khác. Final whole-Slice 6 approval là governance gate riêng, không phải capability implementation còn thiếu.
+- HĐĐT và các capability chưa được triển khai khác. Slice 6 đã đóng governance gate tại D-076; các capability ngoài scope không được tự động approve bởi quyết định này.
 - Real Slice 1–5B Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-24 — Product Owner decision D-075 approve Stage 6B tại final reviewed head `844af703173070872219c1cf729afa04d16fa4b4`; Stage 6B chuyển thành `APPROVED / COMPLETED`. Implementation chain: `17e03c23c83630b84535fdb7be0a41ce16a99b6f` → `610b53d8c31a7d5d70b07a6883c47ad146ee1944` → `d01e43517c576f832fcc3ddc432de7edc9079834` → `844af703173070872219c1cf729afa04d16fa4b4`. Backend 83 Domain + 88 SQL Server integration tests, frontend 100 tests/build và real local Slice 6 E2E 2/2 pass; migration clean/upgrade/data-preservation verified. GitHub Actions #42 / `35944048457`, #43 / `35944540478` và #44 / `35948003969` đều `SUCCESS`; CI không chạy real Playwright. Stage 6A giữ `APPROVED / COMPLETED — D-074`; toàn bộ Slice 6 chưa được final-approved và bước tiếp theo là explicit final Slice 6 Product Owner review/approval.
+2026-09-24 — Product Owner decision D-076 final-approve toàn bộ Slice 6 — Understand & Act; Slice 6 chuyển thành `APPROVED / COMPLETED`. Stage 6A giữ `APPROVED / COMPLETED — D-074` tại reviewed implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac`; Stage 6B giữ `APPROVED / COMPLETED — D-075`, implementation `17e03c23c83630b84535fdb7be0a41ce16a99b6f`, final reviewed/hardened head `844af703173070872219c1cf729afa04d16fa4b4` và approval head `a24437cd37762d027fe6970f9809baf904a8e3e8`. Backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88, frontend build + 100/100 tests, real local Slice 6 E2E 2/2 và migration clean/upgrade/data-preservation đều verified. GitHub Actions #42–#45 đều `SUCCESS`; CI không chạy real Playwright. C14 vẫn là unvalidated experiment; bước tiếp theo là MVP / pilot-readiness planning và validation.
