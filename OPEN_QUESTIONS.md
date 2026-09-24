@@ -45,7 +45,7 @@ C14 — Attention & Decision Support đã được phê duyệt là một phần
 Các câu hỏi này không mở lại phạm vi Step 6 và không tự tạo thêm capability hoặc feature:
 
 - Step 7 đã chọn duy nhất hypothesis C14: nguy cơ sắp hết hàng từ tồn hiện tại và tốc độ bán gần đây. D-064/D-065 đã chốt cửa sổ/threshold và D-071 đã chốt exact data-sufficiency rule. Bằng chứng nào đủ để đánh giá value/willingness-to-pay vẫn phải được kiểm chứng bằng pilot/research theo D-068; đây là experiment-validation question, không phải blocker cho Technical Breakdown semantics.
-- C17 đã chốt keyboard scanner phổ biến và in bill. Model thiết bị/khổ giấy mục tiêu nào cần hỗ trợ trong pilot? Integration C19 cụ thể nào thực sự cần cho vòng MVP?
+- C17 đã chốt keyboard scanner phổ biến và in bill. D-082 đã approve strategy: trước pilot certify một khổ giấy và 1–2 target printer/model/configuration, ưu tiên browser print; exact model và paper size vẫn cần được chọn trong Pilot Readiness work. Integration C19 cụ thể nào thực sự cần cho vòng MVP?
 - Step 7 đã chốt C7 chỉ yêu cầu domain sale đủ sạch để sau này ánh xạ sang request của service API HĐĐT hiện có mà không phá cấu trúc giao dịch. Chi tiết ánh xạ chỉ làm rõ ở bước thiết kế phù hợp sau này; không xây capability HĐĐT nội bộ hoặc kết nối service ngay trong MVP.
 
 Phạm vi đã chốt được ghi tại [MVP Scope v0.1](docs/product/mvp-scope-v0.1.md).
@@ -63,7 +63,7 @@ Phạm vi functional scope tham chiếu: [MVP Functional Scope v0.1](docs/capabi
 
 Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, timeout recovery, Completed bất biến, Purchase consistency, Return validation và Reprint. Các câu hỏi sau không mở lại các nguyên tắc đó:
 
-- Khổ giấy/thiết bị pilot và ngưỡng/cửa sổ dữ liệu C14 vẫn cần làm rõ như các câu hỏi ở trên; ví dụ trong user flows không chốt các lựa chọn này.
+- Khổ giấy/thiết bị pilot sẽ theo D-082: chọn một paper size và 1–2 target printer configurations để certify trước pilot; exact target vẫn cần chọn trong readiness work. Ngưỡng/cửa sổ C14 đã được resolve sau đó tại D-064/D-065/D-071.
 
 Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
 
@@ -141,9 +141,9 @@ Cost tạm dùng last known average cost, fallback reference purchase cost; nế
 Các câu hỏi này là technical/design detail hoặc validation tiếp theo, không mở lại Architecture v0.1:
 
 - Định dạng template cụ thể trong phạm vi các rule Step 11 và nhu cầu nhiều barcode cho một sản phẩm trong pilot.
-- Thiết bị/khổ giấy pilot và lựa chọn browser print, local print agent hay printer service.
+- D-082 đã chọn browser print làm default strategy và yêu cầu certify một paper size + 1–2 target printer configurations; exact model/paper vẫn cần chọn. Chỉ mở technical decision về local print agent/printer service nếu browser print không đạt trên target setup.
 - D-064/D-065/D-071/D-072 đã chốt C14 window, formula, threshold, exact sufficiency/factual evidence và active-only candidate set. Value/willingness-to-pay vẫn cần pilot/research theo D-068 nhưng không chặn technical semantics.
-- Chi tiết cấu hình Identity/Auth + secure HttpOnly cookie; deployment topology, backup, monitoring, secrets và CI/CD. Authentication direction đã chốt tại Step 11.
+- D-077/D-080/D-081/D-083 đã chốt direction cho pilot deployment topology, backup/restore, observability/support và release gate. Technical Breakdown vẫn cần cụ thể hóa Windows Server/IIS procedure, config/secrets, backup schedule/retention/storage, DB-aware health/log retention và release/rollback evidence; Authentication direction giữ theo Step 11 và production provisioning theo D-078.
 - Request mapping, lifecycle/status và retry/dispatch mechanism nếu HĐĐT integration được bổ sung sau MVP core.
 
 Tham chiếu: [Architecture v0.1](docs/architecture/architecture-v0.1.md). Các chi tiết Slice 2+ được giải quyết per slice; không mở lại Step 1–10.

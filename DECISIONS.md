@@ -855,3 +855,77 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **Validation boundary:** D-076 final-approve implemented Slice 6 scope nhưng không xác nhận C14 hypothesis/product value, discovery, trust, decision influence, continued use hoặc willingness-to-pay. Measurement không thay thế pilot/research.
 - **Scope boundary:** D-076 không approve AI/ML, forecasting/seasonality, replenishment engine, Supplier/quantity recommendation, auto-order, generic rules/alerts/analytics platform, BI dashboard hoặc notification subsystem; cũng không có nghĩa MVP đã release, production-ready hoặc pilot đã hoàn tất.
 - **Next phase:** Bắt đầu MVP / pilot-readiness planning và validation; không mở implementation slice mới trong decision này.
+
+### D-077 — Pilot deployment topology
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Topology:** Pilot đầu ưu tiên Windows Server, IIS, ASP.NET Core backend, Vue SPA và SQL Server, giữ kiến trúc hiện tại gồm một deployable application và một database. Deployment có thể phục vụ một hoặc vài Store tenant theo tenancy/Store isolation hiện có.
+- **Operational goal:** Giảm operational complexity nhưng vẫn phải có deployment procedure, version identification, rollback và recovery rõ ràng trước pilot.
+- **Boundary:** Pilot đầu không yêu cầu Kubernetes, container orchestration, HA cluster, distributed services, multi-region hoặc autoscaling platform.
+
+### D-078 — Production account provisioning
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Provisioning:** Production không phụ thuộc `DevelopmentOwnerSeeder` hoặc thao tác DB thủ công như workflow bình thường. Phải có cơ chế explicit, controlled và production-safe để bootstrap Owner đầu tiên.
+- **Account management:** Owner có thể tạo Cashier, disable Cashier và reset/set lại thông tin đăng nhập phù hợp cho Cashier. Backend là authorization boundary và Store isolation tiếp tục được enforce.
+- **Role boundary:** Chỉ giữ Owner/Cashier; không xây enterprise IAM, invitations platform lớn, OAuth/social login hoặc multi-role permission designer.
+
+### D-079 — Inventory pilot completeness
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **MVP completion:** Trước pilot phải hoàn tất phần C4 MVP MUST còn thiếu: Stock Adjustment có lý do; Stocktake/kiểm kho; ghi nhận chênh lệch kiểm kho.
+- **Integrity/audit:** Mọi thay đổi tạo immutable, explainable `InventoryMovement`; `InventoryBalance` cập nhật atomically; audit actor/time/reason; Store/Main Warehouse scoped; mutation nhạy cảm là Owner-only.
+- **Scope classification:** Đây là MVP scope completion, không phải feature creep.
+- **Boundary:** Không xây warehouse management system, multi-warehouse stocktake, batch/lot/serial hoặc inventory approval workflow phức tạp.
+
+### D-080 — Backup / restore readiness
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Readiness:** Trước pilot phải có automated SQL Server backup, documented backup schedule, retention policy tối thiểu, nơi lưu backup phù hợp và restore runbook.
+- **Restore proof:** Phải có ít nhất một restore drill thành công trên database thử nghiệm/pilot-safe và verify application có thể start, kết nối và đọc dữ liệu sau restore. Chỉ có file backup mà chưa thử restore không đủ điều kiện.
+- **Boundary:** Không xây backup product/framework riêng trong ứng dụng.
+
+### D-081 — Observability and support baseline
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Observability:** Pilot cần persistent application logs có cấu trúc hoặc đủ khả năng search; `traceId` giữ xuyên error response/log correlation; health/readiness phản ánh ít nhất API hoạt động và kết nối database; log retention tối thiểu được định nghĩa.
+- **Support runbook:** Phải hướng dẫn tìm log, dùng `traceId`, kiểm tra health, kiểm tra DB, xác định version đang deploy và escalation/recovery cơ bản.
+- **Boundary:** Không bắt buộc ELK, Grafana, Application Insights, Sentry hoặc distributed tracing platform nếu giải pháp đơn giản hơn đủ cho pilot.
+
+### D-082 — Printer pilot certification
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Target certification:** Trước pilot phải chọn và test thực tế một khổ giấy cùng một đến hai printer/model/configuration mục tiêu. Browser print tiếp tục là strategy mặc định nếu đạt yêu cầu.
+- **Checklist:** Certification tối thiểu kiểm tra chiều rộng bill; tên sản phẩm dài/xuống dòng; tiếng Việt; số lượng/đơn giá/thành tiền; Return/Void/reprint; printer unavailable/failure recovery; và chứng minh lỗi in không làm mất transaction đã Completed.
+- **Boundary:** Không xây local print agent/printer service nếu browser print đáp ứng pilot. Nếu browser print không đạt trên thiết bị mục tiêu thì mở technical decision riêng.
+
+### D-083 — Pilot release gate
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Release gate:** Mỗi release đưa vào pilot phải qua: backend restore; Release build; backend automated tests; frontend frozen install/build/tests; migration verification; critical real E2E; production-like deployment smoke test; backup/restore readiness check khi schema/data risk thay đổi; ghi nhận release version/commit SHA; và rollback/recovery instruction rõ ràng.
+- **Automation:** CI hiện tại tiếp tục làm automated gate. Real Playwright E2E chưa bắt buộc chạy trong GitHub Actions nếu local/release execution có evidence đáng tin cậy.
+- **Boundary:** Pilot đầu không yêu cầu full continuous deployment.
+
+### D-084 — Pilot validation plan
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-24
+- **Người phê duyệt:** Product Owner
+- **Core MVP operational validation:** Đánh giá khả năng onboarding; Product/import đủ dùng; Sale nhanh và đáng tin; printer dùng được thực tế; Purchase/inventory/debt/Return/Void/EOD hỗ trợ vận hành thật; recovery/support đủ xử lý sự cố; và dữ liệu tạo được niềm tin.
+- **C14 experiment validation:** Đánh giá Owner có phát hiện signal; signal có nói điều chưa biết; Owner có tin evidence; signal có ảnh hưởng quyết định nhập hàng; Owner có tiếp tục dùng; và willingness-to-pay có tồn tại.
+- **Evidence:** `TodayOpened`, `SignalShown`, `WhyOpened`, `PurchaseDraftStarted` chỉ là evidence hỗ trợ. Không suy diễn `click == value validated` hoặc `PurchaseDraftStarted == recommendation succeeded`.
+- **Method:** Pilot validation kết hợp quantitative evidence với interview/observation; C14 vẫn là unvalidated product experiment cho tới khi có evidence pilot phù hợp.

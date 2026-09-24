@@ -2,9 +2,9 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 6 — Understand & Act: `APPROVED / COMPLETED — D-076`**
+**MVP / Pilot Readiness — `DECISIONS APPROVED / IMPLEMENTATION NOT STARTED`**
 
-Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
+Slice 6 — Understand & Act giữ trạng thái `APPROVED / COMPLETED — D-076`. Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
 ## Primary Persona
 
@@ -68,6 +68,19 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Local full regression sau review hardening: backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88; frontend build pass và tests 100/100; real Slice 6 Playwright 2/2 pass qua Vue → ASP.NET Core → temporary LocalDB. Real coverage gồm D-069 required case `1,000,000 - 0 - 300,000 = 700,000` với standalone CustomerDebtPayment/refund không làm sai new-debt-created; D-070 partial/full Return vẫn count, same-day Void count `0`, cross-day Void không tạo count âm/Today contribution; Supplier `500,000 - 200,000 = 300,000` và standalone SupplierDebtPayment không giảm metric; cùng C14/action/measurement flow hiện có. Clean migration/app startup được thực thi bởi real runner; current-schema upgrade/data preservation được cover bởi SQL Server migration integration test. CI không được ghi nhận là chạy real Playwright E2E.
 - GitHub Actions #42 / `35944048457`, #43 / `35944540478`, #44 / `35948003969` và #45 / `35996028241` đều `SUCCESS`; run #45 là CI của Stage 6B approval head với backend/frontend `SUCCESS`. GitHub CI không chạy real Playwright E2E; evidence đó vẫn là local temporary-database verification riêng.
 - Giới hạn có chủ ý: C14 là descriptive deterministic experiment, không AI/forecast/replenishment/recommendation; measurement failure không chặn business flow và event counts không tự chứng minh discovery, trust, decision influence, continued use, product value hoặc willingness-to-pay. Local Node 22 phát engine warning vì workspace yêu cầu Node >=24, nhưng frozen install/build/tests đều pass.
+
+## MVP / Pilot Readiness
+
+- D-077–D-084 được Product Owner `APPROVED` ngày 2026-09-24, định nghĩa deployment topology, production account provisioning, inventory pilot completeness, backup/restore, observability/support, printer certification, pilot release gate và pilot validation plan.
+- Tài liệu [Pilot Readiness v0.1](docs/product/pilot-readiness-v0.1.md) là `APPROVED`; mục tiêu hiện tại là đạt `M7 — Pilot-ready` bằng implementation và reviewed evidence. Decision approval không có nghĩa M7 đã đạt.
+- `PR-BLOCKER-01` — chưa có production-safe Owner bootstrap/Cashier management workflow.
+- `PR-BLOCKER-02` — C4 MVP MUST còn thiếu Stock Adjustment, Stocktake và stocktake difference recording.
+- `PR-BLOCKER-03` — chưa có documented automated SQL Server backup/retention/restore drill.
+- `PR-BLOCKER-04` — Windows Server/IIS production deployment, versioning, rollback/recovery runbook chưa hoàn thiện.
+- `PR-BLOCKER-05` — health/logging foundation có sẵn nhưng persistent logs, DB-aware readiness, retention và support evidence chưa đủ.
+- `PR-BLOCKER-06` — browser print chưa certify trên target paper size và 1–2 real printer configurations.
+- `PR-BLOCKER-07` — chưa có formal pilot release checklist, production-like smoke và rollback/recovery gate.
+- Các blocker readiness không revoke trạng thái completed của Slice 0–6. Pilot chưa bắt đầu; application chưa được tuyên bố production-ready; C14 value/willingness-to-pay vẫn chưa validated và phải được đánh giá trong pilot theo D-084.
 
 ## Tiến độ
 
@@ -179,7 +192,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Begin MVP / pilot-readiness planning and validation.** Slice 6 đã final-approved/completed tại D-076; bước tiếp theo không phải một implementation stage khác của Slice 6. Không suy diễn rằng MVP đã release, production-ready, pilot đã hoàn tất hoặc C14 hypothesis đã validated.
+**Create and Product Owner approve Pilot Readiness Technical Breakdown before implementation.** D-077–D-084 và readiness gates đã được approve, nhưng implementation chưa bắt đầu và M7 chưa đạt.
 
 ## Chưa triển khai
 
@@ -189,4 +202,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-24 — Product Owner decision D-076 final-approve toàn bộ Slice 6 — Understand & Act; Slice 6 chuyển thành `APPROVED / COMPLETED`. Stage 6A giữ `APPROVED / COMPLETED — D-074` tại reviewed implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac`; Stage 6B giữ `APPROVED / COMPLETED — D-075`, implementation `17e03c23c83630b84535fdb7be0a41ce16a99b6f`, final reviewed/hardened head `844af703173070872219c1cf729afa04d16fa4b4` và approval head `a24437cd37762d027fe6970f9809baf904a8e3e8`. Backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88, frontend build + 100/100 tests, real local Slice 6 E2E 2/2 và migration clean/upgrade/data-preservation đều verified. GitHub Actions #42–#45 đều `SUCCESS`; CI không chạy real Playwright. C14 vẫn là unvalidated experiment; bước tiếp theo là MVP / pilot-readiness planning và validation.
+2026-09-24 — Product Owner approve Pilot Readiness A–H tại D-077–D-084 và [Pilot Readiness v0.1](docs/product/pilot-readiness-v0.1.md). Project chuyển sang `MVP / Pilot Readiness — DECISIONS APPROVED / IMPLEMENTATION NOT STARTED`; current goal là đạt M7 với evidence cho account provisioning, C4 inventory completion, deployment, backup/restore, observability/support, printer certification, release operations và validation readiness. PR-BLOCKER-01..07 đang mở. Slice 6 giữ `APPROVED / COMPLETED — D-076`; M7 chưa complete, pilot chưa bắt đầu, production readiness chưa được tuyên bố và C14 value/willingness-to-pay vẫn unvalidated. Next step: tạo và Product Owner approve Pilot Readiness Technical Breakdown trước implementation.

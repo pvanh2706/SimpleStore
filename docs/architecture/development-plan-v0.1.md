@@ -256,6 +256,8 @@ Không đặt mục tiêu 100% coverage.
 - M6 — Differentiator experiment hoạt động
 - M7 — Pilot-ready
 
+M7 chưa đạt. Pilot Readiness scope và gates đã được Product Owner approve tại D-077–D-084 và được ghi tại [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md). Implementation/evidence cho account provisioning, C4 inventory completion, deployment, backup/restore, observability/support, printer certification, release operations và pilot validation vẫn phải hoàn tất trước khi M7 có thể được đánh dấu `Pilot-ready`.
+
 Không estimate ngày cứng tại Step 11.
 
 Estimate sau khi từng slice có technical breakdown đủ rõ.
