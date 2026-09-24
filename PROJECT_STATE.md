@@ -72,9 +72,10 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 ## MVP / Pilot Readiness
 
 - D-077–D-084 được Product Owner `APPROVED` ngày 2026-09-24, định nghĩa deployment topology, production account provisioning, inventory pilot completeness, backup/restore, observability/support, printer certification, pilot release gate và pilot validation plan.
+- D-085–D-091 được Product Owner `APPROVED` ngày 2026-09-25, resolve chính xác PR-Q1–PR-Q7 cho first Owner bootstrap, Cashier reset, Adjustment/Stocktake costing, stale Stocktake, backup schedule/retention và printer target.
 - Tài liệu [Pilot Readiness v0.1](docs/product/pilot-readiness-v0.1.md) là `APPROVED`; mục tiêu hiện tại là đạt `M7 — Pilot-ready` bằng implementation và reviewed evidence. Decision approval không có nghĩa M7 đã đạt.
 - [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) đã được tạo ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; proposed stages là PR-A functional blockers, PR-B operational safety và PR-C certification/release gate. Chưa có stage nào bắt đầu.
-- PR-Q1–PR-Q7 đang `OPEN`: first Owner bootstrap, Cashier reset semantics, Adjustment costing, Stocktake costing, stale Stocktake UX, backup schedule/retention và exact printer target. Recommendations trong draft chưa được approve.
+- PR-Q1–PR-Q7 đã `RESOLVED` tại D-085–D-091. Technical Breakdown đã được align với các approved contracts nhưng vẫn `DRAFT / PENDING PRODUCT OWNER REVIEW`; decision resolution không authorize implementation.
 - `PR-BLOCKER-01` — chưa có production-safe Owner bootstrap/Cashier management workflow.
 - `PR-BLOCKER-02` — C4 MVP MUST còn thiếu Stock Adjustment, Stocktake và stocktake difference recording.
 - `PR-BLOCKER-03` — chưa có documented automated SQL Server backup/retention/restore drill.
@@ -82,7 +83,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - `PR-BLOCKER-05` — health/logging foundation có sẵn nhưng persistent logs, DB-aware readiness, retention và support evidence chưa đủ.
 - `PR-BLOCKER-06` — browser print chưa certify trên target paper size và 1–2 real printer configurations.
 - `PR-BLOCKER-07` — chưa có formal pilot release checklist, production-like smoke và rollback/recovery gate.
-- Các blocker readiness không revoke trạng thái completed của Slice 0–6. Pilot chưa bắt đầu; application chưa được tuyên bố production-ready; C14 value/willingness-to-pay vẫn chưa validated và phải được đánh giá trong pilot theo D-084.
+- Các blocker readiness không revoke trạng thái completed của Slice 0–6. Pilot vẫn `NOT STARTED`; application chưa được tuyên bố production-ready; C14 value/willingness-to-pay vẫn chưa validated và phải được đánh giá trong pilot theo D-084.
 
 ## Tiến độ
 
@@ -194,7 +195,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review Pilot Readiness Technical Breakdown, resolve PR-Q1–PR-Q7, then explicitly approve the breakdown before implementation.** D-077–D-084 giữ nguyên approved; PR-A/PR-B/PR-C chưa bắt đầu và M7 chưa đạt.
+**Product Owner review / approval of the Pilot Readiness Technical Breakdown.** D-077–D-091 giữ nguyên approved; PR-A/PR-B/PR-C chưa bắt đầu và M7 chưa đạt.
 
 ## Chưa triển khai
 
@@ -204,4 +205,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-24 — Tạo [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW` trên approved D-077–D-084. Draft đề xuất PR-A/PR-B/PR-C, mapping PR-BLOCKER-01..07, technical/API/schema/ops contracts, migration/evidence/DoD gates và mở PR-Q1–PR-Q7 mà không tự resolve. Pilot Readiness implementation vẫn `NOT STARTED`; M7 vẫn `NOT ACHIEVED`; pilot chưa bắt đầu, production readiness chưa được tuyên bố và C14 value/willingness-to-pay vẫn unvalidated. Next step: Product Owner review, resolve blocking questions và explicit approve Technical Breakdown trước implementation.
+2026-09-25 — Product Owner approve D-085–D-091, resolve PR-Q1–PR-Q7 và align [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) với exact contracts. Tài liệu vẫn `DRAFT / PENDING PRODUCT OWNER REVIEW`; không có Technical Breakdown approval hoặc implementation authorization được suy diễn. Pilot Readiness implementation vẫn `NOT STARTED`; PR-A/PR-B/PR-C chưa bắt đầu; M7 vẫn `NOT ACHIEVED`; pilot chưa bắt đầu, production readiness chưa được tuyên bố và C14 value/willingness-to-pay vẫn unvalidated. Next step: Product Owner review / approval of the Pilot Readiness Technical Breakdown.

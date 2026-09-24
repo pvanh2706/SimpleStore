@@ -929,3 +929,71 @@ File này ghi lại các quyết định sản phẩm và trạng thái phê duy
 - **C14 experiment validation:** Đánh giá Owner có phát hiện signal; signal có nói điều chưa biết; Owner có tin evidence; signal có ảnh hưởng quyết định nhập hàng; Owner có tiếp tục dùng; và willingness-to-pay có tồn tại.
 - **Evidence:** `TodayOpened`, `SignalShown`, `WhyOpened`, `PurchaseDraftStarted` chỉ là evidence hỗ trợ. Không suy diễn `click == value validated` hoặc `PurchaseDraftStarted == recommendation succeeded`.
 - **Method:** Pilot validation kết hợp quantitative evidence với interview/observation; C14 vẫn là unvalidated product experiment cho tới khi có evidence pilot phù hợp.
+
+### D-085 — Production first Owner bootstrap
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Bootstrap contract:** Dùng một explicit one-shot admin CLI/command do authorized deployment operator chạy. Command là production-only operational entry point, không phải public/anonymous HTTP endpoint và không tạo web registration flow.
+- **First-Owner boundary:** Command chỉ tạo Owner đầu tiên. Owner ban đầu có thể chưa có Store và sau đó dùng existing Store initialization để tạo Store/Main Warehouse. Command phải từ chối overwrite hoặc tạo Owner thứ hai với identity khác; exact retry cho cùng normalized Owner identity chỉ được xử lý theo contract idempotent an toàn. `DevelopmentOwnerSeeder` không chạy trong Production và manual SQL không phải normal provisioning workflow.
+- **Identity/security:** Reuse ASP.NET Core Identity policy, normalize email, nhận password qua protected prompt hoặc ephemeral secret; secret không được đặt trong persistent source/config và không echo/log plaintext password. Output và operational evidence chỉ chứa dữ liệu không bí mật: timestamp, normalized identity, result và deployed application version/SHA.
+- **Scope boundary:** Không mở public bootstrap endpoint, invitation platform, enterprise IAM, OAuth/social login hoặc generic role/permission designer.
+
+### D-086 — Cashier credential reset
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Reset contract:** Owner tạo hoặc reset credential của Cashier bằng temporary password; Cashier bắt buộc đổi password ở lần đăng nhập kế tiếp. Temporary credential chỉ được hiển thị như explicit handoff secret trong one-time operational UX; plaintext password không được persist/log và Identity chỉ lưu supported password hash/state.
+- **Restricted session:** Trước khi đổi password thành công, Cashier chỉ được truy cập password-change, logout và minimal session/auth state cần thiết; mọi business API khác bị backend từ chối. Frontend restriction không thay thế backend authorization.
+- **Session invalidation:** Reset làm credential cũ mất hiệu lực; reset hoặc disable phải update security stamp/invalidate các session hiện hữu. Login dùng generic failure response cho missing, disabled hoặc invalid-credential account để tránh account enumeration.
+- **Scope boundary:** Không email invitation/reset delivery, one-time link platform hoặc OAuth/social login.
+
+### D-087 — Stock Adjustment costing
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Positive adjustment with reliable balance:** Khi `HasAverageCost = true`, dùng current authoritative average cost. Ví dụ quantity `10`, average cost `20,000`, value `200,000`, adjustment `+2` tạo value delta `+40,000`, kết quả quantity `12`, value `240,000`, average cost `20,000`.
+- **Positive adjustment without reliable cost:** Owner phải nhập explicit `Adjustment Unit Cost`; không fallback sang `ReferencePurchaseCost`. Cost này authoritative cho movement hiện tại nhưng không retroactively revalue lịch sử. Nó không tự động làm toàn bộ balance trở nên reliable; chỉ clean zero-balance được khởi tạo lại bằng explicit known cost mới có thể thiết lập reliable basis.
+- **Negative adjustment:** Nếu `HasAverageCost = true`, loại value theo current average cost với reliability `Reliable`. Nếu không có reliable average nhưng có `ReferencePurchaseCost`, snapshot reference cost với reliability `Estimated`; nếu cả hai không có, snapshot unit cost/value delta `0` với reliability `Unavailable`.
+- **Reliability/invariants:** Negative adjustment không được promote balance reliability và không retroactively revalue prior movements hoặc historical `SaleLine` cost snapshots. Phải bảo toàn Moving Weighted Average, `InventoryValue`, `HasAverageCost`, `CostReliability`, negative-stock behavior và immutable per-movement cost/reliability evidence. Nếu implementation phát hiện abnormal invariant mới không thể suy ra an toàn từ contract này thì phải mở Product Owner question mới, không tự đặt rule.
+
+### D-088 — Stocktake difference costing
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Costing contract:** Mọi Stocktake difference dùng chính xác D-087. Positive difference dùng reliable current average cost hoặc yêu cầu explicit Adjustment Unit Cost khi thiếu reliable basis; negative difference dùng cùng chuỗi `Reliable` / `Estimated` / `Unavailable` của D-087.
+- **Ledger/source:** Stocktake vẫn là immutable `StocktakeResult` riêng và tạo typed `StocktakeAdjustment` source/movement riêng để giữ explainability; không giả làm generic Stock Adjustment.
+- **Boundary:** Không ghi chênh lệch với giá tạm rồi deferred reconciliation; historical movement/SaleLine snapshots không đổi.
+
+### D-089 — Stale Stocktake behavior
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Concurrency contract:** Stocktake submission mang expected balance rowversion/revision. Backend lock/reload balance và từ chối stale submission bằng typed `409 stocktake-stale`, kèm expected/current information an toàn đủ để UI giải thích conflict.
+- **Recovery UX:** User phải refresh current balance, recount và tạo submission mới. Không silent recalculate/apply old difference, không giữ database lock trong thời gian con người đếm và không overwrite movement mới hơn.
+- **Retry:** Exact completed `OperationId` retry tiếp tục idempotent theo D-014; reuse identity với payload khác là conflict.
+
+### D-090 — Pilot SQL Server backup policy
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Recovery model/schedule:** SQL Server dùng Full recovery model; nightly full backup và transaction-log backup mỗi 15 phút.
+- **Retention/storage:** Giữ recovery chain 14 ngày và weekly full backup 8 tuần. Backup phải ở separate, access-restricted storage, không chỉ nằm trên live database volume/failure domain; backup/log-chain/job failure phải detectable.
+- **Restore proof:** Trước M7 phải restore actual full + transaction-log chain vào isolated target, xác nhận recovery point, database integrity/availability, application start và authenticated/read smoke. Evidence ghi backup identifiers, recovery point, source/target, application/schema version, operator, duration và result.
+- **Environment boundary:** Nếu pilot environment không hỗ trợ contract trên, phải mở Product Owner decision mới và ghi rõ limitation/tradeoff; không silent downgrade schedule, recovery model, retention hoặc restore proof.
+
+### D-091 — Pilot printer target class
+
+- **Trạng thái:** `APPROVED`
+- **Ngày:** 2026-09-25
+- **Người phê duyệt:** Product Owner
+- **Baseline target:** Trước M7, ít nhất một cấu hình bill thermal `80 mm` thực tế phải pass certification; browser print là strategy mặc định.
+- **Certification evidence:** Actual printer manufacturer/model/interface (`USB`, network hoặc deployed connection), Windows version, installed driver/version khi nhận diện được, browser/version, paper configuration, scale/margins/header-footer settings được ghi nhận trong PR-C từ thiết bị pilot thực tế; decision này không tự invent một model cụ thể.
+- **Configuration scope:** Chứng nhận một primary configuration; chỉ thêm một secondary configuration nếu pilot thực sự sử dụng. `58 mm` và A4 không phải baseline target.
+- **Fallback boundary:** Không xây local print agent/service trừ khi browser-print certification thất bại và một technical/Product Owner decision sau đó approve hướng thay thế.

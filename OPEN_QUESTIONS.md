@@ -67,37 +67,17 @@ Step 8 đã APPROVED 6 user flows và các nguyên tắc identity/idempotency, t
 
 Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt database schema, API contract, UI/wireframe chi tiết hoặc architecture implementation ở Step 8.
 
-## Open Product Owner Questions — Pilot Readiness Technical Breakdown
+## Resolved Pilot Readiness Questions — D-085–D-091
 
-[Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) đang ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`. Các recommendation dưới đây chưa được approve và không authorize implementation.
+[Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) vẫn ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; PR-Q1–PR-Q7 đã được Product Owner resolve nhưng chưa có nghĩa Technical Breakdown được approve hoặc implementation được authorize.
 
-### PR-Q1 — First Owner bootstrap mechanism — OPEN
-
-Chọn authority cho production bootstrap: explicit one-shot admin CLI/command; deployment secret/config consumed once at startup; hoặc time-limited bootstrap web flow. Draft recommend CLI/command vì attack surface nhỏ, explicit và auditable; cần Product Owner quyết định trước PR-A.
-
-### PR-Q2 — Cashier credential reset model — OPEN
-
-Chọn Owner-set permanent password; temporary password bắt đổi ở lần login tiếp theo; hoặc one-time out-of-band reset flow. Draft recommend temporary password + forced change; lựa chọn ảnh hưởng schema, session restriction, UI/API và password exposure.
-
-### PR-Q3 — Positive Stock Adjustment costing — OPEN
-
-Chọn current average cost; always explicit adjustment cost; hoặc hybrid current average khi reliable và require explicit cost khi unavailable. Draft recommend hybrid, không silent fallback sang reference cost. Cần chốt cả negative adjustment khi cost/quantity/value abnormal hoặc unavailable.
-
-### PR-Q4 — Stocktake difference costing — OPEN
-
-Chọn reuse chính xác PR-Q3; always explicit cost cho positive difference; hoặc ghi count với unavailable/zero cost rồi reconcile sau. Draft recommend reuse PR-Q3 để tránh hai valuation semantics cạnh tranh.
-
-### PR-Q5 — Stale Stocktake UX — OPEN
-
-Chọn reject typed conflict và force refresh/recount; explicit reconfirm/recalculate against current balance; hoặc reserve/lock inventory trong lúc count. Draft recommend reject `409 stocktake-stale` bằng expected rowversion/revision; không silent overwrite newer movements.
-
-### PR-Q6 — Backup schedule / retention — OPEN
-
-Chọn accepted RPO/retention: nightly full 14 days; nightly full + 4-hour differential với daily/weekly retention; hoặc full + 15–30-minute transaction-log chain. Draft recommend phương án differential 4 giờ cho pilot đầu trừ khi data-loss tolerance yêu cầu transaction-log backup.
-
-### PR-Q7 — Printer target — OPEN
-
-Chọn exact paper width, physical printer model/interface, Windows driver và browser/version. Draft recommend certify một actual 80 mm thermal setup và tối đa một secondary configuration; không chọn model khi chưa có pilot environment evidence.
+- PR-Q1 → D-085: explicit one-shot admin CLI/command cho first Owner, do authorized deployment operator chạy; không public endpoint, Production seeder hoặc normal-flow manual SQL.
+- PR-Q2 → D-086: temporary Cashier password + mandatory change; pre-change session chỉ cho password change/logout/minimal auth state; reset/disable invalidates sessions.
+- PR-Q3 → D-087: Stock Adjustment costing/reliability dùng reliable average hoặc explicit cost cho positive; negative dùng closed `Reliable` / `Estimated` / `Unavailable` chain; không retroactive revaluation.
+- PR-Q4 → D-088: Stocktake difference reuse chính xác D-087, giữ immutable typed Stocktake source/movement và không deferred reconciliation.
+- PR-Q5 → D-089: typed `409 stocktake-stale`, refresh + recount + new submission; exact completed OperationId retry giữ idempotent theo D-014.
+- PR-Q6 → D-090: Full recovery, nightly full, transaction-log mỗi 15 phút, recovery chain 14 ngày, weekly full 8 tuần, separate restricted storage và actual isolated full+log restore drill.
+- PR-Q7 → D-091: `80 mm` thermal/browser print baseline; actual model/interface/Windows/driver/browser/paper config được ghi trong PR-C, không invent model trước evidence.
 
 ## Đã giải quyết cho Slice 5 — APPROVED
 

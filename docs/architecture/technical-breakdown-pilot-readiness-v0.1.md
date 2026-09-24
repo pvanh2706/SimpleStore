@@ -4,9 +4,9 @@
 
 `DRAFT / PENDING PRODUCT OWNER REVIEW`
 
-Baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; GitHub Actions run #47 / `36001349239` là `SUCCESS`.
+Implementation baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; draft baseline trước decision alignment: `0cab9d3a6afcae011c1c43af2826f496fef78c0e`. GitHub Actions run #47 / `36001349239` và draft run #48 / `36017798255` đều `SUCCESS`.
 
-Tài liệu này chuyển D-077–D-084 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành proposed implementation stages, contracts, operational artifacts, evidence và review gates. Đây chưa phải implementation approval. Pilot Readiness implementation vẫn `NOT STARTED`, M7 vẫn `NOT ACHIEVED`, pilot chưa bắt đầu và application chưa được tuyên bố production-ready.
+Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành proposed implementation stages, contracts, operational artifacts, evidence và review gates. Đây chưa phải implementation approval. Pilot Readiness implementation vẫn `NOT STARTED`, M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
 
 ## 1. Mục tiêu và nguyên tắc
 
@@ -17,11 +17,11 @@ Technical Breakdown phải:
 - giữ nguyên behavior Slice 0–6 và toàn bộ approved C14 semantics;
 - ưu tiên một deployable application + một SQL Server database trên Windows Server/IIS;
 - không dùng document/code existence thay cho completion evidence;
-- không tự resolve PR-Q1–PR-Q7 hoặc tự đánh dấu PR-A/PR-B/PR-C/M7 complete.
+- áp dụng chính xác các Product Owner decisions D-085–D-091 đã resolve PR-Q1–PR-Q7, nhưng không tự approve Technical Breakdown hoặc đánh dấu PR-A/PR-B/PR-C/M7 complete.
 
 Trình tự review/implementation đề xuất:
 
-`Product Owner resolve blocking questions → approve Technical Breakdown → PR-A → PR-B → PR-C → final M7 readiness review`
+`Product Owner review/approve Technical Breakdown → PR-A → PR-B → PR-C → final M7 readiness review`
 
 ## 2. Baseline implementation findings
 
@@ -72,9 +72,9 @@ First Owner bootstrap phải tách khỏi day-to-day account management:
 - không dùng manual SQL/Identity table edits như normal workflow;
 - bootstrap tạo đúng một Owner account chưa có Store, tạo/verify closed Owner role, rồi existing Store initialization tiếp tục tạo Store/Main Warehouse;
 - command phải refuse unsafe overwrite, normalize email, apply Identity password policy, avoid credential logging và return non-secret success/failure output;
-- execution audit tối thiểu ghi timestamp, normalized account identity, result và deployed version vào secure operational log; không ghi password.
+- execution audit tối thiểu ghi timestamp, normalized account identity, result và deployed version/SHA vào secure operational log; không ghi password.
 
-**Recommendation pending PR-Q1:** một explicit one-shot admin CLI/command chạy trên server bằng deployment operator, reuse Identity/EF infrastructure và đọc password từ protected prompt/ephemeral secret. Command là idempotent only for the exact existing Owner identity, từ chối khi đã có Owner khác, và không expose HTTP bootstrap surface. Deployment-time secret auto-seeding là option nhỏ hơn về thao tác nhưng có nguy cơ secret lưu lâu/replay và startup side effect.
+Theo D-085, bootstrap là một explicit one-shot admin CLI/command do authorized deployment operator chạy, reuse Identity/EF infrastructure và đọc password từ protected prompt/ephemeral secret. Command chỉ tạo Owner đầu tiên, từ chối overwrite hoặc Owner thứ hai có identity khác và chỉ cho phép exact retry của cùng normalized identity theo contract an toàn. Không có HTTP bootstrap surface, startup auto-seeding, public registration hay manual SQL normal workflow. Operational evidence chỉ ghi non-secret timestamp, normalized identity, result và deployed version/SHA.
 
 ### 4.2 Application and Identity boundary
 
@@ -90,17 +90,17 @@ Proposed structure:
 
 Owner-only endpoints:
 
-- `GET /api/users/cashiers` — list Store-scoped Cashiers with id, email, enabled state, credential-change state if approved, created/updated timestamps.
-- `POST /api/users/cashiers` — create Cashier in current Store with normalized email and approved initial credential semantics.
+- `GET /api/users/cashiers` — list Store-scoped Cashiers with id, email, enabled state, mandatory credential-change state, created/updated timestamps.
+- `POST /api/users/cashiers` — create Cashier in current Store with normalized email, D-086 temporary password and mandatory-change state.
 - `POST /api/users/cashiers/{cashierId}/disable` — idempotently disable only a Cashier in current Store; update security stamp and invalidate active sessions.
-- `POST /api/users/cashiers/{cashierId}/credentials/reset` — apply the PR-Q2-approved reset model; response never echoes stored hashes or reusable secrets beyond the one-time UX explicitly approved.
-- `POST /api/auth/change-password` — only required if PR-Q2 selects temporary-password/forced-change; verifies current/temporary credential, changes password, clears forced-change state and refreshes sign-in.
+- `POST /api/users/cashiers/{cashierId}/credentials/reset` — issue a temporary password under D-086, set mandatory-change state, invalidate prior sessions/security stamp and expose the temporary credential only through the approved one-time handoff UX; never expose hashes or log plaintext credential material.
+- `POST /api/auth/change-password` — verify current/temporary credential, change password, clear mandatory-change state and refresh sign-in.
 
 Frontend proposal:
 
 - Owner-only `/settings/users` route with Cashier list, create, disable and reset actions.
 - confirmation for disable/reset; no role editor; no invitation/email-delivery subsystem.
-- if forced change is approved, router/backend restrict the Cashier to password-change/logout until completed.
+- router and backend restrict a Cashier with mandatory-change state to password-change, logout and minimal session/auth state until completed; every other business API is denied.
 
 ### 4.4 Disabled-user behavior
 
@@ -114,7 +114,7 @@ Technical recommendation derived from D-078:
 
 ### 4.5 Account audit
 
-Add immutable `AccountLifecycleAudit` (name subject to implementation naming) for `CashierCreated`, `CashierDisabled`, `CredentialReset`, and optionally `CredentialChanged` when forced-change is approved. Minimum fields: Id, StoreId, TargetUserId, Action, PerformedByUserId, OccurredAt; no password/token/credential material. Bootstrap has separate secure operational audit because no Store/actor may exist yet.
+Add immutable `AccountLifecycleAudit` (name subject to implementation naming) for `CashierCreated`, `CashierDisabled`, `CredentialReset`, and `CredentialChanged`. Minimum fields: Id, StoreId, TargetUserId, Action, PerformedByUserId, OccurredAt; no password/token/credential material. Bootstrap has separate secure operational audit because no Store/actor may exist yet.
 
 ### 4.6 Account tests
 
@@ -123,7 +123,7 @@ Add immutable `AccountLifecycleAudit` (name subject to implementation naming) fo
 - Owner creates only Cashier for own Store; Cashier/anonymous forbidden;
 - duplicate normalized email conflict is deterministic;
 - disabled Cashier cannot login and an existing session is rejected;
-- reset obeys approved PR-Q2 semantics and invalidates prior credentials/session;
+- reset obeys D-086 temporary-password + mandatory-change semantics and invalidates prior credentials/session;
 - Store A Owner cannot list/mutate Store B Cashier;
 - audit rows are exact, immutable and contain no secret.
 
@@ -136,7 +136,7 @@ Add immutable `StockAdjustment` aggregate as the business source, not a direct b
 - Id/OperationId;
 - StoreId/MainWarehouseId/ProductId;
 - QuantityDelta (non-zero, precision consistent with inventory);
-- costing input/snapshot fields required by approved PR-Q3 policy;
+- costing input/snapshot fields required by D-087;
 - InventoryValueDelta and effective UnitCost snapshot;
 - normalized required Reason;
 - PerformedByUserId/OccurredAt;
@@ -147,7 +147,7 @@ Proposed Owner-only endpoint:
 
 `POST /api/inventory/adjustments`
 
-Request includes `operationId`, `productId`, `quantityDelta`, `reason`, and only the cost field(s) authorized by PR-Q3. Store/Warehouse/actor/time are server-derived. Response returns adjustment identity, before/after quantity/value/cost state and movement identity.
+Request includes `operationId`, `productId`, `quantityDelta`, `reason`, and optional `adjustmentUnitCost` only where D-087 requires it for a positive adjustment without reliable cost basis. Store/Warehouse/actor/time are server-derived. Response returns adjustment identity, before/after quantity/value/cost/reliability state and movement identity.
 
 ### 5.2 Atomic/idempotent algorithm
 
@@ -166,19 +166,19 @@ Inside one serializable transaction:
 
 No path updates/deletes historical movement or writes `InventoryBalance` without source evidence.
 
-### 5.3 Costing boundary — unresolved PR-Q3
+### 5.3 Costing boundary — approved D-087 contract
 
 Example baseline: quantity `10`, average cost `20,000`, value `200,000`; found `+2` units.
 
-Recommendation pending approval:
+Apply D-087 exactly:
 
-- when `HasAverageCost = true`, positive adjustment uses current authoritative average cost, adds value `40,000`, yielding quantity `12`, value `240,000`, average `20,000`;
-- when cost basis is unavailable, require an explicit approved cost input rather than silently use Product reference cost;
-- negative adjustment removes value at authoritative average cost when reliable;
-- abnormal negative quantity/value or unavailable cost must follow an explicit PR-Q3 rule and preserve unreliable state rather than claim reliable cost;
-- historical SaleLine cost snapshots and prior movements never change.
-
-No implementation may encode this recommendation until PR-Q3 is approved.
+- when `HasAverageCost = true`, positive adjustment uses current authoritative average cost; the example adds value `40,000`, yielding quantity `12`, value `240,000`, average `20,000`;
+- when positive adjustment has no reliable cost basis, Owner must provide explicit `Adjustment Unit Cost`; never fall back to `ReferencePurchaseCost`. The explicit cost is authoritative only for this movement and does not retroactively revalue history;
+- explicit known cost does not automatically make the entire balance reliable. Only a clean zero-balance initialized by the positive adjustment with explicit known cost may establish a reliable basis;
+- negative adjustment with `HasAverageCost = true` removes value at current average cost and snapshots `Reliable`;
+- negative adjustment without reliable average snapshots `ReferencePurchaseCost` as `Estimated` when available, otherwise cost/value delta `0` as `Unavailable`;
+- negative adjustment never promotes balance reliability. Preserve Moving Weighted Average, `InventoryValue`, `HasAverageCost`, `CostReliability`, negative-stock semantics and immutable movement cost/reliability snapshots;
+- historical `SaleLine` cost snapshots and prior movements never change. If an abnormal invariant cannot be safely derived from D-087, implementation must raise a new Product Owner question rather than invent a rule.
 
 ### 5.4 Explainability
 
@@ -195,7 +195,7 @@ Stocktake is a separate immutable counting result, not an Adjustment form label.
 - ExpectedQuantity snapshot and ExpectedBalanceRowVersion/revision;
 - CountedQuantity;
 - Difference = Counted − Expected;
-- costing snapshot/input according to PR-Q4;
+- costing snapshot/input according to D-087/D-088;
 - optional bounded Note; reason/source label identifying stocktake;
 - PerformedByUserId/OccurredAt;
 - optional InventoryMovementId for non-zero difference.
@@ -210,7 +210,7 @@ Proposed flow/endpoints:
 
 Within the same transaction/lock pattern as Adjustment, reload and lock the balance, then compare request expected revision/quantity with current state. Never apply a difference calculated from a stale expected quantity to a newer balance.
 
-**Recommendation pending PR-Q5:** return typed `409 stocktake-stale` with current quantity/revision and require refresh/recount/explicit resubmit. Holding a database lock while a human counts is prohibited. Silent recalculation against the latest balance is prohibited unless Product Owner explicitly chooses that UX.
+Per D-089, return typed `409 stocktake-stale` with safe expected/current quantity and revision information, then require refresh, recount and a new submission. Holding a database lock while a human counts, silently recalculating/applying the old difference, or overwriting a newer movement is prohibited. An exact completed `OperationId` retry remains idempotent under D-014; reuse with changed payload conflicts.
 
 ### 6.3 Movement and zero-difference behavior
 
@@ -219,9 +219,9 @@ Within the same transaction/lock pattern as Adjustment, reload and lock the bala
 - Same OperationId + same normalized payload returns the existing result; reuse for another payload conflicts.
 - Product detail history explains count, expected, difference, note, actor/time and typed source.
 
-### 6.4 Costing boundary — unresolved PR-Q4
+### 6.4 Costing boundary — approved D-088 contract
 
-Recommendation: Stocktake difference reuses the exact approved PR-Q3 adjustment costing policy so two workflows cannot value the same physical delta differently. Stocktake remains a distinct source/movement type for explainability. Alternative policies and their impacts remain open at PR-Q4.
+Stocktake difference reuses D-087 exactly: upward difference uses reliable current average cost or requires explicit Adjustment Unit Cost when reliable basis is absent; downward difference uses the same `Reliable` / `Estimated` / `Unavailable` chain. Stocktake remains a distinct immutable `StocktakeResult` and `StocktakeAdjustment` source/movement for explainability. No deferred value reconciliation is allowed.
 
 ## 7. Movement types and inventory migration contract
 
@@ -234,7 +234,7 @@ Continue typed constructors with exact source identities `StockAdjustment` and `
 
 Expected PR-A schema candidates:
 
-- `AspNetUsers`: enabled state and, only if PR-Q2 requires it, forced-change state/timestamps;
+- `AspNetUsers`: enabled state plus D-086 mandatory credential-change state/timestamps;
 - immutable `AccountLifecycleAudits`;
 - `StockAdjustments` with Store/Product/Warehouse/actor FKs, unique Store + OperationId, reason/cost/result evidence and indexes for Product/time;
 - `StocktakeResults` with expected/count/difference/revision/cost/movement evidence and equivalent FKs/indexes;
@@ -289,22 +289,22 @@ Smallest safe proposal:
 
 No connection string, hostname internals, secret, build path or dependency inventory is returned. This is a technical support mechanism derived from D-081/D-083 and does not require a Product decision.
 
-## 10. Backup / restore baseline — PR-Q6 pending
+## 10. Backup / restore baseline — approved D-090 contract
 
 Do not implement backup inside SimpleStore. Use SQL Server Agent or Windows Task Scheduler + reviewed PowerShell/sqlcmd tooling under a restricted service identity.
 
 Baseline design:
 
-- SQL Server native full/differential/log backup type chosen according to approved RPO option;
+- SQL Server Full recovery model with nightly native full backup and transaction-log backup every 15 minutes;
 - UTC timestamp + database + backup type + release/schema context in filename/manifest;
 - destination outside the live database volume/server failure domain, encrypted at rest where available, ACL restricted to backup operators/service;
 - job exit status and backup verification (`RESTORE VERIFYONLY` as early check) logged/alerted; verify-only does not replace restore drill;
-- retention cleanup is scripted, scoped to the backup directory/database pattern and logged;
-- restore runbook restores into a separate pilot-safe/test database, verifies integrity, applies required configuration, starts the exact application version and performs authenticated data reads/smoke;
-- evidence records backup identifier, source schema/version, restore target, duration, verification queries/smoke, operator and result;
+- retention cleanup preserves a usable 14-day recovery chain and weekly full backups for 8 weeks; cleanup is scripted, scoped to the backup directory/database pattern and logged;
+- restore runbook restores an actual full + transaction-log chain into a separate pilot-safe/test database, verifies the selected recovery point and integrity, applies required configuration, starts the exact application version and performs authenticated data reads/smoke;
+- evidence records backup identifiers, recovery point, source schema/version, restore target, duration, verification queries/smoke, operator and result;
 - restore drill occurs before M7 and repeats after material backup/schema/process changes.
 
-Exact schedule/retention is unresolved at PR-Q6. Technical recommendation is an RPO-oriented option with nightly full plus intra-day backup and off-host retention, but Product Owner must accept the data-loss/operational tradeoff.
+Backup storage must be separate and access-restricted, not only the live database volume/failure domain; job, backup and log-chain failures must be detectable. If the pilot environment cannot support D-090, implementation must raise a new Product Owner decision with explicit limitation/tradeoff and must not silently downgrade the recovery model, schedule, retention or restore proof.
 
 ## 11. Persistent logging and trace correlation
 
@@ -353,12 +353,14 @@ Support runbook minimum:
 
 ## 14. Stage PR-C — Printer certification
 
-PR-C does not choose a physical target without Product Owner/pilot environment input (PR-Q7). It creates a repeatable evidence sheet for the approved setup:
+Per D-091, PR-C certifies an `80 mm` thermal receipt using browser print as the default strategy. It records a repeatable evidence sheet from the actual pilot setup without inventing a printer model in advance:
 
 - exact paper width;
-- printer manufacturer/model/interface/configuration;
-- Windows version, browser/version and installed driver;
+- printer manufacturer/model/interface (`USB`, network or actual deployed connection)/configuration;
+- Windows version, browser/version and installed driver/version where identifiable;
 - print scale/margins/header-footer settings.
+
+Certify one primary configuration and a secondary configuration only if it is actually used. `58 mm` and A4 are not baseline targets. A local print agent/service remains out of scope unless browser-print certification fails and a later decision approves that direction.
 
 Test matrix:
 
@@ -430,13 +432,13 @@ Account lifecycle:
 - production-like Owner bootstrap mechanism where automatable;
 - Owner initializes Store, creates Cashier, Cashier logs in;
 - Owner disables Cashier; new login and existing session fail;
-- credential reset follows approved PR-Q2; old credential/session fails;
+- credential reset follows D-086; old credential/session fails and mandatory-change restriction blocks business APIs;
 - Store A cannot observe/mutate Store B identity.
 
 Stock Adjustment:
 
 - increase/decrease updates balance and creates exact typed movement/source/reason;
-- quantity/value/cost assertions follow approved PR-Q3;
+- quantity/value/cost/reliability assertions follow D-087;
 - same retry is idempotent, changed retry conflicts;
 - Owner-only and Store isolation enforced;
 - concurrent transaction cannot lose another movement.
@@ -445,9 +447,9 @@ Stocktake:
 
 - expected/count/difference recorded; non-zero creates exactly one movement;
 - zero difference creates result but no fake movement;
-- stale expected revision follows approved PR-Q5 without overwriting newer movement;
+- stale expected revision follows D-089 without overwriting newer movement;
 - retry/idempotency, authorization and Store isolation verified;
-- costing follows approved PR-Q4.
+- costing follows D-088.
 
 ### 18.2 PR-B/PR-C evidence
 
@@ -479,95 +481,19 @@ Deployment/backup/log/readiness/printer exercises are production-like scripts/ma
 - Backup/service identities and directories use least privilege; restore target is isolated.
 - No enterprise security certification, IAM expansion or generic permissions platform is implied.
 
-## 20. Open Product Owner Questions discovered during Pilot Readiness Technical Breakdown
+## 20. Resolved Product Owner Questions — D-085–D-091
 
-All PR-Q items below are `OPEN / BLOCKING WHERE NOTED`. Recommendations are technical proposals, not approvals.
+PR-Q1–PR-Q7 are resolved and traceable to the following `APPROVED` decisions. These decisions fix the contracts used by this draft; they do not approve the Technical Breakdown or authorize implementation.
 
-### PR-Q1 — First Owner bootstrap mechanism
-
-**Why it matters:** determines the only production trust root, secret lifetime, operational audit and exposed attack surface before a Store exists.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. Explicit one-shot admin CLI/command | Small HTTP attack surface, operator-controlled and auditable; requires server access and a documented command. |
-| B. One-time deployment config/secret consumed at startup | Simple deployment automation, but introduces startup side effect, replay/idempotency handling and risk of a long-lived secret in configuration. |
-| C. Time-limited bootstrap web token/page | Easier remote UX, but materially larger unauthenticated surface, token lifecycle and support burden. |
-
-**Recommendation:** A. It is the smallest production-safe mechanism for the pilot and keeps bootstrap outside normal web traffic. Product Owner approval is required before PR-A implementation.
-
-### PR-Q2 — Cashier credential reset model
-
-**Why it matters:** changes UI, schema/state, session invalidation, password exposure and Cashier recovery workflow.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. Owner directly sets a new permanent password | Least code and fastest pilot recovery; Owner knows Cashier password and password sharing risk is higher. |
-| B. Owner issues temporary password; Cashier must change at next login | Better separation after handoff and clearer audit; requires forced-change state, restricted session flow and change-password UI/API. |
-| C. One-time reset link/code delivered out-of-band | Better secret handling when delivery is trustworthy; requires token delivery/support infrastructure not otherwise in pilot scope. |
-
-**Recommendation:** B, with one-time display, short operational handoff, security-stamp invalidation and forced change. A is acceptable only if Product Owner explicitly accepts shared-credential risk for the pilot. Blocking for account contract/schema.
-
-### PR-Q3 — Positive Stock Adjustment costing
-
-**Why it matters:** quantity increase must also define inventory value/average cost and reliability; wrong semantics corrupt future Moving Weighted Average and profit while historical SaleLine snapshots must remain immutable.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. Always use current average cost; reject when `HasAverageCost = false` | Deterministic and simple; cannot record found stock without reliable current cost. |
-| B. Always require explicit adjustment unit cost | Most explicit; extra burden and Owner may enter an arbitrary value even when reliable average already exists. |
-| C. Hybrid: current average when reliable, otherwise require explicit unit cost; never silently use reference cost | Preserves reliable average and handles missing basis explicitly; needs clear UI and approved meaning of owner-entered cost/reliability. |
-
-For negative adjustment, the same decision must specify reliable-cost removal and behavior when stock/value is already negative or cost is unavailable.
-
-**Recommendation:** C; in the example `10 × 20,000`, `+2` adds `40,000` and keeps average `20,000`. When cost is unavailable, require explicit cost and keep reliability semantics explicit. Blocking for adjustment domain/API/migration tests.
-
-### PR-Q4 — Stocktake difference costing
-
-**Why it matters:** a physical count difference changes the same quantity/value ledger as Adjustment; separate rules can produce inconsistent valuation.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. Reuse PR-Q3 policy exactly | One valuation rule and consistent ledger; Stocktake UI may request cost when an upward difference lacks reliable basis. |
-| B. Require explicit unit cost for every positive Stocktake difference | Strongly explicit but adds repeated input and may unnecessarily override a reliable average. |
-| C. Record count with unavailable/zero cost and defer value correction | Easier counting but leaves quantity/value reliability unresolved and creates a later reconciliation workflow. |
-
-**Recommendation:** A, while keeping `StocktakeAdjustment` as a distinct source type. Blocking until PR-Q3 and PR-Q4 are approved.
-
-### PR-Q5 — Stale Stocktake UX
-
-**Why it matters:** Sales/Purchases can change balance while a person counts; silently applying the old difference can overwrite newer operational facts.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. Reject typed 409 and force refresh/recount | Safest and simplest concurrency semantics; user may need to recount. |
-| B. Show current balance and require explicit confirmation/recalculation | Fewer abandoned counts but adds a second confirmation contract and risk that the physical count timestamp no longer matches. |
-| C. Reserve/lock inventory during count | Strong isolation but blocks live operations and is disproportionate for pilot MVP. |
-
-**Recommendation:** A using balance rowversion/revision and clear UX with expected/current quantities. Blocking for Stocktake submit behavior.
-
-### PR-Q6 — Backup schedule / retention
-
-**Why it matters:** defines accepted RPO/data-loss exposure, storage cost and operational complexity; “daily backup” is not enough without an accepted recovery target.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. Nightly full, retain 14 days | Simplest; up to roughly 24 hours of data loss. |
-| B. Nightly full + differential every 4 hours; daily 14 days + weekly 8 weeks | Moderate complexity/storage; roughly 4-hour RPO. |
-| C. Nightly full + transaction-log backup every 15–30 minutes; daily/weekly retention | Lowest RPO; requires Full recovery model, log-chain monitoring and more restore steps. |
-
-**Recommendation:** B for the first pilot unless transaction volume/data-loss tolerance demands C. Backup destination must be off the live DB volume with restricted access; conduct restore drill before M7. Blocking for final backup runbook/evidence.
-
-### PR-Q7 — Printer target
-
-**Why it matters:** receipt CSS, wrapping, margins and browser/driver behavior cannot be certified without a physical target.
-
-| Option | Tradeoff/impact |
-|---|---|
-| A. 80 mm thermal printer via installed Windows vendor driver | More usable width and common receipt format; recommended default candidate. |
-| B. 58 mm thermal printer | Smaller/cheaper but materially tighter wrapping and monetary columns. |
-| C. A4/office printer | Easy availability but poor counter ergonomics and different layout. |
-
-**Recommendation:** select an actual pilot-available 80 mm USB/network thermal model, Windows driver and Chrome/Edge version, then certify; keep one secondary configuration only if actually used. Product Owner/pilot environment must supply exact paper/model/configuration. Blocking for printer certification, not PR-A/PR-B coding.
+| Question | Decision | Approved contract |
+|---|---|---|
+| PR-Q1 | D-085 | Explicit one-shot admin CLI/command run by an authorized deployment operator; first Owner only; no public endpoint, Production seeder, normal-flow SQL edit or secret logging. |
+| PR-Q2 | D-086 | Temporary Cashier password with mandatory change at next login; restricted pre-change session; reset/disable invalidates sessions; generic login failures. |
+| PR-Q3 | D-087 | Positive adjustment uses reliable average or explicit Adjustment Unit Cost; negative adjustment snapshots `Reliable`, `Estimated` or `Unavailable` under the approved fallback chain; no retroactive revaluation or reliability promotion. |
+| PR-Q4 | D-088 | Stocktake difference uses D-087 exactly while retaining a distinct immutable Stocktake source/movement; no deferred reconciliation. |
+| PR-Q5 | D-089 | Expected rowversion/revision with typed `409 stocktake-stale`; refresh, recount and new submission; D-014 exact retry remains idempotent. |
+| PR-Q6 | D-090 | Full recovery, nightly full, 15-minute transaction-log backup, 14-day recovery chain, weekly full for 8 weeks, separate restricted storage and actual isolated full+log restore proof. |
+| PR-Q7 | D-091 | `80 mm` thermal/browser-print baseline; certify actual pilot model/interface/Windows/driver/browser/paper configuration; one primary and only an actually used secondary. |
 
 ### 20.1 Technical choices not escalated
 
@@ -585,7 +511,7 @@ The following are safely derived from approved decisions and existing architectu
 
 ### PR-A DoD
 
-- PR-Q1–PR-Q5 decisions required by implementation are approved and traceable.
+- D-085–D-089 contracts required by PR-A are approved and traceable.
 - Production-safe bootstrap works; Development seeder remains disabled in Production.
 - Cashier create/disable/reset flow works with immediate disabled-session behavior, backend authorization and Store isolation.
 - Stock Adjustment and Stocktake contracts, ledger evidence, costing, idempotency and concurrency match approved semantics.
@@ -607,7 +533,7 @@ The following are safely derived from approved decisions and existing architectu
 
 ### PR-C DoD
 
-- PR-Q7 target is approved and actual paper/printer/browser/driver certification matrix passes with retained evidence;
+- D-091 `80 mm` target is approved and actual paper/printer/browser/driver certification matrix passes with retained evidence;
 - pilot release checklist passes for exact candidate SHA, including CI, migrations, real E2E, deployment/version/readiness smoke and rollback;
 - Store onboarding/data preparation and support/contact/escalation plans are reviewed and executable;
 - D-084 Core MVP and C14 validation execution artifacts are ready without claiming outcomes;
@@ -628,9 +554,9 @@ C14 remains an experiment. Technical delivery and event counts do not validate d
 
 Before implementation:
 
-1. Product Owner reviews this draft and resolves PR-Q1–PR-Q7 where blocking.
-2. Draft is updated with approved answers and exact stage contracts.
+1. D-085–D-091 remain the approved answers for PR-Q1–PR-Q7.
+2. Product Owner reviews this updated draft and its exact stage contracts.
 3. Product Owner explicitly approves the Technical Breakdown in a future decision.
 4. Only then may PR-A implementation begin.
 
-No D-085 approval decision is created by this draft. Current status remains `DRAFT / PENDING PRODUCT OWNER REVIEW`.
+No Technical Breakdown approval decision is created by this update. Current status remains `DRAFT / PENDING PRODUCT OWNER REVIEW`.
