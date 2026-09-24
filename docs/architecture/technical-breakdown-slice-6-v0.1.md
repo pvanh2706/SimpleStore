@@ -4,7 +4,7 @@
 
 `APPROVED FOR IMPLEMENTATION`
 
-Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Tại baseline đó, approval authorize sequencing Stage 6A/6B nhưng chưa xác nhận implementation. Trạng thái hiện tại: Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` tại implementation commit `17e03c23c83630b84535fdb7be0a41ce16a99b6f`.
+Product Owner đã approve tài liệu này tại D-073 ngày 2026-09-23, trên reviewed baseline `daffb39c8f4d75f8bae0d83ba12be0484ce99280`. Tại baseline đó, approval authorize sequencing Stage 6A/6B nhưng chưa xác nhận implementation. Trạng thái hiện tại: Stage 6A `APPROVED / COMPLETED — D-074`; Stage 6B `APPROVED / COMPLETED — D-075` tại final reviewed head `844af703173070872219c1cf729afa04d16fa4b4`. Final whole-Slice 6 approval vẫn là Product Owner gate riêng.
 
 Baseline đã inspect: `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`, tại đó `Slice 5 — Debt + End-of-day` là `APPROVED / COMPLETED` theo D-060.
 
@@ -329,7 +329,7 @@ Recording failure must not block Today read or Purchase business flow. Frontend 
 
 ## 10. API contract
 
-All endpoints below are Owner-only and Store-scoped. Stage 6A endpoints tại 10.1–10.2 là implemented contracts đã được Product Owner approve tại D-074; Stage 6B endpoints tại 10.3–10.5 đã được implement tại `17e03c23c83630b84535fdb7be0a41ce16a99b6f` và đang chờ Product Owner review.
+All endpoints below are Owner-only and Store-scoped. Stage 6A endpoints tại 10.1–10.2 là implemented contracts đã được Product Owner approve tại D-074; Stage 6B endpoints tại 10.3–10.5 đã được Product Owner approve tại D-075 sau review implementation chain kết thúc ở `844af703173070872219c1cf729afa04d16fa4b4`.
 
 ### 10.1 `GET /api/today`
 
@@ -623,7 +623,7 @@ Approved implementation: EOD và Today dùng chung `DailyFinancialProjection`; T
 
 ### Stage 6B — C14/action/measurement/E2E
 
-`IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`:
+`APPROVED / COMPLETED — D-075`:
 
 - D-071 exact full-history/factual sufficiency và D-072 active-only C14 projection;
 - attention preview/list/detail and evidence;
@@ -631,7 +631,7 @@ Approved implementation: EOD và Today dùng chung `DailyFinancialProjection`; T
 - narrow immutable C14 experiment events và additive migration cần thiết cho approved design;
 - full frontend, SQL Server integration and real local E2E/regression.
 
-Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. D-074 approve và complete riêng Stage 6A. Stage 6B implementation commit `17e03c23c83630b84535fdb7be0a41ce16a99b6f` đã hoàn tất scope trên với migration additive `20260924010903_ImplementSlice6Stage6BC14`; review-hardening regression pass backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88, frontend build và 100/100 tests, real Slice 6 Playwright 2/2. Clean migration/app startup và current-schema upgrade/data preservation đã được verify. Stage 6B vẫn cần Product Owner review riêng; trạng thái chưa phải `APPROVED / COMPLETED`. Baseline trước implementation `0b3a77992a3a01ff0881f598ed2c4e14f86855c8` có GitHub Actions run #41 / `35894463232` `SUCCESS`; implementation/docs run #42 / `35944048457` và final docs run #43 / `35944540478` đều `SUCCESS`; không tuyên bố CI chạy real E2E.
+Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. D-074 approve/complete Stage 6A; D-075 approve/complete Stage 6B tại final reviewed head `844af703173070872219c1cf729afa04d16fa4b4`. Reviewed chain là `17e03c23c83630b84535fdb7be0a41ce16a99b6f` → `610b53d8c31a7d5d70b07a6883c47ad146ee1944` → `d01e43517c576f832fcc3ddc432de7edc9079834` → `844af703173070872219c1cf729afa04d16fa4b4`. Migration additive `20260924010903_ImplementSlice6Stage6BC14`; backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88, frontend build và 100/100 tests, real Slice 6 Playwright 2/2; clean migration/startup và pre-Stage-6B upgrade/data preservation verified. GitHub Actions #42 / `35944048457`, #43 / `35944540478` và #44 / `35948003969` đều `SUCCESS`; CI không chạy real Playwright E2E. D-075 không final-approve toàn bộ Slice 6 và không validate C14 product value.
 
 ## 17. Definition of Done proposal
 
@@ -645,7 +645,7 @@ Stage 6A/6B names, contents and order là approved implementation sequence theo 
 - Experiment events are narrow, immutable and non-transactional to business flow; per-view exposure guards prevent reactive duplicate `TodayOpened`/`SignalShown`.
 - Domain/query, SQL Server integration, frontend and real local critical E2E pass; Slice 1–5 regressions pass.
 - No AI, forecast/replenishment engine, BI dashboard, generic rule/alert/analytics platform.
-- Technical Breakdown và staging sequence đã được Product Owner approve tại D-073; Stage 6A implementation đã được approve tại D-074; Stage 6B đã implement/verify và còn chờ Product Owner review/approval riêng.
+- Technical Breakdown và staging sequence đã được Product Owner approve tại D-073; Stage 6A implementation đã được approve tại D-074; Stage 6B implementation đã được approve tại D-075. Final whole-Slice 6 approval vẫn pending explicit Product Owner decision riêng.
 
 ## 18. Resolved Product Owner questions và review gate
 
@@ -676,5 +676,6 @@ Không còn known Product Owner semantic blocker trong [`OPEN_QUESTIONS.md`](../
 - D-072 — active-only C14 Product candidates.
 - D-073 — Technical Breakdown Slice 6 và Stage 6A/6B implementation sequence approval.
 - D-074 — Slice 6 Stage 6A implementation approval.
+- D-075 — Slice 6 Stage 6B implementation approval.
 
-**Current gate:** Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` tại `17e03c23c83630b84535fdb7be0a41ce16a99b6f`. Next step là Product Owner review/approval Stage 6B; implementation này không tạo D-075, không tự approve Stage 6B và không tự chuyển toàn bộ Slice 6 thành `APPROVED / COMPLETED`.
+**Current gate:** Technical Breakdown `APPROVED FOR IMPLEMENTATION` tại D-073; Stage 6A `APPROVED / COMPLETED — D-074`; Stage 6B `APPROVED / COMPLETED — D-075`. Toàn bộ Slice 6 chưa được final-approved. Next step: perform final Slice 6 review and request explicit Product Owner approval for the whole Slice 6.
