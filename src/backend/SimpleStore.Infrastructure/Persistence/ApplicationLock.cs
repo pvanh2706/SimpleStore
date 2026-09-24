@@ -46,6 +46,15 @@ internal static class ApplicationLock
             $"SimpleStore:SupplierDebt:{storeId:N}:{supplierId:N}",
             cancellationToken);
 
+    public static Task AcquireC14ExperimentEventAsync(
+        ApplicationDbContext dbContext,
+        Guid eventId,
+        CancellationToken cancellationToken) =>
+        AcquireAsync(
+            dbContext,
+            $"SimpleStore:C14ExperimentEvent:{eventId:N}",
+            cancellationToken);
+
     private static async Task AcquireAsync(
         ApplicationDbContext dbContext,
         string resource,

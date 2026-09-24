@@ -26,6 +26,8 @@ const router = createRouter({
     { path: '/suppliers/debts', name: 'supplier-debts', component: () => import('../views/DebtManagementView.vue'), props: { kind: 'supplier' }, meta: { ownerOnly: true } },
     { path: '/reports/end-of-day', name: 'end-of-day', component: () => import('../views/EndOfDayView.vue'), meta: { ownerOnly: true } },
     { path: '/today', name: 'today', component: () => import('../views/TodayView.vue'), meta: { ownerOnly: true } },
+    { path: '/today/attention', name: 'attention-list', component: () => import('../views/AttentionListView.vue'), meta: { ownerOnly: true } },
+    { path: '/today/attention/:productId', name: 'attention-detail', component: () => import('../views/AttentionDetailView.vue'), meta: { ownerOnly: true } },
     { path: '/settings/operations', name: 'operational-settings', component: () => import('../views/OperationalSettingsView.vue'), meta: { ownerOnly: true } },
   ],
 })

@@ -65,6 +65,10 @@ public static class DependencyInjection
         services.AddScoped<TodayContextResolver>();
         services.AddScoped<GetTodaySummaryUseCase>();
         services.AddScoped<GetTodayExplanationUseCase>();
+        services.AddScoped<C14ContextResolver>();
+        services.AddScoped<GetC14AttentionListUseCase>();
+        services.AddScoped<GetC14AttentionDetailUseCase>();
+        services.AddScoped<RecordC14ExperimentEventUseCase>();
 
         return services;
     }

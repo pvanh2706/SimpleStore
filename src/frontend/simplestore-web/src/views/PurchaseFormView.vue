@@ -3,12 +3,13 @@ import { onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { apiRequest } from '../api/client'
 import PurchaseDraftForm from '../components/PurchaseDraftForm.vue'
-import type { ProductPage, Purchase, PurchaseWriteInput, SupplierPage } from '../api/types'
+import type { Product, ProductListItem, ProductPage, Purchase, PurchaseWriteInput, SupplierPage } from '../api/types'
 
 const route = useRoute()
 const router = useRouter()
 const id = typeof route.params.id === 'string' ? route.params.id : null
 const purchase = ref<Purchase | null>(null)
+const preselectedProduct = ref<ProductListItem | null>(null)
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
@@ -28,6 +29,25 @@ async function searchProducts(search: string, page: number) {
 async function load() {
   try {
     if (id) purchase.value = await apiRequest<Purchase>(`/api/purchases/${id}`)
+    else if (typeof route.query.productId === 'string') {
+      try {
+        const product = await apiRequest<Product>(`/api/products/${route.query.productId}`)
+        if (product.isActive) {
+          preselectedProduct.value = {
+            id: product.id,
+            sku: product.sku,
+            barcode: product.barcode,
+            name: product.name,
+            unit: product.unit,
+            salePrice: product.salePrice,
+            isActive: product.isActive,
+            quantityOnHand: product.quantityOnHand,
+          }
+        }
+      } catch {
+        preselectedProduct.value = null
+      }
+    }
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Không thể tải dữ liệu.'
   } finally { loading.value = false }
@@ -61,6 +81,7 @@ onMounted(load)
       :search-suppliers="searchSuppliers"
       :search-products="searchProducts"
       :initial="purchase"
+      :preselected-product="preselectedProduct"
       :disabled="purchase?.status === 'Completed'"
       :saving="saving"
       @save="save"

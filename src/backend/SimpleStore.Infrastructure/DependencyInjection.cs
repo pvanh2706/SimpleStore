@@ -34,6 +34,7 @@ public static class DependencyInjection
             provider.GetRequiredService<Slice5BRepository>());
         services.AddScoped<ISlice6ARepository>(provider =>
             provider.GetRequiredService<Slice5BRepository>());
+        services.AddScoped<ISlice6BRepository, Slice6BRepository>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>

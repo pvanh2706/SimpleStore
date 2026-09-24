@@ -445,6 +445,80 @@ export interface TodayExplanation {
   items: TodayEvidenceSource[]
 }
 
+export type C14AttentionKind = 'NegativeStock' | 'OutOfStock' | 'LowStockRisk'
+export type C14HistoryCoverage = 'FullSevenCompletedDays' | 'PartialObservation'
+export type C14RecentSalesEvidence = 'PositiveNetSold' | 'NoPositiveNetSold'
+export type C14RiskEvaluation = 'Eligible' | 'InsufficientFullHistory' | 'NoPositiveSalesEvidence'
+export type C14ExperimentEventType = 'TodayOpened' | 'SignalShown' | 'WhyOpened' | 'PurchaseDraftStarted'
+
+export interface C14BusinessDate {
+  businessDate: string
+  startUtc: string
+  endUtc: string
+}
+
+export interface C14AttentionItem {
+  productId: string
+  productName: string
+  sku: string
+  unit: string
+  attentionKind: C14AttentionKind
+  currentStock: number
+  netSoldQuantity: number
+  averageDailySales: number | null
+  daysOfCover: number | null
+  historyCoverage: C14HistoryCoverage
+  recentSalesEvidence: C14RecentSalesEvidence
+  riskEvaluation: C14RiskEvaluation
+}
+
+export interface C14AttentionList {
+  businessDate: string
+  timeZoneId: string
+  velocityStartUtc: string
+  velocityEndUtc: string
+  completedBusinessDays: C14BusinessDate[]
+  evaluationCoverage: C14HistoryCoverage
+  totalAttentionCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+  items: C14AttentionItem[]
+}
+
+export interface C14SourceEvidence {
+  sourceType: 'Sale' | 'Return' | 'SaleVoid'
+  sourceId: string
+  relatedAggregateId: string | null
+  occurredAt: string
+  businessDate: string
+  productId: string
+  quantityContribution: number
+  navigation: TodaySourceNavigation
+}
+
+export interface C14AttentionDetail extends C14AttentionItem {
+  businessDate: string
+  timeZoneId: string
+  velocityStartUtc: string
+  velocityEndUtc: string
+  completedBusinessDays: C14BusinessDate[]
+  formulaInputs: {
+    saleQuantity: number
+    returnQuantity: number
+    saleVoidQuantity: number
+    denominator: number
+  }
+  evidence: C14SourceEvidence[]
+}
+
+export interface C14ExperimentEventInput {
+  eventId: string
+  eventType: C14ExperimentEventType
+  productId: string | null
+  attentionKind: C14AttentionKind | null
+}
+
 export interface ReturnLine {
   id: string
   originalSaleLineId: string

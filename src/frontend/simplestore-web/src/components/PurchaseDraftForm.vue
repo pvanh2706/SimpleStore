@@ -2,13 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import type { ProductListItem, ProductPage, Purchase, PurchaseWriteInput, SupplierPage } from '../api/types'
 
-interface DraftLine { productId: string; quantity: number; unitPrice: number }
+interface DraftLine { productId: string; quantity: number | null; unitPrice: number | null }
 interface SelectedSupplier { id: string; name: string }
 
 const props = defineProps<{
   searchSuppliers: (search: string, page: number) => Promise<SupplierPage>
   searchProducts: (search: string, page: number) => Promise<ProductPage>
   initial?: Purchase | null
+  preselectedProduct?: ProductListItem | null
   disabled?: boolean
   saving?: boolean
 }>()
@@ -20,12 +21,19 @@ const selectedSupplier = ref<SelectedSupplier | null>(props.initial
   : null)
 const lines = ref<DraftLine[]>(props.initial?.lines.map((line) => ({
   productId: line.productId, quantity: line.quantity, unitPrice: line.unitPrice,
-})) ?? [])
+})) ?? (props.preselectedProduct
+  ? [{ productId: props.preselectedProduct.id, quantity: null, unitPrice: null }]
+  : []))
 const selectedProducts = ref<Record<string, ProductListItem>>(
-  Object.fromEntries((props.initial?.lines ?? []).map((line) => [line.productId, {
-    id: line.productId, sku: '', barcode: null, name: line.productName,
-    unit: line.productUnit, salePrice: 0, isActive: true, quantityOnHand: 0,
-  }])),
+  Object.fromEntries([
+    ...(props.initial?.lines ?? []).map((line) => [line.productId, {
+      id: line.productId, sku: '', barcode: null, name: line.productName,
+      unit: line.productUnit, salePrice: 0, isActive: true, quantityOnHand: 0,
+    }] as const),
+    ...(props.preselectedProduct
+      ? [[props.preselectedProduct.id, props.preselectedProduct] as const]
+      : []),
+  ]),
 )
 const supplierQuery = ref('')
 const productQuery = ref('')
@@ -36,8 +44,8 @@ const loadingProducts = ref(false)
 const error = ref('')
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-const total = computed(() => lines.value.reduce(
-  (sum, line) => sum + roundMoney(line.quantity * line.unitPrice), 0))
+const lineAmount = (line: DraftLine) => roundMoney((line.quantity ?? 0) * (line.unitPrice ?? 0))
+const total = computed(() => lines.value.reduce((sum, line) => sum + lineAmount(line), 0))
 const productById = (id: string) => selectedProducts.value[id]
 
 async function loadSuppliers(page = 1) {
@@ -78,7 +86,19 @@ function addProduct(product: ProductListItem) {
 function submit() {
   error.value = ''
   if (!supplierId.value) { error.value = 'Hãy chọn nhà cung cấp.'; return }
-  emit('save', { supplierId: supplierId.value, lines: lines.value.map((line) => ({ ...line })) })
+  if (lines.value.some(line => line.quantity === null || line.quantity <= 0
+    || line.unitPrice === null || line.unitPrice < 0)) {
+    error.value = 'Hãy nhập số lượng và giá nhập hợp lệ cho từng sản phẩm.'
+    return
+  }
+  emit('save', {
+    supplierId: supplierId.value,
+    lines: lines.value.map(line => ({
+      productId: line.productId,
+      quantity: line.quantity!,
+      unitPrice: line.unitPrice!,
+    })),
+  })
 }
 
 onMounted(() => Promise.all([loadSuppliers(), loadProducts()]))
@@ -136,7 +156,7 @@ onMounted(() => Promise.all([loadSuppliers(), loadProducts()]))
         <p v-if="lines.length === 0" class="p-6 text-slate-500">Chưa có sản phẩm.</p>
         <table v-else class="w-full min-w-[680px] text-left text-sm">
           <thead class="border-b bg-stone-50"><tr><th class="p-4">Sản phẩm</th><th>Số lượng</th><th>Giá nhập</th><th>Thành tiền</th><th></th></tr></thead>
-          <tbody><tr v-for="(line, index) in lines" :key="line.productId" class="border-b last:border-0"><td class="p-4 font-semibold">{{ productById(line.productId)?.name }}</td><td><input v-model.number="line.quantity" class="input w-28" type="number" min="0.001" step="0.001" aria-label="Số lượng" /></td><td><input v-model.number="line.unitPrice" class="input w-36" type="number" min="0" step="0.01" aria-label="Giá nhập" /></td><td>{{ new Intl.NumberFormat('vi-VN').format(roundMoney(line.quantity * line.unitPrice)) }} ₫</td><td><button class="text-red-700" type="button" @click="lines.splice(index, 1)">Xóa</button></td></tr></tbody>
+          <tbody><tr v-for="(line, index) in lines" :key="line.productId" class="border-b last:border-0"><td class="p-4 font-semibold">{{ productById(line.productId)?.name }}</td><td><input v-model.number="line.quantity" class="input w-28" type="number" min="0.001" step="0.001" aria-label="Số lượng" /></td><td><input v-model.number="line.unitPrice" class="input w-36" type="number" min="0" step="0.01" aria-label="Giá nhập" /></td><td>{{ new Intl.NumberFormat('vi-VN').format(lineAmount(line)) }} ₫</td><td><button class="text-red-700" type="button" @click="lines.splice(index, 1)">Xóa</button></td></tr></tbody>
         </table>
       </div>
       <div class="flex items-center justify-between"><strong>Tổng dự kiến: {{ new Intl.NumberFormat('vi-VN').format(total) }} ₫</strong><button class="btn-primary" type="submit">{{ saving ? 'Đang lưu…' : 'Lưu nháp' }}</button></div>

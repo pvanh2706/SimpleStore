@@ -1,17 +1,31 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import { apiRequest } from '../api/client'
-import type { TodayExplanation, TodayMetricId, TodaySourceNavigation, TodaySummary } from '../api/types'
+import { recordC14EventBestEffort } from '../api/c14Telemetry'
+import type { C14AttentionItem, C14AttentionKind, C14AttentionList, TodayExplanation, TodayMetricId, TodaySourceNavigation, TodaySummary } from '../api/types'
 
 const summary = ref<TodaySummary | null>(null)
+const attention = ref<C14AttentionList | null>(null)
 const explanation = ref<TodayExplanation | null>(null)
 const loading = ref(true)
+const attentionLoading = ref(true)
 const explanationLoading = ref(false)
 const message = ref('')
+const attentionMessage = ref('')
 const explanationMessage = ref('')
+const signalAttempts = new Set<string>()
+const observedItems = new Map<Element, C14AttentionItem>()
+let visibilityObserver: IntersectionObserver | null = null
+let todayOpenedAttempted = false
 const money = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`
+
+const attentionLabels: Record<C14AttentionKind, string> = {
+  NegativeStock: 'Tồn kho đang âm',
+  OutOfStock: 'Đã hết hàng',
+  LowStockRisk: 'Có nguy cơ sắp hết hàng',
+}
 
 const metricLabels: Record<TodayMetricId, string> = {
   revenue: 'Doanh thu hôm nay',
@@ -62,11 +76,50 @@ async function loadSummary() {
   message.value = ''
   try {
     summary.value = await apiRequest<TodaySummary>('/api/today')
+    await nextTick()
+    if (!todayOpenedAttempted) {
+      todayOpenedAttempted = true
+      void recordC14EventBestEffort('TodayOpened')
+    }
   } catch (reason) {
     message.value = reason instanceof Error ? reason.message : 'Không thể tải thông tin hôm nay.'
   } finally {
     loading.value = false
   }
+}
+
+async function loadAttention() {
+  attentionLoading.value = true
+  attentionMessage.value = ''
+  try {
+    attention.value = await apiRequest<C14AttentionList>('/api/today/attention?page=1&pageSize=3')
+  } catch (reason) {
+    attentionMessage.value = reason instanceof Error ? reason.message : 'Không thể tải các mặt hàng cần chú ý.'
+  } finally {
+    attentionLoading.value = false
+  }
+}
+
+function signalKey(item: C14AttentionItem) {
+  return `${item.productId}:${item.attentionKind}`
+}
+
+function emitSignalShown(item: C14AttentionItem) {
+  const key = signalKey(item)
+  if (signalAttempts.has(key)) return
+  signalAttempts.add(key)
+  void recordC14EventBestEffort('SignalShown', item.productId, item.attentionKind)
+}
+
+function observeAttention(element: unknown, item: C14AttentionItem) {
+  if (!(element instanceof Element)) return
+  observedItems.set(element, item)
+  if (visibilityObserver) visibilityObserver.observe(element)
+  else emitSignalShown(item)
+}
+
+function openAttention(item: C14AttentionItem) {
+  void recordC14EventBestEffort('WhyOpened', item.productId, item.attentionKind)
 }
 
 async function showExplanation(metric: TodayMetricId) {
@@ -100,7 +153,22 @@ async function changeExplanationPage(page: number) {
   }
 }
 
-onMounted(loadSummary)
+onMounted(() => {
+  if (typeof IntersectionObserver !== 'undefined') {
+    visibilityObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        const item = observedItems.get(entry.target)
+        if (item) emitSignalShown(item)
+        visibilityObserver?.unobserve(entry.target)
+      }
+    })
+  }
+  void loadSummary()
+  void loadAttention()
+})
+
+onBeforeUnmount(() => visibilityObserver?.disconnect())
 </script>
 
 <template>
@@ -141,6 +209,53 @@ onMounted(loadSummary)
         </section>
       </div>
     </template>
+
+    <section class="card mt-6" aria-labelledby="attention-heading">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="attention-heading" class="text-2xl font-black">Cần chú ý</h2>
+          <p v-if="attention" class="mt-1 text-sm text-slate-500">{{ attention.totalAttentionCount }} mặt hàng</p>
+        </div>
+        <RouterLink
+          v-if="attention && attention.totalAttentionCount > 3"
+          class="text-sm font-bold text-emerald-700"
+          :to="{ name: 'attention-list' }"
+        >
+          Xem tất cả {{ attention.totalAttentionCount }} mặt hàng
+        </RouterLink>
+      </div>
+      <p v-if="attentionLoading" class="mt-4 text-slate-500">Đang tải tín hiệu…</p>
+      <p v-if="attentionMessage" class="error mt-4" role="alert">{{ attentionMessage }}</p>
+      <template v-if="attention && !attentionLoading">
+        <p v-if="attention.items.length === 0" class="mt-4 text-slate-600">
+          {{ attention.evaluationCoverage === 'PartialObservation'
+            ? 'Chưa đủ 7 ngày lịch sử để đưa ra kết luận mạnh về nguy cơ sắp hết hàng.'
+            : 'Hiện chưa có mặt hàng nào thỏa điều kiện tín hiệu C14.' }}
+        </p>
+        <ul v-else class="mt-4 grid gap-3 lg:grid-cols-3">
+          <li
+            v-for="item in attention.items"
+            :key="`${item.productId}-${item.attentionKind}`"
+            :ref="element => observeAttention(element, item)"
+            class="rounded-xl border border-stone-200 p-4"
+            data-testid="attention-preview-item"
+          >
+            <strong>{{ item.productName }}</strong>
+            <p :class="item.attentionKind === 'LowStockRisk' ? 'text-amber-700' : 'text-red-700'">
+              {{ attentionLabels[item.attentionKind] }}
+            </p>
+            <p class="mt-2 text-sm text-slate-600">Tồn hiện tại: {{ item.currentStock }}</p>
+            <p v-if="item.averageDailySales !== null" class="text-sm text-slate-600">Bán TB/ngày: {{ item.averageDailySales.toFixed(2) }}</p>
+            <p v-if="item.daysOfCover !== null" class="text-sm text-slate-600">Chỉ số ngày tồn: {{ item.daysOfCover.toFixed(2) }}</p>
+            <RouterLink
+              class="mt-3 inline-block text-sm font-bold text-emerald-700"
+              :to="{ name: 'attention-detail', params: { productId: item.productId } }"
+              @click="openAttention(item)"
+            >Xem vì sao</RouterLink>
+          </li>
+        </ul>
+      </template>
+    </section>
 
     <section v-if="explanationLoading || explanationMessage || explanation" class="card mt-6" aria-live="polite">
       <p v-if="explanationLoading" class="text-slate-500">Đang tải dữ liệu nguồn…</p>

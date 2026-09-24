@@ -100,4 +100,26 @@ describe('PurchaseDraftForm', () => {
     })
     expect(wrapper.get('fieldset').attributes('disabled')).toBeDefined()
   })
+
+  it('preselects only C14 product identity without supplier quantity or unit price', async () => {
+    const wrapper = mount(PurchaseDraftForm, {
+      props: {
+        initial: null,
+        preselectedProduct: products[0],
+        searchSuppliers: vi.fn().mockResolvedValue(supplierPage([])),
+        searchProducts: vi.fn().mockResolvedValue(productPage([])),
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Hàng ngoài 100')
+    expect(wrapper.text()).toContain('Chưa chọn nhà cung cấp.')
+    expect((wrapper.get('input[aria-label="Số lượng"]').element as HTMLInputElement).value).toBe('')
+    expect((wrapper.get('input[aria-label="Giá nhập"]').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.emitted('save')).toBeUndefined()
+
+    await wrapper.get('button[type="submit"]').trigger('submit')
+    expect(wrapper.text()).toContain('Hãy chọn nhà cung cấp.')
+    expect(wrapper.emitted('save')).toBeUndefined()
+  })
 })

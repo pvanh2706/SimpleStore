@@ -13,6 +13,7 @@ using SimpleStore.Domain.Corrections;
 using SimpleStore.Domain.Debts;
 using SimpleStore.Domain.Stores;
 using SimpleStore.Domain.Suppliers;
+using SimpleStore.Domain.Experiments;
 using SimpleStore.Infrastructure.Identity;
 
 namespace SimpleStore.Infrastructure.Persistence;
@@ -63,6 +64,8 @@ public sealed class ApplicationDbContext(
     public DbSet<PurchaseVoid> PurchaseVoids => Set<PurchaseVoid>();
     public DbSet<PurchaseLineReversalBasis> PurchaseLineReversalBases => Set<PurchaseLineReversalBasis>();
     public DbSet<DebtPayment> DebtPayments => Set<DebtPayment>();
+
+    public DbSet<C14ExperimentEvent> C14ExperimentEvents => Set<C14ExperimentEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
