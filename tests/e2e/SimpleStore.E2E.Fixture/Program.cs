@@ -1,12 +1,15 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SimpleStore.Domain.Corrections;
+using SimpleStore.Domain.Customers;
+using SimpleStore.Domain.Debts;
 using SimpleStore.Domain.Inventory;
 using SimpleStore.Domain.Products;
 using SimpleStore.Domain.Purchases;
 using SimpleStore.Domain.Returns;
 using SimpleStore.Domain.Sales;
 using SimpleStore.Domain.Stores;
+using SimpleStore.Domain.Suppliers;
 using SimpleStore.Infrastructure.Persistence;
 
 var command = args.FirstOrDefault()
@@ -32,6 +35,13 @@ if (command.Equals("seed", StringComparison.OrdinalIgnoreCase))
     return;
 }
 
+if (command.Equals("seed-today-semantics", StringComparison.OrdinalIgnoreCase))
+{
+    var result = await SeedTodaySemanticsAsync(db, storeId, owner.Id);
+    Console.WriteLine(JsonSerializer.Serialize(result, jsonOptions));
+    return;
+}
+
 if (command.Equals("snapshot", StringComparison.OrdinalIgnoreCase))
 {
     var eventCounts = await db.C14ExperimentEvents
@@ -51,6 +61,154 @@ if (command.Equals("snapshot", StringComparison.OrdinalIgnoreCase))
 }
 
 throw new InvalidOperationException($"Unknown fixture command '{command}'.");
+
+static async Task<TodaySemanticsSeedResult> SeedTodaySemanticsAsync(
+    ApplicationDbContext db,
+    Guid storeId,
+    Guid actorUserId)
+{
+    const string skuPrefix = "S6TODAY-";
+    if (await db.Products.AnyAsync(product =>
+            product.StoreId == storeId && product.Sku.StartsWith(skuPrefix)))
+    {
+        throw new InvalidOperationException("Today semantics fixture was already seeded.");
+    }
+
+    var store = await db.Stores.SingleAsync(item => item.Id == storeId);
+    var warehouse = await db.Warehouses.SingleAsync(item =>
+        item.StoreId == storeId && item.IsMain);
+    var currentWindow = BusinessDateWindow.Resolve(
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(
+            DateTimeOffset.UtcNow,
+            TimeZoneInfo.FindSystemTimeZoneById(store.TimeZoneId)).DateTime),
+        store.TimeZoneId);
+    var start = currentWindow.StartUtc;
+
+    var customer = Customer.Create(
+        storeId, "Today semantics customer", "0906000001", start.AddMinutes(1));
+    var customerProduct = CreateProduct(
+        storeId, $"{skuPrefix}CUSTOMER", "Today customer debt product", start.AddMinutes(1));
+    var correctionProduct = CreateProduct(
+        storeId, $"{skuPrefix}COUNT", "Today SaleCount product", start.AddMinutes(1));
+    var supplierProduct = CreateProduct(
+        storeId, $"{skuPrefix}SUPPLIER", "Today supplier debt product", start.AddMinutes(1));
+    var supplier = Supplier.Create(
+        storeId, "Today semantics supplier", null, null, start.AddMinutes(1));
+    db.Customers.Add(customer);
+    db.Products.AddRange(customerProduct, correctionProduct, supplierProduct);
+    db.Suppliers.Add(supplier);
+
+    var customerSale = CreateCreditSale(
+        storeId, warehouse.Id, actorUserId, customer.Id, customerProduct,
+        1, 1_000_000, start.AddHours(1));
+    var customerLine = customerSale.Lines.Single();
+    var customerDebtPayment = DebtPayment.RecordCustomerCollection(
+        storeId,
+        Guid.NewGuid(),
+        customer.Id,
+        1_000_000,
+        PaymentMethod.Cash,
+        "Standalone payment must not reduce new debt created",
+        start.AddHours(2),
+        actorUserId);
+    var customerReturn = CustomerReturn.Complete(
+        storeId,
+        customerSale.Id,
+        actorUserId,
+        [new ReturnLineInput(
+            customerLine.Id,
+            customerProduct.Id,
+            0.3m,
+            false,
+            1_000_000,
+            300_000,
+            customerLine.UnitCostAtSale,
+            0)],
+        300_000,
+        PaymentMethod.Cash,
+        start.AddHours(3));
+
+    var fullReturnSale = CreateCreditSale(
+        storeId, warehouse.Id, actorUserId, customer.Id, correctionProduct,
+        1, 100_000, start.AddHours(4));
+    var fullReturnLine = fullReturnSale.Lines.Single();
+    var fullReturn = CustomerReturn.Complete(
+        storeId,
+        fullReturnSale.Id,
+        actorUserId,
+        [new ReturnLineInput(
+            fullReturnLine.Id,
+            correctionProduct.Id,
+            1,
+            false,
+            100_000,
+            100_000,
+            fullReturnLine.UnitCostAtSale,
+            0)],
+        0,
+        null,
+        start.AddHours(5));
+
+    var sameDayVoidSale = CreateCreditSale(
+        storeId, warehouse.Id, actorUserId, customer.Id, correctionProduct,
+        1, 100_000, start.AddHours(6));
+    var sameDayVoid = SaleVoid.Create(
+        storeId,
+        sameDayVoidSale.Id,
+        "Same-day SaleCount fixture",
+        actorUserId,
+        start.AddHours(7));
+
+    var crossDaySale = CreateCreditSale(
+        storeId, warehouse.Id, actorUserId, customer.Id, correctionProduct,
+        1, 100_000, start.AddHours(-1));
+    var crossDayVoid = SaleVoid.Create(
+        storeId,
+        crossDaySale.Id,
+        "Cross-day SaleCount fixture",
+        actorUserId,
+        start.AddHours(8));
+
+    var supplierPurchase = Purchase.CreateDraft(
+        storeId,
+        supplier.Id,
+        actorUserId,
+        [new PurchaseLineInput(supplierProduct.Id, 1, 500_000)],
+        start.AddHours(9));
+    supplierPurchase.Complete(
+        [new PurchasePaymentInput(200_000, PaymentMethod.Cash)],
+        actorUserId,
+        start.AddHours(9));
+    var supplierDebtPayment = DebtPayment.RecordSupplierSettlement(
+        storeId,
+        Guid.NewGuid(),
+        supplier.Id,
+        300_000,
+        PaymentMethod.Transfer,
+        "Standalone payment must not reduce new debt created",
+        start.AddHours(10),
+        actorUserId);
+
+    db.Sales.AddRange(customerSale, fullReturnSale, sameDayVoidSale, crossDaySale);
+    db.Returns.AddRange(customerReturn, fullReturn);
+    db.SaleVoids.AddRange(sameDayVoid, crossDayVoid);
+    db.DebtPayments.AddRange(customerDebtPayment, supplierDebtPayment);
+    db.Purchases.Add(supplierPurchase);
+    await db.SaveChangesAsync();
+
+    return new TodaySemanticsSeedResult(
+        customerSale.Id,
+        customerDebtPayment.Id,
+        customerReturn.Id,
+        fullReturnSale.Id,
+        fullReturn.Id,
+        sameDayVoidSale.Id,
+        sameDayVoid.Id,
+        crossDaySale.Id,
+        crossDayVoid.Id,
+        supplierPurchase.Id,
+        supplierDebtPayment.Id);
+}
 
 static async Task SeedAsync(ApplicationDbContext db, Guid storeId, Guid actorUserId)
 {
@@ -182,3 +340,42 @@ static Sale CreateSale(
         [new SalePaymentInput(total, PaymentMethod.Cash)],
         completedAt);
 }
+
+static Sale CreateCreditSale(
+    Guid storeId,
+    Guid warehouseId,
+    Guid actorUserId,
+    Guid customerId,
+    Product product,
+    decimal quantity,
+    decimal unitSalePrice,
+    DateTimeOffset completedAt) =>
+    Sale.Complete(
+        storeId,
+        warehouseId,
+        customerId,
+        actorUserId,
+        [new SaleLineInput(
+            product.Id,
+            product.Name,
+            product.Sku,
+            product.Unit,
+            quantity,
+            unitSalePrice,
+            product.ReferencePurchaseCost ?? 0,
+            CostReliability.Reliable)],
+        [],
+        completedAt);
+
+internal sealed record TodaySemanticsSeedResult(
+    Guid CustomerSaleId,
+    Guid CustomerDebtPaymentId,
+    Guid CustomerReturnId,
+    Guid FullReturnSaleId,
+    Guid FullReturnId,
+    Guid SameDayVoidSaleId,
+    Guid SameDayVoidId,
+    Guid CrossDaySaleId,
+    Guid CrossDayVoidId,
+    Guid SupplierPurchaseId,
+    Guid SupplierDebtPaymentId);

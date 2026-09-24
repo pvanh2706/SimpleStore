@@ -604,6 +604,8 @@ No automated code labels C14 validated from CTR/count. Pilot/research must separ
 - real E2E: seed 7 completed Store-local days, partial Store/Product history, active/inactive Products, Sale/Return/Void quantity and stock; verify D-071/D-072 attention, action transition and deduplicated measurement rows through Vue → API → SQL Server.
 - full Slice 1–5 backend/frontend/real-flow regressions remain green; no test deletion/skip to force green.
 
+- Implemented real evidence after review hardening: 2/2 Playwright scenarios pass against temporary LocalDB. Today UI cards/explanations verify D-069 `1,000,000` Sale, `0` direct payment, `1,000,000` standalone CustomerDebtPayment, `300,000` same-day Return/refund and final `700,000`; D-070 partial/full Return count, same-day Void zero contribution and cross-day Void exclusion; Supplier `500,000 - 200,000 = 300,000` despite standalone SupplierDebtPayment. The separate C14 scenario continues to verify preview/list/detail/evidence, action transition and persisted/deduplicated measurement.
+
 ## 16. Approved implementation staging — D-073
 
 ### Stage 6A — Today/C12/C13 reporting foundation
@@ -629,7 +631,7 @@ Approved implementation: EOD và Today dùng chung `DailyFinancialProjection`; T
 - narrow immutable C14 experiment events và additive migration cần thiết cho approved design;
 - full frontend, SQL Server integration and real local E2E/regression.
 
-Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. D-074 approve và complete riêng Stage 6A. Stage 6B implementation commit `17e03c23c83630b84535fdb7be0a41ce16a99b6f` đã hoàn tất scope trên với migration additive `20260924010903_ImplementSlice6Stage6BC14`; local backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88, frontend build và 100/100 tests, real Slice 6 Playwright 1/1 đều pass. Clean migration/app startup và current-schema upgrade/data preservation đã được verify. Stage 6B vẫn cần Product Owner review riêng; trạng thái chưa phải `APPROVED / COMPLETED`. Baseline trước implementation `0b3a77992a3a01ff0881f598ed2c4e14f86855c8` có GitHub Actions run #41 / `35894463232` `SUCCESS`; implementation/docs head `610b53d8c31a7d5d70b07a6883c47ad146ee1944` có run #42 / `35944048457` `SUCCESS` với backend/frontend jobs `SUCCESS`; không tuyên bố CI chạy real E2E.
+Stage 6A/6B names, contents and order là approved implementation sequence theo D-073. D-074 approve và complete riêng Stage 6A. Stage 6B implementation commit `17e03c23c83630b84535fdb7be0a41ce16a99b6f` đã hoàn tất scope trên với migration additive `20260924010903_ImplementSlice6Stage6BC14`; review-hardening regression pass backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88, frontend build và 100/100 tests, real Slice 6 Playwright 2/2. Clean migration/app startup và current-schema upgrade/data preservation đã được verify. Stage 6B vẫn cần Product Owner review riêng; trạng thái chưa phải `APPROVED / COMPLETED`. Baseline trước implementation `0b3a77992a3a01ff0881f598ed2c4e14f86855c8` có GitHub Actions run #41 / `35894463232` `SUCCESS`; implementation/docs run #42 / `35944048457` và final docs run #43 / `35944540478` đều `SUCCESS`; không tuyên bố CI chạy real E2E.
 
 ## 17. Definition of Done proposal
 

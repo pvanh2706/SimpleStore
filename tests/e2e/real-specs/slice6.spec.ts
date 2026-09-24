@@ -18,7 +18,21 @@ interface FixtureSnapshot {
   purchaseCount: number
 }
 
-function runFixture(command: 'seed' | 'snapshot') {
+interface TodaySemanticsSeedResult {
+  customerSaleId: string
+  customerDebtPaymentId: string
+  customerReturnId: string
+  fullReturnSaleId: string
+  fullReturnId: string
+  sameDayVoidSaleId: string
+  sameDayVoidId: string
+  crossDaySaleId: string
+  crossDayVoidId: string
+  supplierPurchaseId: string
+  supplierDebtPaymentId: string
+}
+
+function runFixture(command: 'seed' | 'seed-today-semantics' | 'snapshot') {
   const output = execFileSync('dotnet', [
     'run', '--project', fixtureProject, '--configuration', 'Release', '--no-build', '--', command,
   ], { encoding: 'utf8', env: process.env })
@@ -35,12 +49,21 @@ async function login(page: Page) {
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)
   await page.locator('button[type="submit"]').click()
-  await expect(page).toHaveURL(/\/(setup|products)$/)
+  await expect(page).toHaveURL(/\/(setup|products|today)$/)
   if (page.url().endsWith('/setup')) {
     await page.locator('#store-name').fill(`Cửa hàng Slice 6 ${runId}`)
     await page.locator('button[type="submit"]').click()
     await expect(page).toHaveURL(/\/products$/)
   }
+}
+
+async function openMetricExplanation(page: Page, metricLabel: string) {
+  await page.getByText(metricLabel, { exact: true })
+    .first()
+    .locator('..')
+    .getByRole('button', { name: 'Vì sao?' })
+    .click()
+  await expect(page.getByText(/^Dữ liệu nguồn ·/)).toBeVisible()
 }
 
 test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
@@ -117,5 +140,58 @@ test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
       purchaseDraftStarted: 1,
       purchaseCount: 0,
     })
+  })
+
+  test('Owner sees D-069 and D-070 Today semantics through cards and explanations', async ({ page }) => {
+    await login(page)
+    const seeded = runFixture('seed-today-semantics') as TodaySemanticsSeedResult
+
+    await page.goto('/today')
+    await expect(page.getByRole('heading', { name: 'Hôm nay cửa hàng thế nào?' })).toBeVisible()
+
+    const customerDebtCard = page.getByText('Công nợ khách mới phát sinh', { exact: true })
+      .first()
+      .locator('..')
+    const supplierDebtCard = page.getByText('Công nợ nhà cung cấp mới phát sinh', { exact: true })
+      .first()
+      .locator('..')
+    const saleCountCard = page.getByText('Số đơn bán', { exact: true })
+      .first()
+      .locator('..')
+    await expect(customerDebtCard).toContainText('700.000 ₫')
+    await expect(supplierDebtCard).toContainText('300.000 ₫')
+    await expect(saleCountCard).toContainText('2')
+
+    await openMetricExplanation(page, 'Công nợ khách mới phát sinh')
+    const customerEvidence = page.locator('li').filter({ hasText: seeded.customerSaleId })
+    await expect(customerEvidence).toContainText('Tổng giao dịch: 1.000.000 ₫')
+    await expect(customerEvidence).toContainText('Thanh toán trực tiếp: 0 ₫')
+    await expect(customerEvidence).toContainText('Nghĩa vụ cơ sở: 1.000.000 ₫')
+    await expect(customerEvidence).toContainText('Return cùng ngày: 300.000 ₫')
+    await expect(customerEvidence).toContainText('Đóng góp cuối: 700.000 ₫')
+    await expect(page.getByText(seeded.customerDebtPaymentId)).toHaveCount(0)
+    await page.getByRole('button', { name: 'Đóng' }).click()
+
+    await openMetricExplanation(page, 'Số đơn bán')
+    await expect(page.getByText('Dữ liệu nguồn · 3 mục')).toBeVisible()
+    const partialReturnCount = page.locator('li').filter({ hasText: seeded.customerSaleId })
+    const fullReturnCount = page.locator('li').filter({ hasText: seeded.fullReturnSaleId })
+    const sameDayVoidCount = page.locator('li').filter({ hasText: seeded.sameDayVoidSaleId })
+    await expect(partialReturnCount).toContainText('Đơn bán được tính')
+    await expect(partialReturnCount.getByText('1', { exact: true })).toBeVisible()
+    await expect(fullReturnCount).toContainText('Đơn bán được tính')
+    await expect(fullReturnCount.getByText('1', { exact: true })).toBeVisible()
+    await expect(sameDayVoidCount).toContainText('Đơn bán bị hủy cùng ngày')
+    await expect(sameDayVoidCount.getByText('0', { exact: true })).toBeVisible()
+    await expect(page.getByText(seeded.crossDaySaleId)).toHaveCount(0)
+    await page.getByRole('button', { name: 'Đóng' }).click()
+
+    await openMetricExplanation(page, 'Công nợ nhà cung cấp mới phát sinh')
+    const supplierEvidence = page.locator('li').filter({ hasText: seeded.supplierPurchaseId })
+    await expect(supplierEvidence).toContainText('Tổng giao dịch: 500.000 ₫')
+    await expect(supplierEvidence).toContainText('Thanh toán trực tiếp: 200.000 ₫')
+    await expect(supplierEvidence).toContainText('Nghĩa vụ cơ sở: 300.000 ₫')
+    await expect(supplierEvidence).toContainText('Đóng góp cuối: 300.000 ₫')
+    await expect(page.getByText(seeded.supplierDebtPaymentId)).toHaveCount(0)
   })
 })
