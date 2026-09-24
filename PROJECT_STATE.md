@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**Slice 6 — Understand & Act: Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `NOT STARTED`**
+**Slice 6 — Understand & Act: Stage 6A `APPROVED / COMPLETED` tại D-074; Stage 6B `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`**
 
 Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -61,7 +61,10 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-074 — Slice 6 Stage 6A Implementation Approval — là `APPROVED` ngày 2026-09-23; Stage 6A chuyển thành `APPROVED / COMPLETED`. Không còn known Stage 6A blocker.
 - Stage 6A approved scope gồm shared EOD/Today financial projection, backend-authoritative Store-local Today, Owner-only summary/explanations, D-069 new-debt-created, D-070 SaleCount, backend-selected typed source drill-down, `/today` UI và role-aware default landing. Không có schema/migration mới.
 - Reviewed implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac` pass backend restore/Release build với 0 warnings, Domain 78/78, SQL Server integration 82/82, frontend frozen install/build và tests 93/93; GitHub Actions run #39 / `35891666016` là `SUCCESS`. Final docs/state head trước approval `8b11e1f7706bd25e51aca6aa21c1fd8af3baa60c` có run #40 / `35893244524` `SUCCESS`.
-- Stage 6B là `NOT STARTED`: chưa có C14 calculation/attention API, experiment events/telemetry, Product → Purchase preselection, C14 migration hoặc Stage 6B E2E.
+- Approved Stage 6A baseline `0b3a77992a3a01ff0881f598ed2c4e14f86855c8` có GitHub Actions run #41 / `35894463232` `SUCCESS` cho backend và frontend.
+- Stage 6B là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` tại implementation commit `17e03c23c83630b84535fdb7be0a41ce16a99b6f`: deterministic C14 trên đúng 7 completed Store-local days; D-071 history sufficiency; D-072 active-only candidates; SQL-aggregated Sale − Return − SaleVoid velocity; current Main Warehouse balance; Owner-only preview/list/detail/evidence APIs và UI; Product → Purchase identity-only preselection; narrow immutable `C14ExperimentEvents`; best-effort/deduplicated telemetry; additive migration `20260924010903_ImplementSlice6Stage6BC14`; SQL Server/frontend/real E2E verification.
+- Local full regression tại implementation commit: backend Release build 0 warnings, Domain 83/83, SQL Server integration 88/88; frontend build pass và tests 100/100; real Slice 6 Playwright 1/1 pass qua Vue → ASP.NET Core → temporary LocalDB. Clean migration/app startup được thực thi bởi real runner; current-schema upgrade/data preservation được cover bởi SQL Server migration integration test. CI không được ghi nhận là chạy real Playwright E2E.
+- Giới hạn có chủ ý: C14 là descriptive deterministic experiment, không AI/forecast/replenishment/recommendation; measurement failure không chặn business flow và event counts không tự chứng minh product value. Local Node 22 phát engine warning vì workspace yêu cầu Node >=24, nhưng frozen install/build/tests đều pass.
 
 ## Tiến độ
 
@@ -173,14 +176,14 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Bắt đầu Stage 6B — C14/action/measurement/E2E theo D-073.** Stage 6B hiện vẫn `NOT STARTED`; D-074 chỉ approve Stage 6A.
+**Product Owner review / approval Stage 6B tại implementation commit `17e03c23c83630b84535fdb7be0a41ce16a99b6f`.** Không tự chuyển Stage 6B hoặc toàn bộ Slice 6 sang `APPROVED / COMPLETED`; D-074 chỉ approve Stage 6A và không có D-075 được tạo trong implementation này.
 
 ## Chưa triển khai
 
 - Ngoài phạm vi: General Ledger, accounting close/reopen, full cashbook, debt aging, invoice-level settlement allocation, customer credit balance, supplier advance, financial statements, operating-expense accounting, net profit, BI dashboard và AI.
-- Slice 6 Stage 6B (C14/action/measurement/E2E), HĐĐT và các capability chưa được triển khai khác.
+- HĐĐT và các capability chưa được triển khai khác; Stage 6B đã implement nhưng vẫn chờ Product Owner review/approval.
 - Real Slice 1–5B Playwright flows chạy local trên Windows/LocalDB; CI tiếp tục dùng SQL Server integration tests và chưa chạy real E2E.
 
 ## Cập nhật gần nhất
 
-2026-09-24 — Product Owner approval D-074 chuyển Stage 6A thành `APPROVED / COMPLETED` sau review implementation head `14703c54882f10eceaee69fa41f09e2315eab8ac` và docs/state head `8b11e1f7706bd25e51aca6aa21c1fd8af3baa60c`; GitHub Actions run #39 / `35891666016` và run #40 / `35893244524` đều `SUCCESS`. Không có migration/schema change; Stage 6B vẫn `NOT STARTED` và là bước tiếp theo theo D-073; Slice 5 giữ `APPROVED / COMPLETED` tại D-060.
+2026-09-24 — Stage 6B được implement tại `17e03c23c83630b84535fdb7be0a41ce16a99b6f` theo D-073, với migration additive `20260924010903_ImplementSlice6Stage6BC14`, backend 83 Domain + 88 SQL Server integration tests, frontend 100 tests/build và real local Slice 6 E2E 1/1 đều pass. Stage 6A giữ `APPROVED / COMPLETED` tại D-074; Stage 6B là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; không tạo D-075 và không tự approve Stage 6B/Slice 6. Baseline CI run #41 / `35894463232` tại `0b3a77992a3a01ff0881f598ed2c4e14f86855c8` là `SUCCESS`; CI của implementation sẽ được ghi nhận khi có.
