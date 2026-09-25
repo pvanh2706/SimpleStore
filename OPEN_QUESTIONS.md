@@ -69,7 +69,7 @@ Tài liệu: [MVP User Flows v0.1](docs/ux/mvp-user-flows-v0.1.md). Chưa chốt
 
 ## Resolved Pilot Readiness Questions — D-085–D-091
 
-[Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) vẫn ở trạng thái `DRAFT / PENDING PRODUCT OWNER REVIEW`; PR-Q1–PR-Q7 đã được Product Owner resolve nhưng chưa có nghĩa Technical Breakdown được approve hoặc implementation được authorize.
+[Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) đã được Product Owner approve tại D-092 với trạng thái `APPROVED FOR IMPLEMENTATION`; PR-Q1–PR-Q7 vẫn giữ resolved tại D-085–D-091 và không được reopen.
 
 - PR-Q1 → D-085: explicit one-shot admin CLI/command cho first Owner, do authorized deployment operator chạy; không public endpoint, Production seeder hoặc normal-flow manual SQL.
 - PR-Q2 → D-086: temporary Cashier password + mandatory change; pre-change session chỉ cho password change/logout/minimal auth state; reset/disable invalidates sessions.

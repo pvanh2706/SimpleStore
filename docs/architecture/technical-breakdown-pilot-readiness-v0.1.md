@@ -2,11 +2,11 @@
 
 ## Trạng thái
 
-`DRAFT / PENDING PRODUCT OWNER REVIEW`
+`APPROVED FOR IMPLEMENTATION — D-092`
 
-Implementation baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; draft baseline trước decision alignment: `0cab9d3a6afcae011c1c43af2826f496fef78c0e`. GitHub Actions run #47 / `36001349239` và draft run #48 / `36017798255` đều `SUCCESS`.
+Implementation baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; Product Owner reviewed/approved baseline: `5e5720659cee1fd400001d2a2f7c5b750e0483b6`. GitHub Actions CI #49 / `36037545751` tại approved baseline là `SUCCESS`; backend và frontend đều `SUCCESS`. Đây là approval-baseline evidence, không phải PR-A implementation evidence.
 
-Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành proposed implementation stages, contracts, operational artifacts, evidence và review gates. Đây chưa phải implementation approval. Pilot Readiness implementation vẫn `NOT STARTED`, M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
+Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A/PR-B/PR-C đều `APPROVED FOR IMPLEMENTATION / NOT STARTED`; M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
 
 ## 1. Mục tiêu và nguyên tắc
 
@@ -17,11 +17,11 @@ Technical Breakdown phải:
 - giữ nguyên behavior Slice 0–6 và toàn bộ approved C14 semantics;
 - ưu tiên một deployable application + một SQL Server database trên Windows Server/IIS;
 - không dùng document/code existence thay cho completion evidence;
-- áp dụng chính xác các Product Owner decisions D-085–D-091 đã resolve PR-Q1–PR-Q7, nhưng không tự approve Technical Breakdown hoặc đánh dấu PR-A/PR-B/PR-C/M7 complete.
+- áp dụng chính xác các Product Owner decisions D-085–D-091 đã resolve PR-Q1–PR-Q7 và approval D-092, nhưng không tự đánh dấu PR-A/PR-B/PR-C complete hoặc M7 achieved.
 
-Trình tự review/implementation đề xuất:
+Trình tự implementation/review đã approve tại D-092:
 
-`Product Owner review/approve Technical Breakdown → PR-A → PR-B → PR-C → final M7 readiness review`
+`PR-A implementation + separate review/approval → PR-B implementation + separate review/approval → PR-C implementation + separate review/approval → final M7 readiness review/approval`
 
 ## 2. Baseline implementation findings
 
@@ -51,15 +51,15 @@ Trình tự review/implementation đề xuất:
 - Vue build tạo static SPA; production hosting/publish integration và Windows/IIS deployment runbook chưa có.
 - Browser `window.print()` đã implement; completed Sale độc lập với print và reprint dùng stored Sale, nhưng chưa có target paper/printer certification.
 
-## 3. Proposed staging và blocker closure
+## 3. Approved staging và blocker closure
 
-| Stage | Trọng tâm | Blocker/gate đóng khi có evidence |
-|---|---|---|
-| PR-A — Functional pilot blockers | Production account provisioning; Stock Adjustment; Stocktake | PR-BLOCKER-01, PR-BLOCKER-02 |
-| PR-B — Operational safety | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 |
-| PR-C — Pilot certification and release gate | Printer certification, formal release evidence, onboarding/support plan, validation execution plan | PR-BLOCKER-06, PR-BLOCKER-07, Pilot operations gate, Validation readiness gate |
+| Stage | Trạng thái sau D-092 | Trọng tâm | Blocker/gate đóng khi có reviewed evidence |
+|---|---|---|---|
+| PR-A — Functional pilot blockers | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Production account provisioning; Stock Adjustment; Stocktake | PR-BLOCKER-01, PR-BLOCKER-02 |
+| PR-B — Operational safety | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 |
+| PR-C — Pilot certification and release gate | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Printer certification, formal release evidence, onboarding/support plan, validation execution plan | PR-BLOCKER-06, PR-BLOCKER-07, Pilot operations gate, Validation readiness gate |
 
-Stage order là proposed implementation order. PR-B documentation can begin while PR-A is under development, nhưng production-like smoke/restore/support exercises phải chạy trên reviewed candidate build. PR-C certification uses the resulting release candidate. M7 vẫn là separate final Product Owner gate sau cả ba stage.
+Stage order được approve tại D-092. PR-B documentation can begin while PR-A is under development, nhưng production-like smoke/restore/support exercises phải chạy trên reviewed candidate build. PR-C certification uses the resulting release candidate. Mỗi stage cần separate implementation review/approval; chưa blocker/gate nào được đóng. M7 vẫn là separate final Product Owner gate sau cả ba stage.
 
 ## 4. Stage PR-A — Production account provisioning
 
@@ -550,13 +550,10 @@ Completion of PR-A/PR-B/PR-C does not automatically set `M7 — Pilot-ready`. A 
 
 C14 remains an experiment. Technical delivery and event counts do not validate discovery, trust, decision influence, continued use or willingness-to-pay.
 
-## 23. Review gate
+## 23. Approval and implementation review gate
 
-Before implementation:
-
-1. D-085–D-091 remain the approved answers for PR-Q1–PR-Q7.
-2. Product Owner reviews this updated draft and its exact stage contracts.
-3. Product Owner explicitly approves the Technical Breakdown in a future decision.
-4. Only then may PR-A implementation begin.
-
-No Technical Breakdown approval decision is created by this update. Current status remains `DRAFT / PENDING PRODUCT OWNER REVIEW`.
+1. PR-Q1–PR-Q7 remain resolved by D-085–D-091.
+2. Product Owner approved this Technical Breakdown and exact stage contracts at D-092 using reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`.
+3. PR-A may begin implementation with status `APPROVED FOR IMPLEMENTATION / NOT STARTED`; PR-B and PR-C remain approved later stages and are also `NOT STARTED`.
+4. Each stage requires separate implementation evidence and Product Owner review/approval before it can be marked complete or close its mapped blockers/gates.
+5. Completion of all stages does not automatically achieve M7; final Pilot Readiness/M7 still requires separate explicit Product Owner approval.
