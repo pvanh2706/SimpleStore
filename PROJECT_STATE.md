@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**MVP / Pilot Readiness — `PR-A IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`**
+**MVP / Pilot Readiness — `PR-A APPROVED / PR-B READY`**
 
 Slice 6 — Understand & Act giữ trạng thái `APPROVED / COMPLETED — D-076`. Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -74,21 +74,24 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - D-077–D-084 được Product Owner `APPROVED` ngày 2026-09-24, định nghĩa deployment topology, production account provisioning, inventory pilot completeness, backup/restore, observability/support, printer certification, pilot release gate và pilot validation plan.
 - D-085–D-091 được Product Owner `APPROVED` ngày 2026-09-25, resolve chính xác PR-Q1–PR-Q7 cho first Owner bootstrap, Cashier reset, Adjustment/Stocktake costing, stale Stocktake, backup schedule/retention và printer target.
 - D-092 — Pilot Readiness Technical Breakdown Approval — được Product Owner `APPROVED` ngày 2026-09-25 tại reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`; GitHub Actions CI #49 / `36037545751` là `SUCCESS`, backend/frontend đều `SUCCESS`. Đây là approval-baseline evidence, không phải PR-A implementation evidence.
+- D-093 — Pilot Readiness PR-A Approval — được Product Owner `APPROVED / COMPLETED` ngày 2026-09-26 sau review implementation `ceae40ee97da3468954da8e27b852bcbbfa94113`, integrity hardening `d0abe321f198f05890f566adf137844826973e7a`, và final reviewed state/evidence `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`.
 - Tài liệu [Pilot Readiness v0.1](docs/product/pilot-readiness-v0.1.md) là `APPROVED`; mục tiêu hiện tại là đạt `M7 — Pilot-ready` bằng implementation và reviewed evidence. Decision approval không có nghĩa M7 đã đạt.
 - [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) là `APPROVED FOR IMPLEMENTATION — D-092`; approved sequence gồm PR-A functional blockers, PR-B operational safety và PR-C certification/release gate.
 - PR-Q1–PR-Q7 đã `RESOLVED` tại D-085–D-091 và không được reopen; D-092 approve architecture/sequence/contracts nhưng không phải implementation completion.
-- PR-A — Functional pilot blockers: `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; implementation commit `ceae40ee97da3468954da8e27b852bcbbfa94113`, integrity-hardening head `d0abe321f198f05890f566adf137844826973e7a`.
+- PR-A — Functional pilot blockers: `APPROVED / COMPLETED — D-093`; implementation commit `ceae40ee97da3468954da8e27b852bcbbfa94113`, integrity-hardening head `d0abe321f198f05890f566adf137844826973e7a`, Product Owner approval baseline `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`.
 - PR-B — Operational safety: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
 - PR-C — Pilot certification and release gate: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
-- `PR-BLOCKER-01..07` đều còn `OPEN` cho tới khi reviewed implementation/evidence của stage tương ứng được approve; D-092 không tự đóng blocker/gate nào.
-- `PR-BLOCKER-01` — production-safe Owner bootstrap và Store-scoped Cashier lifecycle đã implement trong PR-A, nhưng blocker vẫn `OPEN / PENDING PRODUCT OWNER REVIEW`.
-- `PR-BLOCKER-02` — Stock Adjustment, Stocktake và stocktake difference recording đã implement trong PR-A, nhưng blocker vẫn `OPEN / PENDING PRODUCT OWNER REVIEW`.
+- `PR-BLOCKER-01` — `CLOSED — D-093`: production-safe Owner bootstrap và Store-scoped Cashier lifecycle đã được Product Owner review/approve.
+- `PR-BLOCKER-02` — `CLOSED — D-093`: Stock Adjustment, Stocktake và inventory completeness evidence đã được Product Owner review/approve.
 - `PR-BLOCKER-03` — chưa có documented automated SQL Server backup/retention/restore drill.
 - `PR-BLOCKER-04` — Windows Server/IIS production deployment, versioning, rollback/recovery runbook chưa hoàn thiện.
 - `PR-BLOCKER-05` — health/logging foundation có sẵn nhưng persistent logs, DB-aware readiness, retention và support evidence chưa đủ.
 - `PR-BLOCKER-06` — browser print chưa certify trên target paper size và 1–2 real printer configurations.
 - `PR-BLOCKER-07` — chưa có formal pilot release checklist, production-like smoke và rollback/recovery gate.
-- Các blocker readiness không revoke trạng thái completed của Slice 0–6. Pilot vẫn `NOT STARTED`; application chưa được tuyên bố production-ready; C14 value/willingness-to-pay vẫn chưa validated và phải được đánh giá trong pilot theo D-084.
+- Approved PR-A verification: Release build `0 warnings / 0 errors`; Domain `96/96`; SQL Server integration `97/97`; frontend `23 test files / 106 tests`; production frontend build `PASS`; real PR-A Playwright `1/1 PASS` qua Vue → ASP.NET Core → temporary LocalDB/SQL Server test environment. CI không chạy real Playwright.
+- GitHub Actions CI #52 / `36231423946` tại hardening head và CI #53 / `36231672552` tại final reviewed HEAD đều `SUCCESS`; run #53 pass cả backend và frontend.
+- Approved migration `20260926023259_ImplementPilotReadinessPrA` pass clean database migration và upgrade từ Slice 6 baseline với existing Identity/Store/Product/InventoryBalance preservation; integrity hardening không cần migration mới.
+- `PR-BLOCKER-03..07` vẫn `OPEN`. Các blocker readiness còn lại không revoke trạng thái completed của Slice 0–6 hoặc PR-A. `M7 — NOT ACHIEVED`; `Pilot — NOT STARTED`; `Production readiness — NOT DECLARED`; `C14 value / willingness-to-pay — NOT VALIDATED` và phải được đánh giá trong pilot theo D-084.
 
 ## Tiến độ
 
@@ -200,7 +203,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Product Owner review / approval Stage PR-A — Functional pilot blockers.** PR-A là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; PR-B/PR-C là approved later stages nhưng vẫn `NOT STARTED`. Không tự đóng PR-BLOCKER-01/02; PR-BLOCKER-01..07 còn mở và M7 chưa đạt.
+**PR-B — Operational safety.** PR-A là `APPROVED / COMPLETED — D-093`; PR-B và PR-C là `APPROVED FOR IMPLEMENTATION / NOT STARTED`. PR-BLOCKER-01/02 đã đóng tại D-093; PR-BLOCKER-03..07 vẫn mở và M7 chưa đạt.
 
 ## Chưa triển khai
 
@@ -210,4 +213,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-26 — Stage PR-A implementation `ceae40ee97da3468954da8e27b852bcbbfa94113` được integrity-harden tại `d0abe321f198f05890f566adf137844826973e7a`: `DisableCashier`, credential reset và password change nay commit Identity mutation + lifecycle state + security stamp + immutable audit trong cùng transaction; SQL-trigger failure tests chứng minh cả ba flow rollback password/state/stamp khi audit insert thất bại. Stocktake từ chối typed HTTP 400 `invalid-stocktake-counted-quantity` khi count âm. Reusable decimal precision guard từ chối quantity không fit chính xác `(18,3)`, unit cost không fit `(18,4)` và out-of-range trước mutation; `0.0004` không thể bị SQL round thành `0.000`. Không cần migration mới. Local verification: Release build 0 warnings; Domain 96/96; SQL Server integration 97/97; frontend 23 files/106 tests + production build pass; real PR-A Playwright 1/1 qua Vue → ASP.NET Core → temporary LocalDB. GitHub Actions run #52 / `36231423946` tại hardening head là `SUCCESS`; CI không chạy real Playwright. Local Node 22 vẫn phát engine warning vì workspace yêu cầu Node >=24 nhưng frozen install/build/tests pass. PR-A vẫn chỉ là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; không tạo D-093, không đóng PR-BLOCKER-01/02, không implement PR-B/PR-C và không đánh dấu M7 đạt. Next step: Product Owner review / approval Stage PR-A.
+2026-09-26 — Product Owner approve PR-A — Functional pilot blockers tại D-093 sau review implementation `ceae40ee97da3468954da8e27b852bcbbfa94113`, integrity hardening `d0abe321f198f05890f566adf137844826973e7a`, và final state/evidence `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`. PR-A chuyển thành `APPROVED / COMPLETED`; PR-BLOCKER-01 và PR-BLOCKER-02 chuyển thành `CLOSED — D-093`. Approved evidence: Release build 0 warnings/0 errors; Domain 96/96; SQL Server integration 97/97; frontend 23 files/106 tests và production build pass; real PR-A Playwright 1/1 qua Vue → ASP.NET Core → temporary LocalDB/SQL Server test environment; CI #52 / `36231423946` và CI #53 / `36231672552` đều `SUCCESS`. Migration `20260926023259_ImplementPilotReadinessPrA` được giữ nguyên; hardening không cần migration mới. PR-B/PR-C chưa bắt đầu, PR-BLOCKER-03..07 vẫn mở, M7 chưa đạt, Pilot chưa bắt đầu, Production readiness chưa được tuyên bố và C14 value/willingness-to-pay chưa được validate. Next step: PR-B — Operational safety.
