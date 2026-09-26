@@ -6,7 +6,7 @@
 
 Implementation baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; Product Owner reviewed/approved baseline: `5e5720659cee1fd400001d2a2f7c5b750e0483b6`. GitHub Actions CI #49 / `36037545751` tại approved baseline là `SUCCESS`; backend và frontend đều `SUCCESS`. Đây là approval-baseline evidence, không phải PR-A implementation evidence.
 
-Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A hiện là `APPROVED / COMPLETED — D-093`; PR-B/PR-C vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`. M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
+Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A hiện là `APPROVED / COMPLETED — D-093`; PR-B là `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; PR-C vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`. M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
 
 ## 1. Mục tiêu và nguyên tắc
 
@@ -56,10 +56,10 @@ Trình tự implementation/review đã approve tại D-092:
 | Stage | Trạng thái hiện tại | Trọng tâm | Blocker/gate đóng khi có reviewed evidence |
 |---|---|---|---|
 | PR-A — Functional pilot blockers | `APPROVED / COMPLETED — D-093` | Production account provisioning; Stock Adjustment; Stocktake | PR-BLOCKER-01, PR-BLOCKER-02 `CLOSED — D-093` |
-| PR-B — Operational safety | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 |
+| PR-B — Operational safety | `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW` | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 remain open pending sufficient reviewed environment evidence |
 | PR-C — Pilot certification and release gate | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Printer certification, formal release evidence, onboarding/support plan, validation execution plan | PR-BLOCKER-06, PR-BLOCKER-07, Pilot operations gate, Validation readiness gate |
 
-Stage order được approve tại D-092. PR-A và mapped blockers PR-BLOCKER-01/02 được Product Owner approve/close tại D-093. PR-B là next implementation stage nhưng vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`; production-like smoke/restore/support exercises phải chạy trên reviewed candidate build. PR-C certification uses the resulting release candidate. PR-B và PR-C vẫn cần separate implementation review/approval; PR-BLOCKER-03..07 và các later gates còn mở. M7 vẫn là separate final Product Owner gate sau cả ba stage.
+Stage order được approve tại D-092. PR-A và mapped blockers PR-BLOCKER-01/02 được Product Owner approve/close tại D-093. PR-B implementation tồn tại tại `1284487939b26a7370b499d48d760e9335b011cc`, nhưng Windows Server/IIS và pilot-infrastructure backup/schedule/operator evidence chưa đủ nên stage chưa được approve/complete. PR-C vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`. PR-B và PR-C vẫn cần separate Product Owner review/approval; PR-BLOCKER-03..07 và các later gates còn mở. M7 vẫn là separate final Product Owner gate sau cả ba stage.
 
 ## 4. Stage PR-A — Production account provisioning
 
@@ -536,7 +536,7 @@ The following are safely derived from approved decisions and existing architectu
 - Final reviewed state/evidence is `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`; GitHub Actions run #53 / `36231672552` is `SUCCESS`, with backend and frontend both `SUCCESS`.
 - Environment note: local Node `22.19.0` emits the repository engine warning (`>=24` expected), while frozen install, frontend tests and build pass.
 - Product Owner approval baseline is `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`. Review findings were fixed at `d0abe321f198f05890f566adf137844826973e7a`; PR-A is `APPROVED / COMPLETED — D-093`, and PR-BLOCKER-01/02 are `CLOSED — D-093`.
-- Governance boundary: PR-B/PR-C remain `APPROVED FOR IMPLEMENTATION / NOT STARTED`; PR-BLOCKER-03..07 remain open; M7 remains not achieved; Pilot has not started; Production readiness has not been declared; C14 value/willingness-to-pay has not been validated.
+- D-093 approval boundary at that point: PR-B/PR-C were `APPROVED FOR IMPLEMENTATION / NOT STARTED`; PR-BLOCKER-03..07 remained open. PR-B has since reached the incomplete-evidence implementation state documented below, without changing the D-093 historical decision. M7 remains not achieved; Pilot has not started; Production readiness has not been declared; C14 value/willingness-to-pay has not been validated.
 
 ### PR-B DoD
 
@@ -548,6 +548,21 @@ The following are safely derived from approved decisions and existing architectu
 - deployment, backup/restore and support runbooks are exercised by another operator/reviewer;
 - rollback/recovery instruction is specific to the tested release;
 - PR-BLOCKER-03, PR-BLOCKER-04 and PR-BLOCKER-05 close only after evidence review.
+
+#### PR-B implementation evidence — incomplete / pending Product Owner review
+
+- Implementation commit: `1284487939b26a7370b499d48d760e9335b011cc`. No new EF migration was required; current migration remains `20260926023259_ImplementPilotReadinessPrA`.
+- ASP.NET Core now serves the prebuilt Vue SPA from publish `wwwroot` with history fallback, while unknown `/api/*`, `/health*`, and missing assets never return `index.html`; OpenAPI remains Development-only.
+- Authenticated `GET /api/system/version` returns only embedded application version, commit SHA, and environment. The release builder passes identical metadata to assembly/startup logs and `artifact-manifest.json`.
+- Serilog JSON rolling files use daily + size rolling and configurable path/14-day default time retention. Production default is outside versioned releases. Request completion/application scopes correlate the existing ProblemDetails `traceId` with safe method/path/route/status/duration, UserId/StoreId where available, version/SHA, and environment. No request/response-body logging or credential/header/connection-string logging was added.
+- `/health/live` is process-only; `/health/ready` performs bounded `SELECT 1`; `/health` aliases readiness. Anonymous responses are generic `Healthy`/`Unhealthy`; SQL failure detail is restricted to safe server logs.
+- `tools/release/New-ReleaseArtifact.ps1` produces one versioned ZIP with prebuilt SPA, backend publish, Windows migration bundle, 109-file manifest, SHA/version metadata and SHA-256 checksum. Artifact `SimpleStore-0.1.0-1284487939b2.zip` matched checksum `ec569ffae1b9db6c0ba87709a011ed6f57143ff1c8691c379746c310527e01e1`; production runtime does not require Node.
+- Deployment/migration/smoke/rollback scripts and [deployment](../operations/deployment-runbook-v0.1.md), [backup/restore](../operations/backup-restore-runbook-v0.1.md), and [support](../operations/support-runbook-v0.1.md) runbooks were added with reusable evidence templates. Migration is explicit; normal startup does not auto-migrate; application rollback is separated from database recovery and never casually runs EF `Down()`.
+- Backup tooling configures/verifies FULL recovery, creates native full/log backups with checksum and supported-edition compression, runs `RESTORE VERIFYONLY`, emits non-zero failures/JSONL evidence, checks 26-hour full/20-minute log freshness defaults, and conservatively retains the 14-day chain anchor/logs plus weekly fulls for 8 weeks. Cleanup is non-recursive and exact-pattern/root scoped.
+- [Local actual restore drill evidence](../operations/evidence/pr-b-local-restore-drill-2026-09-26.md): FULL + transaction-log backup/verify, ordered isolated-database restore, `DBCC CHECKDB`, post-full data read from the log chain, exact published artifact startup, readiness, authenticated version/session/Store/product read, SPA/API boundary, and structured trace correlation all passed.
+- Automated regression: .NET Release build `0 warnings / 0 errors`; Domain `96/96`; SQL Server integration `100/100`; frontend production build and `23` files / `106` tests pass. Real PR-A Playwright `1/1` and real Slice 6 Playwright `2/2` pass. The PR-A E2E now waits for the disable UI refresh before checking session invalidation, removing an observed test race without changing account behavior.
+- Environment limitations: `PRODUCTION-LIKE IIS SMOKE PENDING — ENVIRONMENT LIMITATION`; IIS feature inspection required elevation and `WebAdministration` was unavailable. The successful restore drill used local SQL Express/LocalDB and same-machine backup storage, so actual pilot separate-failure-domain storage, scheduled nightly/15-minute jobs, elapsed retention/alerting, least-privilege IIS/SQL identities, real certificate/binding, app-pool deployment/rollback, and another-operator runbook exercise remain pending.
+- Governance boundary: PR-B is only `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-03/04/05 remain open. No D-094 exists. PR-C remains not started. M7 remains not achieved; Pilot has not started; Production readiness has not been declared.
 
 ### PR-C DoD
 
@@ -573,5 +588,5 @@ C14 remains an experiment. Technical delivery and event counts do not validate d
 1. PR-Q1–PR-Q7 remain resolved by D-085–D-091.
 2. Product Owner approved this Technical Breakdown and exact stage contracts at D-092 using reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`.
 3. Product Owner approved PR-A at D-093 using final reviewed state/evidence `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`; PR-A is `APPROVED / COMPLETED`, and PR-BLOCKER-01/02 are closed.
-4. PR-B and PR-C remain approved later stages and are still `NOT STARTED`; each requires separate implementation evidence and Product Owner review/approval before it can be marked complete or close its mapped blockers/gates.
+4. PR-B is `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW` at `1284487939b26a7370b499d48d760e9335b011cc`; PR-BLOCKER-03/04/05 remain open. PR-C remains approved and `NOT STARTED`.
 5. Completion of all stages does not automatically achieve M7; final Pilot Readiness/M7 still requires separate explicit Product Owner approval.

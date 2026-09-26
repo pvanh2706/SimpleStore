@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**MVP / Pilot Readiness — `PR-A APPROVED / PR-B READY`**
+**MVP / Pilot Readiness — `PR-B IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`**
 
 Slice 6 — Understand & Act giữ trạng thái `APPROVED / COMPLETED — D-076`. Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -79,18 +79,21 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) là `APPROVED FOR IMPLEMENTATION — D-092`; approved sequence gồm PR-A functional blockers, PR-B operational safety và PR-C certification/release gate.
 - PR-Q1–PR-Q7 đã `RESOLVED` tại D-085–D-091 và không được reopen; D-092 approve architecture/sequence/contracts nhưng không phải implementation completion.
 - PR-A — Functional pilot blockers: `APPROVED / COMPLETED — D-093`; implementation commit `ceae40ee97da3468954da8e27b852bcbbfa94113`, integrity-hardening head `d0abe321f198f05890f566adf137844826973e7a`, Product Owner approval baseline `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`.
-- PR-B — Operational safety: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
+- PR-B — Operational safety: `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW` tại implementation commit `1284487939b26a7370b499d48d760e9335b011cc`.
 - PR-C — Pilot certification and release gate: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
 - `PR-BLOCKER-01` — `CLOSED — D-093`: production-safe Owner bootstrap và Store-scoped Cashier lifecycle đã được Product Owner review/approve.
 - `PR-BLOCKER-02` — `CLOSED — D-093`: Stock Adjustment, Stocktake và inventory completeness evidence đã được Product Owner review/approve.
-- `PR-BLOCKER-03` — chưa có documented automated SQL Server backup/retention/restore drill.
-- `PR-BLOCKER-04` — Windows Server/IIS production deployment, versioning, rollback/recovery runbook chưa hoàn thiện.
-- `PR-BLOCKER-05` — health/logging foundation có sẵn nhưng persistent logs, DB-aware readiness, retention và support evidence chưa đủ.
+- `PR-BLOCKER-03` — `OPEN`: full/log backup, verify, conservative retention/freshness tooling và actual isolated local restore drill đã implement/pass; pilot separate-failure-domain storage, scheduled nightly/15-minute jobs, elapsed retention/alerting và actual operator evidence còn thiếu.
+- `PR-BLOCKER-04` — `OPEN`: versioned artifact, prebuilt SPA hosting, checksum/manifest, explicit migration, deploy/smoke/rollback scripts và runbook đã implement; `PRODUCTION-LIKE IIS SMOKE PENDING — ENVIRONMENT LIMITATION` vì máy hiện tại không có elevated IIS/WebAdministration/pilot certificate-app-pool environment.
+- `PR-BLOCKER-05` — `OPEN`: JSON rolling files, trace/version/UserId/StoreId correlation, DB-aware readiness, generic health responses và support runbook đã implement/test; real server retention/restart/support-operator exercise chưa có reviewed evidence.
 - `PR-BLOCKER-06` — browser print chưa certify trên target paper size và 1–2 real printer configurations.
 - `PR-BLOCKER-07` — chưa có formal pilot release checklist, production-like smoke và rollback/recovery gate.
 - Approved PR-A verification: Release build `0 warnings / 0 errors`; Domain `96/96`; SQL Server integration `97/97`; frontend `23 test files / 106 tests`; production frontend build `PASS`; real PR-A Playwright `1/1 PASS` qua Vue → ASP.NET Core → temporary LocalDB/SQL Server test environment. CI không chạy real Playwright.
 - GitHub Actions CI #52 / `36231423946` tại hardening head và CI #53 / `36231672552` tại final reviewed HEAD đều `SUCCESS`; run #53 pass cả backend và frontend.
 - Approved migration `20260926023259_ImplementPilotReadinessPrA` pass clean database migration và upgrade từ Slice 6 baseline với existing Identity/Store/Product/InventoryBalance preservation; integrity hardening không cần migration mới.
+- PR-B artifact `SimpleStore-0.1.0-1284487939b2.zip` được build từ exact commit, chứa prebuilt SPA + backend publish + IIS `web.config` + Windows migration bundle + manifest 109 files, không cần Node trên production; SHA-256 `ec569ffae1b9db6c0ba87709a011ed6f57143ff1c8691c379746c310527e01e1` khớp checksum.
+- PR-B local actual restore drill `PASS`: SQL Express/LocalDB `FULL`, native full + transaction-log backup, checksum/`RESTORE VERIFYONLY`, ordered restore vào separate temporary database, `DBCC CHECKDB`, đọc Store tạo sau full từ log chain, start exact published artifact, readiness, authenticated version/session/Store/product read, direct SPA/API fallback và structured trace logging đều pass. Backup drill storage vẫn ở cùng local failure domain nên không thay thế pilot infrastructure evidence.
+- PR-B regression: Release build `0 warnings / 0 errors`; Domain `96/96`; SQL Server integration `100/100`; frontend production build pass và `23` files / `106` tests; real PR-A Playwright `1/1`; real Slice 6 Playwright `2/2`.
 - `PR-BLOCKER-03..07` vẫn `OPEN`. Các blocker readiness còn lại không revoke trạng thái completed của Slice 0–6 hoặc PR-A. `M7 — NOT ACHIEVED`; `Pilot — NOT STARTED`; `Production readiness — NOT DECLARED`; `C14 value / willingness-to-pay — NOT VALIDATED` và phải được đánh giá trong pilot theo D-084.
 
 ## Tiến độ
@@ -203,7 +206,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**PR-B — Operational safety.** PR-A là `APPROVED / COMPLETED — D-093`; PR-B và PR-C là `APPROVED FOR IMPLEMENTATION / NOT STARTED`. PR-BLOCKER-01/02 đã đóng tại D-093; PR-BLOCKER-03..07 vẫn mở và M7 chưa đạt.
+**Complete/review PR-B environment evidence.** PR-B là `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; cần production-like Windows Server/IIS deploy/rollback, pilot separate-storage scheduled backup/retention/alert evidence và actual operator runbook exercise. PR-BLOCKER-03/04/05 vẫn mở. Không bắt đầu PR-C trong task này.
 
 ## Chưa triển khai
 
@@ -213,4 +216,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-26 — Product Owner approve PR-A — Functional pilot blockers tại D-093 sau review implementation `ceae40ee97da3468954da8e27b852bcbbfa94113`, integrity hardening `d0abe321f198f05890f566adf137844826973e7a`, và final state/evidence `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`. PR-A chuyển thành `APPROVED / COMPLETED`; PR-BLOCKER-01 và PR-BLOCKER-02 chuyển thành `CLOSED — D-093`. Approved evidence: Release build 0 warnings/0 errors; Domain 96/96; SQL Server integration 97/97; frontend 23 files/106 tests và production build pass; real PR-A Playwright 1/1 qua Vue → ASP.NET Core → temporary LocalDB/SQL Server test environment; CI #52 / `36231423946` và CI #53 / `36231672552` đều `SUCCESS`. Migration `20260926023259_ImplementPilotReadinessPrA` được giữ nguyên; hardening không cần migration mới. PR-B/PR-C chưa bắt đầu, PR-BLOCKER-03..07 vẫn mở, M7 chưa đạt, Pilot chưa bắt đầu, Production readiness chưa được tuyên bố và C14 value/willingness-to-pay chưa được validate. Next step: PR-B — Operational safety.
+2026-09-26 — PR-B — Operational safety implemented tại `1284487939b26a7370b499d48d760e9335b011cc`: single IIS-ready publish phục vụ prebuilt Vue SPA; safe authenticated version metadata; JSON rolling logs/correlation; live/DB-ready/generic health; versioned manifest/checksum artifact; explicit EF migration bundle; deployment/smoke/rollback tooling; D-090 FULL/full/log/verify/freshness/conservative-retention scripts; deployment, backup/restore và support runbooks/evidence templates. Artifact checksum pass; no Node production dependency; không có migration mới. Local actual full+log restore drill vào database cô lập, DBCC/data/readiness/authenticated restored-app smoke và logging correlation pass. Regression: Release build 0 warnings/0 errors, Domain 96/96, SQL Server integration 100/100, frontend 23 files/106 tests + build, PR-A E2E 1/1, Slice 6 E2E 2/2. IIS production-like exercise không thể chạy vì thiếu elevated IIS/WebAdministration; pilot separate-storage schedules/retention/alert/operator evidence chưa có. Vì vậy PR-B giữ `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-03/04/05 vẫn `OPEN`, không tạo D-094, PR-C chưa bắt đầu và M7 chưa đạt.

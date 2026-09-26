@@ -138,6 +138,6 @@ Application rollback changes the deployed application artifact only after schema
 
 ## 9. Current drill status
 
-`RESTORE DRILL PENDING — ENVIRONMENT LIMITATION`
+`LOCAL ACTUAL FULL + LOG RESTORE DRILL — PASS`
 
-An actual D-090 drill requires a SQL Server environment where native full and transaction-log backup files can be produced, a complete log chain, an isolated target, SQL filesystem permissions, and an application smoke identity/data set. Until the full procedure in section 7 is executed and retained as reviewed evidence, PR-B backup/restore evidence is incomplete and PR-BLOCKER-03 must remain open.
+The retained [2026-09-26 local restore evidence](evidence/pr-b-local-restore-drill-2026-09-26.md) proves native full/log creation, checksum/verify, ordered isolated-database restore, DB integrity/data checks, and restored-artifact readiness/authenticated read smoke. The exercise used LocalDB/SQL Express on a development workstation and local same-failure-domain storage. Pilot-infrastructure schedule, separate protected storage, alerting, elapsed retention, and actual operator exercise remain pending; PR-B evidence is therefore incomplete and PR-BLOCKER-03 remains open until sufficient reviewed environment evidence exists.
