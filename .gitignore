@@ -9,6 +9,8 @@ node_modules/
 dist/
 coverage/
 *.tsbuildinfo
+artifacts/
+logs/
 
 # Playwright
 playwright-report/

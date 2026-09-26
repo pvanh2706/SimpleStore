@@ -1,0 +1,29 @@
+# SimpleStore Deployment Evidence
+
+- Evidence ID:
+- Environment:
+- Operator/reviewer:
+- UTC start/end/duration:
+- Windows version:
+- IIS site / app pool / identity class (no secret):
+- HTTPS hostname/certificate identifier and expiry (no private key):
+- Artifact application version:
+- Exact Git commit SHA:
+- Artifact filename and SHA-256:
+- Manifest verified: PASS / FAIL
+- Safe SQL target identifier (no connection string/server secret):
+- Migration before:
+- Migration bundle/result:
+- Migration after:
+- Release path:
+- Previous/rollback candidate:
+- `/health/live` result/time:
+- `/health/ready` result/time:
+- `/health` compatibility result/time:
+- Authenticated `/api/system/version` result:
+- Authenticated read-only smoke result:
+- Startup/request log correlation evidence and traceId:
+- Application rollback exercise/result:
+- Environment limitations:
+- Outcome: PASS / FAIL / INCOMPLETE
+- Notes/links (no secrets or unnecessary PII):

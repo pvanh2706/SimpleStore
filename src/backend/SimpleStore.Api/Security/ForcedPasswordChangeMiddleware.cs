@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using SimpleStore.Api.Operations;
 using SimpleStore.Infrastructure.Identity;
 
 namespace SimpleStore.Api.Security;
@@ -40,6 +41,12 @@ public sealed class ForcedPasswordChangeMiddleware(RequestDelegate next)
                     "password-change-required",
                     "Change the temporary password before using business features.");
                 return;
+            }
+
+            if (user is not null)
+            {
+                context.Items[OperationalContext.UserIdItem] = user.Id;
+                context.Items[OperationalContext.StoreIdItem] = user.StoreId;
             }
         }
 

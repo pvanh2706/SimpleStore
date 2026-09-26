@@ -1,0 +1,31 @@
+# SimpleStore Backup and Restore Evidence
+
+- Evidence ID:
+- Safe database identifier:
+- Operator/reviewer:
+- UTC start/end/duration:
+- Recovery model (`FULL` required):
+- Backup storage/failure-domain class and ACL review (no path credential):
+- Full backup identifier/time/result/hash or SQL metadata:
+- Transaction-log backup identifier/time/result:
+- Last log age/freshness result:
+- 14-day recovery-chain validation:
+- Weekly full 8-week retention validation:
+- `RESTORE VERIFYONLY`/checksum result:
+- Chosen UTC recovery point:
+- Source application version/SHA/schema migration:
+- Full backup used:
+- Ordered log chain used:
+- Gap check result:
+- Isolated restore target:
+- `NORECOVERY`/ordered restore/final `RECOVERY` result:
+- DB online / `DBCC CHECKDB` result:
+- Expected schema/table/data-read result:
+- Exact application artifact used for restored target:
+- `/health/live` result:
+- `/health/ready` result:
+- Authenticated read-only smoke result:
+- Cleanup/isolation disposition:
+- Environment limitations:
+- Outcome: PASS / FAIL / INCOMPLETE
+- Notes/links (no secrets or unnecessary PII):

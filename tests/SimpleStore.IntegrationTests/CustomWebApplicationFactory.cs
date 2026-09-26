@@ -15,17 +15,20 @@ namespace SimpleStore.IntegrationTests;
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly string _connectionString = CreateConnectionString();
+    private readonly string _webRoot = CreateWebRoot();
     private readonly MutableTimeProvider _timeProvider = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseWebRoot(_webRoot);
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:SimpleStore"] =
                     _connectionString,
+                ["OperationalLogging:Enabled"] = "false",
                 ["DevelopmentOwner:Email"] = null,
                 ["DevelopmentOwner:Password"] = null
             });
@@ -116,6 +119,7 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
         }
 
         await DisposeAsync();
+        Directory.Delete(_webRoot, recursive: true);
     }
 
     internal static string CreateIsolatedConnectionString(string databasePrefix)
@@ -138,6 +142,16 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
     private static string CreateConnectionString() =>
         CreateIsolatedConnectionString("SimpleStoreTests");
+
+    private static string CreateWebRoot()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"simplestore-webroot-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(path);
+        File.WriteAllText(
+            Path.Combine(path, "index.html"),
+            "<!doctype html><html><body>SimpleStore test SPA</body></html>");
+        return path;
+    }
 
     private static string FormatErrors(IdentityResult result) =>
         string.Join("; ", result.Errors.Select(error => error.Description));

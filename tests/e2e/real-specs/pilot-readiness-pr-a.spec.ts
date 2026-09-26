@@ -160,6 +160,7 @@ test.describe.serial('Pilot Readiness PR-A real critical flow', () => {
     await expect(cashier.page).toHaveURL(/\/change-password$/)
     page.once('dialog', dialog => dialog.accept())
     await cashierRow.getByRole('button', { name: 'Vô hiệu hóa' }).click()
+    await expect(cashierRow).toContainText('Đã vô hiệu hóa')
     await cashier.page.goto('/products')
     await expect(cashier.page).toHaveURL(/\/login(?:\?.*)?$/)
     await login(cashier.page, cashierEmail, resetPassword!)
