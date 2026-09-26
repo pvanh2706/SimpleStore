@@ -522,14 +522,17 @@ The following are safely derived from approved decisions and existing architectu
 
 #### PR-A implementation evidence — pending Product Owner review
 
-- Approved implementation baseline: `40cdb6acb8e1ee8fba9d4a99bae219bfd56025e4`; implementation commit: `ceae40ee97da3468954da8e27b852bcbbfa94113`.
+- Approved implementation baseline: `40cdb6acb8e1ee8fba9d4a99bae219bfd56025e4`; implementation commit: `ceae40ee97da3468954da8e27b852bcbbfa94113`; integrity-hardening head: `d0abe321f198f05890f566adf137844826973e7a`.
 - D-085: explicit `bootstrap-owner --email <email>` admin CLI with protected prompt or ephemeral `--password-stdin`, normalized identity, Identity password policy, global serialization, first-Owner-only behavior, exact safe retry and non-secret version/SHA evidence. No public bootstrap endpoint was added; Development seeding remains Development-only.
 - D-086: Owner-only, server-side Store-scoped Cashier list/create/disable/reset; generated one-time temporary credentials; mandatory password change; backend business-API denial before change; security-stamp invalidation on reset/disable; generic failed login; immutable lifecycle audit without secret material; minimal `/settings/users` and password-change UI.
 - D-087: immutable `StockAdjustment`, closed `Adjustment` movement, exact OperationId fingerprint retry, SQL balance lock, atomic source/movement/balance/BusinessOperation write, reliable/explicit/estimated/unavailable costing and no retroactive revaluation or unsafe reliability promotion.
 - D-088/D-089: separate immutable `StocktakeResult`, opaque balance revision, typed `409 stocktake-stale`, refresh/recount flow, D-087 costing, closed `StocktakeAdjustment` movement, and persisted zero-difference count with no fake movement.
 - Product inventory history now projects typed reason/note, actor id, occurred time, quantity/value/unit cost, `CostReliability`, and Stocktake expected/count evidence. UI keeps an ambiguous Adjustment/Stocktake attempt immutable for exact retry.
 - Additive migration: `20260926023259_ImplementPilotReadinessPrA`; clean migration and upgrade from `20260924010903_ImplementSlice6Stage6BC14` preserve existing Identity/Store/Product/InventoryBalance data.
-- Local verification on 2026-09-26: .NET Release build `0 warnings / 0 errors`; Domain `91/91`; SQL Server integration `94/94`; frontend `23` test files / `106` tests and production build pass; real PR-A Playwright `1/1` pass through Vue → ASP.NET Core → temporary LocalDB with production CLI bootstrap. GitHub CI does not currently run this real Playwright flow, so this is local evidence only.
+- Integrity hardening makes Cashier disable, credential reset and password change atomic across Identity password/security-stamp persistence, lifecycle state/timestamps and immutable audit. SQL-trigger failure-path integration tests prove all three flows roll back credential/state/stamp changes when the audit insert fails.
+- Stocktake rejects negative counted quantity with typed `invalid-stocktake-counted-quantity` before mutation. A shared deterministic precision guard rejects quantity inputs that cannot fit `(18,3)` exactly, unit-cost inputs that cannot fit `(18,4)` exactly, and values outside those ranges; rejected requests create no source, movement or BusinessOperation and do not mutate InventoryBalance. Frontend retains quantity `step="0.001"`, cost `step="0.0001"`, and adds `min="0"` to counted quantity.
+- No new migration is required for this hardening; additive migration `20260926023259_ImplementPilotReadinessPrA` remains current.
+- Local verification on 2026-09-26: .NET Release build `0 warnings / 0 errors`; Domain `96/96`; SQL Server integration `97/97`; frontend `23` test files / `106` tests and production build pass; real PR-A Playwright `1/1` pass through Vue → ASP.NET Core → temporary LocalDB with production CLI bootstrap. GitHub Actions run #52 / `36231423946` at hardening head `d0abe321f198f05890f566adf137844826973e7a` is `SUCCESS`. GitHub CI does not run this real Playwright flow, so E2E remains local evidence only.
 - Environment note: local Node `22.19.0` emits the repository engine warning (`>=24` expected), while frozen install, frontend tests and build pass.
 - Governance boundary: PR-A remains `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`. No D-093 is created, PR-BLOCKER-01/02 remain open, PR-B/PR-C remain not started, and M7 remains not achieved.
 
@@ -567,6 +570,6 @@ C14 remains an experiment. Technical delivery and event counts do not validate d
 
 1. PR-Q1–PR-Q7 remain resolved by D-085–D-091.
 2. Product Owner approved this Technical Breakdown and exact stage contracts at D-092 using reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`.
-3. PR-A is `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` at `ceae40ee97da3468954da8e27b852bcbbfa94113`; PR-B and PR-C remain approved later stages and are still `NOT STARTED`.
+3. PR-A is `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` at integrity-hardening head `d0abe321f198f05890f566adf137844826973e7a`; PR-B and PR-C remain approved later stages and are still `NOT STARTED`.
 4. Each stage requires separate implementation evidence and Product Owner review/approval before it can be marked complete or close its mapped blockers/gates.
 5. Completion of all stages does not automatically achieve M7; final Pilot Readiness/M7 still requires separate explicit Product Owner approval.
