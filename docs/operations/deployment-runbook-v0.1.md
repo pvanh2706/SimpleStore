@@ -112,7 +112,26 @@ pwsh .\tools\operations\deploy\Install-SimpleStoreRelease.ps1 `
   -Operator '<operator-id>'
 ```
 
-The install script validates the checksum and manifest, requires `No Managed Code`, stops the pool, invokes the migration bundle using a process-scoped environment value rather than a command-line secret, installs a new release, updates the IIS physical path, restarts, and records non-secret install evidence. Health and authenticated smoke are still mandatory after it returns.
+The install script validates the checksum and manifest, requires `No Managed Code`, stops the pool, invokes the migration bundle using a process-scoped environment value rather than a command-line secret, installs a new release, updates the IIS physical path, restarts, and records non-secret install evidence. Health and authenticated smoke are still mandatory after it returns. A failed state-changing phase writes `IisReleaseInstallFailed` evidence with the failed phase, candidate version/SHA, migration attempted/succeeded flags, release/path/start flags, previous release identifier, final pool state, UTC time, operator and `ManualReviewedRecoveryRequired`; it never records the connection string.
+
+### 6.1 Fail-safe deployment failure handling
+
+The installer tracks the app-pool stop, migration invocation/result, release move, IIS path switch and candidate start as separate phases.
+
+- A failure before migration may restart the existing application only when the script proves both that migration was never invoked and that IIS still points to the exact previous physical path. If either fact is unknown, the pool stays stopped for reviewed recovery.
+- As soon as migration invocation begins, database state is treated as potentially changed even when the bundle reports failure. The installer never automatically starts the previous release after that point. If a candidate start was partial, the installer attempts to stop the pool again.
+- A failure after migration attempt is a high-severity availability/recovery event. Preserve the failed-install JSON, migration evidence, artifact and logs; do not delete staging or edit migration history to make an old release start.
+
+For every failure after migration attempt:
+
+1. Keep the application pool stopped and traffic unavailable.
+2. Preserve deployment/migration evidence and record the incident.
+3. Run `Get-MigrationState.ps1` using the authorized identity and determine the actual current schema state.
+4. Compare the previous application artifact with that schema; application rollback is not database rollback.
+5. Only after explicit compatibility review may an operator invoke `Switch-SimpleStoreRelease.ps1 -SchemaCompatibilityReviewed`.
+6. If the previous application is not compatible, leave it stopped and use a reviewed forward fix/new compatible artifact or the verified database recovery procedure. Never use automatic EF `Down()`.
+
+Do not rely on the installer to restart the old application after a migration attempt. The explicit release switch only changes IIS application files; health, version and authenticated read smoke remain separate mandatory checks before rollback can be called successful.
 
 Read-only smoke:
 

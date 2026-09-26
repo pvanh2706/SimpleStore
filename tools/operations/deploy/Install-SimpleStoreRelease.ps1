@@ -69,9 +69,34 @@ if ((Get-ItemPropertyValue -Path $poolPath -Name managedRuntimeVersion) -ne '') 
     throw "Application pool '$AppPoolName' must use No Managed Code."
 }
 
+$previousPhysicalPath = [string](Get-ItemPropertyValue -Path $sitePath -Name physicalPath)
+$previousPathLeaf = Split-Path -Leaf $previousPhysicalPath.TrimEnd('\', '/')
+$previousReleaseId = if ($previousPathLeaf -eq 'app') {
+    Split-Path -Leaf (Split-Path -Parent $previousPhysicalPath.TrimEnd('\', '/'))
+}
+else {
+    $previousPathLeaf
+}
+
 $started = [DateTimeOffset]::UtcNow
-Stop-WebAppPool -Name $AppPoolName
+$phase = 'StopAppPool'
+$appPoolStopped = $false
+$migrationStarted = $false
+$migrationSucceeded = $false
+$releaseMoved = $false
+$iisPhysicalPathChanged = $false
+$newAppStartAttempted = $false
+$failureEvidencePath = Join-Path $installRoot (
+    "deployment-evidence\$releaseId-install-failed-$($started.ToString('yyyyMMddTHHmmssfffZ')).json")
+
 try {
+    Stop-WebAppPool -Name $AppPoolName
+    $appPoolStopped = $true
+
+    $phase = 'RunExplicitMigration'
+    # Set this before invoking the bundle. If invocation is ambiguous or fails to
+    # launch cleanly, recovery must still assume the database may have changed.
+    $migrationStarted = $true
     $migrationEvidence = Join-Path $staging 'migration-evidence.json'
     & (Join-Path $PSScriptRoot 'Invoke-DatabaseMigration.ps1') `
         -MigrationBundle (Join-Path $staging $manifest.migrationBundle) `
@@ -80,11 +105,21 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'Explicit migration step failed.'
     }
+    $migrationSucceeded = $true
 
+    $phase = 'MoveVersionedRelease'
     Move-Item -LiteralPath $staging -Destination $releasePath
+    $releaseMoved = $true
+
+    $phase = 'SwitchIisPhysicalPath'
     Set-ItemProperty -Path $sitePath -Name physicalPath -Value (Join-Path $releasePath 'app')
+    $iisPhysicalPathChanged = $true
+
+    $phase = 'StartCandidateApplication'
+    $newAppStartAttempted = $true
     Start-WebAppPool -Name $AppPoolName
 
+    $phase = 'WriteInstallEvidence'
     [ordered]@{
         event = 'IisReleaseInstalled'
         startedAtUtc = $started.ToString('O')
@@ -97,6 +132,7 @@ try {
         iisSite = $IisSiteName
         appPool = $AppPoolName
         releasePath = $releasePath
+        previousReleaseId = $previousReleaseId
         migrationResult = 'Success'
         result = 'Installed; health and authenticated smoke still required'
     } | ConvertTo-Json | Set-Content `
@@ -104,8 +140,115 @@ try {
         -Encoding utf8
 }
 catch {
-    if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Started') {
-        Start-WebAppPool -Name $AppPoolName
+    $failure = $_
+    $failedPhase = $phase
+    $failedAt = [DateTimeOffset]::UtcNow
+    $existingApplicationAutoRestarted = $false
+    $pathStillPrevious = $false
+    $poolStopEnforced = $false
+    $recoveryAction = 'ApplicationPoolLeftStoppedForManualReviewedRecovery'
+
+    try {
+        $currentPhysicalPath = [string](Get-ItemPropertyValue -Path $sitePath -Name physicalPath)
+        $pathStillPrevious = [string]::Equals(
+            $currentPhysicalPath,
+            $previousPhysicalPath,
+            [StringComparison]::OrdinalIgnoreCase)
+        $iisPhysicalPathChanged = -not $pathStillPrevious
     }
-    throw
+    catch {
+        $currentPhysicalPath = $null
+    }
+
+    if (-not $migrationStarted -and $pathStillPrevious) {
+        # The schema was not touched and IIS still targets the original release.
+        # Only this fully proven pre-migration case may resume the existing app.
+        try {
+            if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Started') {
+                Start-WebAppPool -Name $AppPoolName
+                $existingApplicationAutoRestarted = $true
+                $recoveryAction = 'ExistingApplicationRestartedAfterProvenPreMigrationFailure'
+            }
+            else {
+                $recoveryAction = 'ExistingApplicationRemainedStartedAfterProvenPreMigrationFailure'
+            }
+        }
+        catch {
+            $recoveryAction = 'ExistingApplicationRestartFailed;ManualReviewedRecoveryRequired'
+        }
+    }
+    else {
+        # Once migration invocation begins, never resume either the previous or
+        # candidate application automatically. A partially started pool is
+        # stopped again so schema compatibility must be reviewed explicitly.
+        try {
+            if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Stopped') {
+                Stop-WebAppPool -Name $AppPoolName
+            }
+            $poolStopEnforced = $true
+        }
+        catch {
+            $recoveryAction = 'ApplicationPoolStopCouldNotBeConfirmed;ImmediateOperatorActionRequired'
+        }
+    }
+
+    try {
+        $finalAppPoolState = [string](Get-WebAppPoolState -Name $AppPoolName).Value
+    }
+    catch {
+        $finalAppPoolState = 'Unknown'
+    }
+
+    $failureEvidence = [ordered]@{
+        event = 'IisReleaseInstallFailed'
+        startedAtUtc = $started.ToString('O')
+        failedAtUtc = $failedAt.ToString('O')
+        operator = $Operator
+        failedPhase = $failedPhase
+        releaseId = $releaseId
+        applicationVersion = $manifest.applicationVersion
+        commitSha = $manifest.commitSha
+        artifactSha256 = $actualHash.ToLowerInvariant()
+        iisSite = $IisSiteName
+        appPool = $AppPoolName
+        appPoolState = $finalAppPoolState
+        appPoolStopInitiallyCompleted = $appPoolStopped
+        appPoolStopEnforcedAfterFailure = $poolStopEnforced
+        previousReleaseId = $previousReleaseId
+        previousPathStillConfigured = $pathStillPrevious
+        migrationAttempted = $migrationStarted
+        migrationSucceeded = $migrationSucceeded
+        releaseMoved = $releaseMoved
+        iisPhysicalPathChanged = $iisPhysicalPathChanged
+        newAppStartAttempted = $newAppStartAttempted
+        existingApplicationAutoRestarted = $existingApplicationAutoRestarted
+        failureType = $failure.Exception.GetType().FullName
+        recoveryAction = $recoveryAction
+        recoveryStatus = 'ManualReviewedRecoveryRequired'
+    }
+
+    $evidenceWriteFailed = $false
+    try {
+        $failureEvidence | ConvertTo-Json | Set-Content -LiteralPath $failureEvidencePath -Encoding utf8
+    }
+    catch {
+        $evidenceWriteFailed = $true
+    }
+
+    $evidenceMessage = if ($evidenceWriteFailed) {
+        'Failure evidence could not be written; preserve console and migration evidence immediately.'
+    }
+    else {
+        "Failure evidence: '$failureEvidencePath'."
+    }
+
+    if ($migrationStarted) {
+        throw "HIGH SEVERITY: release '$releaseId' failed during phase '$failedPhase' after migration was attempted. The application pool was not automatically restarted. Keep it stopped, inspect migration state, and select an explicit reviewed forward-fix, schema-compatible release switch, or verified database recovery path. $evidenceMessage"
+    }
+
+    if ($pathStillPrevious -and $finalAppPoolState -eq 'Started') {
+        throw "Release '$releaseId' failed during phase '$failedPhase' before migration began. IIS still targets the previous release and the existing application is running; the candidate deployment remains failed and requires operator review. $evidenceMessage"
+    }
+
+    throw "HIGH SEVERITY: release '$releaseId' failed during phase '$failedPhase'. Safe automatic recovery could not be proven. The application pool was not automatically restarted; manual reviewed recovery is required. $evidenceMessage"
 }
