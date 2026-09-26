@@ -142,6 +142,18 @@ public sealed class InventoryBalance
         bool establishesReliableBasis,
         DateTimeOffset updatedAt)
     {
+        InventoryStoragePrecision.EnsureQuantity(
+            quantityDelta,
+            "invalid-adjustment-quantity-precision",
+            "Adjustment quantity");
+        InventoryStoragePrecision.EnsureUnitCost(
+            effectiveUnitCost,
+            "invalid-adjustment-unit-cost-precision",
+            "Adjustment unit cost");
+        InventoryStoragePrecision.EnsureInventoryValue(
+            inventoryValueDelta,
+            "invalid-adjustment-inventory-value",
+            "Adjustment inventory value");
         if (quantityDelta == 0)
         {
             throw new DomainRuleException(
@@ -156,9 +168,20 @@ public sealed class InventoryBalance
                 "Adjustment unit cost cannot be negative.");
         }
 
+        var quantityAfter = QuantityOnHand + quantityDelta;
+        var inventoryValueAfter = InventoryValue + inventoryValueDelta;
+        InventoryStoragePrecision.EnsureQuantity(
+            quantityAfter,
+            "invalid-inventory-quantity-result",
+            "Resulting inventory quantity");
+        InventoryStoragePrecision.EnsureInventoryValue(
+            inventoryValueAfter,
+            "invalid-inventory-value-result",
+            "Resulting inventory value");
+
         var wasReliable = HasAverageCost;
-        QuantityOnHand += quantityDelta;
-        InventoryValue += inventoryValueDelta;
+        QuantityOnHand = quantityAfter;
+        InventoryValue = inventoryValueAfter;
 
         if (quantityDelta > 0 && establishesReliableBasis)
         {

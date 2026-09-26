@@ -83,6 +83,8 @@ describe('ProductDetailView pilot inventory actions', () => {
     await flushPromises()
     await wrapper.findAll('button').find(button => button.text().includes('Bắt đầu kiểm kho'))!.trigger('click')
     await flushPromises()
+    expect(wrapper.get('#counted-quantity').attributes('min')).toBe('0')
+    expect(wrapper.get('#counted-quantity').attributes('step')).toBe('0.001')
     await wrapper.get('#counted-quantity').setValue('9')
     await wrapper.findAll('form')[1].trigger('submit')
     await flushPromises()

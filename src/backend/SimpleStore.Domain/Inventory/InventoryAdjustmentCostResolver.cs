@@ -8,6 +8,18 @@ public static class InventoryAdjustmentCostResolver
         decimal? adjustmentUnitCost,
         decimal? referencePurchaseCost)
     {
+        InventoryStoragePrecision.EnsureQuantity(
+            quantityDelta,
+            "invalid-adjustment-quantity-precision",
+            "Adjustment quantity");
+        if (adjustmentUnitCost.HasValue)
+        {
+            InventoryStoragePrecision.EnsureUnitCost(
+                adjustmentUnitCost.Value,
+                "invalid-adjustment-unit-cost-precision",
+                "Adjustment unit cost");
+        }
+
         if (quantityDelta == 0)
         {
             throw new DomainRuleException(
@@ -70,12 +82,33 @@ public static class InventoryAdjustmentCostResolver
         decimal quantityDelta,
         decimal unitCost,
         CostReliability reliability,
-        bool establishesReliableBasis) =>
-        new(
+        bool establishesReliableBasis)
+    {
+        decimal inventoryValueDelta;
+        try
+        {
+            inventoryValueDelta = Math.Round(
+                quantityDelta * unitCost,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
+        catch (OverflowException)
+        {
+            throw new DomainRuleException(
+                "invalid-adjustment-inventory-value",
+                "Adjustment inventory value is outside the supported range.");
+        }
+
+        InventoryStoragePrecision.EnsureInventoryValue(
+            inventoryValueDelta,
+            "invalid-adjustment-inventory-value",
+            "Adjustment inventory value");
+        return new InventoryAdjustmentCost(
             unitCost,
-            Math.Round(quantityDelta * unitCost, 2, MidpointRounding.AwayFromZero),
+            inventoryValueDelta,
             reliability,
             establishesReliableBasis);
+    }
 }
 
 public sealed record InventoryAdjustmentCost(

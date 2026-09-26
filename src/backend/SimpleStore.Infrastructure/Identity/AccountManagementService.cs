@@ -93,22 +93,34 @@ public sealed class AccountManagementService(
         CancellationToken cancellationToken)
     {
         var owner = await GetOwnerAsync(ownerUserId, cancellationToken);
-        var cashier = await GetCashierAsync(owner.StoreId!.Value, cashierId, cancellationToken);
-        if (cashier.IsEnabled)
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        try
         {
-            var now = timeProvider.GetUtcNow();
-            cashier.Disable(now);
-            EnsureSucceeded(await userManager.UpdateSecurityStampAsync(cashier), "cashier-disable-failed");
-            dbContext.AccountLifecycleAudits.Add(AccountLifecycleAudit.Create(
-                owner.StoreId.Value,
-                cashier.Id,
-                AccountLifecycleAction.CashierDisabled,
-                owner.Id,
-                now));
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
+            var cashier = await GetCashierAsync(owner.StoreId!.Value, cashierId, cancellationToken);
+            if (cashier.IsEnabled)
+            {
+                var now = timeProvider.GetUtcNow();
+                cashier.Disable(now);
+                EnsureSucceeded(await userManager.UpdateSecurityStampAsync(cashier), "cashier-disable-failed");
+                dbContext.AccountLifecycleAudits.Add(AccountLifecycleAudit.Create(
+                    owner.StoreId.Value,
+                    cashier.Id,
+                    AccountLifecycleAction.CashierDisabled,
+                    owner.Id,
+                    now));
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
 
-        return ToResult(cashier);
+            await transaction.CommitAsync(cancellationToken);
+            return ToResult(cashier);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task<CashierCredentialResult> ResetCredentialAsync(
@@ -117,28 +129,40 @@ public sealed class AccountManagementService(
         CancellationToken cancellationToken)
     {
         var owner = await GetOwnerAsync(ownerUserId, cancellationToken);
-        var cashier = await GetCashierAsync(owner.StoreId!.Value, cashierId, cancellationToken);
-        if (!cashier.IsEnabled)
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        try
         {
-            throw new ApplicationConflictException("cashier-disabled", "Disabled Cashier credentials cannot be reset.");
-        }
+            var cashier = await GetCashierAsync(owner.StoreId!.Value, cashierId, cancellationToken);
+            if (!cashier.IsEnabled)
+            {
+                throw new ApplicationConflictException("cashier-disabled", "Disabled Cashier credentials cannot be reset.");
+            }
 
-        var temporaryPassword = TemporaryPasswordGenerator.Create();
-        var token = await userManager.GeneratePasswordResetTokenAsync(cashier);
-        EnsureSucceeded(
-            await userManager.ResetPasswordAsync(cashier, token, temporaryPassword),
-            "cashier-credential-invalid");
-        var now = timeProvider.GetUtcNow();
-        cashier.RequirePasswordChange(now);
-        EnsureSucceeded(await userManager.UpdateAsync(cashier), "cashier-reset-failed");
-        dbContext.AccountLifecycleAudits.Add(AccountLifecycleAudit.Create(
-            owner.StoreId.Value,
-            cashier.Id,
-            AccountLifecycleAction.CredentialReset,
-            owner.Id,
-            now));
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return new CashierCredentialResult(cashier.Id, cashier.Email!, temporaryPassword, true, false);
+            var temporaryPassword = TemporaryPasswordGenerator.Create();
+            var token = await userManager.GeneratePasswordResetTokenAsync(cashier);
+            EnsureSucceeded(
+                await userManager.ResetPasswordAsync(cashier, token, temporaryPassword),
+                "cashier-credential-invalid");
+            var now = timeProvider.GetUtcNow();
+            cashier.RequirePasswordChange(now);
+            EnsureSucceeded(await userManager.UpdateAsync(cashier), "cashier-reset-failed");
+            dbContext.AccountLifecycleAudits.Add(AccountLifecycleAudit.Create(
+                owner.StoreId.Value,
+                cashier.Id,
+                AccountLifecycleAction.CredentialReset,
+                owner.Id,
+                now));
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new CashierCredentialResult(cashier.Id, cashier.Email!, temporaryPassword, true, false);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task ChangePasswordAsync(
@@ -147,28 +171,41 @@ public sealed class AccountManagementService(
         string newPassword,
         CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByIdAsync(userId.ToString())
-            ?? throw new ApplicationNotFoundException("user-not-found", "User was not found.");
-        if (!user.IsEnabled)
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+        try
         {
-            throw new ApplicationConflictException("account-disabled", "The account is disabled.");
-        }
+            var user = await userManager.FindByIdAsync(userId.ToString())
+                ?? throw new ApplicationNotFoundException("user-not-found", "User was not found.");
+            if (!user.IsEnabled)
+            {
+                throw new ApplicationConflictException("account-disabled", "The account is disabled.");
+            }
 
-        EnsureSucceeded(
-            await userManager.ChangePasswordAsync(user, currentPassword, newPassword),
-            "password-change-failed");
-        var now = timeProvider.GetUtcNow();
-        user.CompletePasswordChange(now);
-        EnsureSucceeded(await userManager.UpdateAsync(user), "password-change-failed");
-        if (user.StoreId.HasValue)
+            EnsureSucceeded(
+                await userManager.ChangePasswordAsync(user, currentPassword, newPassword),
+                "password-change-failed");
+            var now = timeProvider.GetUtcNow();
+            user.CompletePasswordChange(now);
+            EnsureSucceeded(await userManager.UpdateAsync(user), "password-change-failed");
+            if (user.StoreId.HasValue)
+            {
+                dbContext.AccountLifecycleAudits.Add(AccountLifecycleAudit.Create(
+                    user.StoreId.Value,
+                    user.Id,
+                    AccountLifecycleAction.CredentialChanged,
+                    user.Id,
+                    now));
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch
         {
-            dbContext.AccountLifecycleAudits.Add(AccountLifecycleAudit.Create(
-                user.StoreId.Value,
-                user.Id,
-                AccountLifecycleAction.CredentialChanged,
-                user.Id,
-                now));
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
         }
     }
 

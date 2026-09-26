@@ -180,7 +180,7 @@ onMounted(load)
           <button v-if="!stocktakeContext" class="btn-secondary" type="button" @click="() => loadStocktakeContext()">Bắt đầu kiểm kho</button>
           <form v-else class="grid gap-4" @submit.prevent="submitStocktake">
             <p class="rounded-lg bg-stone-100 px-3 py-2">Số tồn lúc bắt đầu: <strong>{{ stocktakeContext.expectedQuantity }} {{ product.unit }}</strong></p>
-            <div class="field"><label for="counted-quantity">Số lượng đếm được</label><input id="counted-quantity" v-model.number="countedQuantity" class="input" type="number" step="0.001" required :disabled="stocktakeAttempt !== null" /></div>
+            <div class="field"><label for="counted-quantity">Số lượng đếm được</label><input id="counted-quantity" v-model.number="countedQuantity" class="input" type="number" min="0" step="0.001" required :disabled="stocktakeAttempt !== null" /></div>
             <p v-if="countedQuantity !== null" class="text-sm">Chênh lệch: <strong>{{ stocktakeDifference > 0 ? '+' : '' }}{{ stocktakeDifference }}</strong></p>
             <div v-if="stocktakeDifference > 0 && !stocktakeContext.hasAverageCost" class="field"><label for="stocktake-cost">Giá vốn đơn vị cho lượng tăng</label><input id="stocktake-cost" v-model.number="stocktakeCost" class="input" type="number" min="0" step="0.0001" required :disabled="stocktakeAttempt !== null" /></div>
             <div class="field"><label for="stocktake-note">Ghi chú</label><input id="stocktake-note" v-model.trim="stocktakeNote" class="input" maxlength="500" :disabled="stocktakeAttempt !== null" /></div>

@@ -97,6 +97,29 @@ public sealed class StocktakeResult
             throw new DomainRuleException("operation-id-required", "OperationId is required.");
         }
 
+
+        InventoryStoragePrecision.EnsureQuantity(
+            expectedQuantity,
+            "invalid-stocktake-expected-quantity-precision",
+            "Stocktake expected quantity");
+        InventoryStoragePrecision.EnsureQuantity(
+            countedQuantity,
+            "invalid-stocktake-counted-quantity-precision",
+            "Stocktake counted quantity");
+        if (countedQuantity < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-stocktake-counted-quantity",
+                "Stocktake counted quantity cannot be negative.");
+        }
+        if (adjustmentUnitCost.HasValue)
+        {
+            InventoryStoragePrecision.EnsureUnitCost(
+                adjustmentUnitCost.Value,
+                "invalid-adjustment-unit-cost-precision",
+                "Adjustment unit cost");
+        }
+
         if (expectedBalanceRowVersion.Length == 0)
         {
             throw new DomainRuleException("stocktake-revision-required", "Stocktake balance revision is required.");
@@ -111,6 +134,10 @@ public sealed class StocktakeResult
         }
 
         var difference = countedQuantity - expectedQuantity;
+        InventoryStoragePrecision.EnsureQuantity(
+            difference,
+            "invalid-stocktake-difference",
+            "Stocktake difference");
         if (difference != 0 && cost is null)
         {
             throw new DomainRuleException("stocktake-cost-required", "Stocktake difference cost is required.");

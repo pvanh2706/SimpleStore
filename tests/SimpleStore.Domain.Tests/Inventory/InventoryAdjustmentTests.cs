@@ -118,6 +118,91 @@ public sealed class InventoryAdjustmentTests
                 InventoryAdjustmentCostResolver.Resolve(reliable, -1, 1, null)).Code);
     }
 
+    [Fact]
+    public void StoragePrecisionGuardAcceptsExactSupportedQuantityAndUnitCostScales()
+    {
+        InventoryStoragePrecision.EnsureQuantity(
+            1.001m,
+            "invalid-quantity",
+            "Quantity");
+        InventoryStoragePrecision.EnsureQuantity(
+            InventoryStoragePrecision.MaxQuantity,
+            "invalid-quantity",
+            "Quantity");
+        InventoryStoragePrecision.EnsureUnitCost(
+            12.3456m,
+            "invalid-cost",
+            "Unit cost");
+        InventoryStoragePrecision.EnsureUnitCost(
+            InventoryStoragePrecision.MaxUnitCost,
+            "invalid-cost",
+            "Unit cost");
+    }
+
+    [Theory]
+    [InlineData(0.0004)]
+    [InlineData(1.2345)]
+    public void StoragePrecisionGuardRejectsQuantityThatWouldBeRoundedBySql(decimal value)
+    {
+        var error = Assert.Throws<DomainRuleException>(() =>
+            InventoryStoragePrecision.EnsureQuantity(
+                value,
+                "invalid-quantity-precision",
+                "Quantity"));
+
+        Assert.Equal("invalid-quantity-precision", error.Code);
+    }
+
+    [Fact]
+    public void StoragePrecisionGuardRejectsExcessUnitCostScaleAndMagnitude()
+    {
+        Assert.Equal(
+            "invalid-quantity-precision",
+            Assert.Throws<DomainRuleException>(() =>
+                InventoryStoragePrecision.EnsureQuantity(
+                    InventoryStoragePrecision.MaxQuantity + 0.001m,
+                    "invalid-quantity-precision",
+                    "Quantity")).Code);
+        Assert.Equal(
+            "invalid-cost-precision",
+            Assert.Throws<DomainRuleException>(() =>
+                InventoryStoragePrecision.EnsureUnitCost(
+                    12.34567m,
+                    "invalid-cost-precision",
+                    "Unit cost")).Code);
+        Assert.Equal(
+            "invalid-cost-precision",
+            Assert.Throws<DomainRuleException>(() =>
+                InventoryStoragePrecision.EnsureUnitCost(
+                    InventoryStoragePrecision.MaxUnitCost + 0.0001m,
+                    "invalid-cost-precision",
+                    "Unit cost")).Code);
+    }
+
+    [Fact]
+    public void StocktakeRejectsNegativeCountBeforeCreatingAResult()
+    {
+        var error = Assert.Throws<DomainRuleException>(() => StocktakeResult.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            1,
+            new byte[8],
+            -1,
+            null,
+            null,
+            null,
+            10,
+            10,
+            10,
+            true,
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow));
+
+        Assert.Equal("invalid-stocktake-counted-quantity", error.Code);
+    }
+
     private static InventoryBalance CreateBalance(decimal quantity, decimal? cost) =>
         InventoryBalance.Create(
             Guid.NewGuid(),

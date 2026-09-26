@@ -94,6 +94,18 @@ public sealed class StockAdjustment
             throw new DomainRuleException("operation-id-required", "OperationId is required.");
         }
 
+        InventoryStoragePrecision.EnsureQuantity(
+            quantityDelta,
+            "invalid-adjustment-quantity-precision",
+            "Adjustment quantity");
+        if (adjustmentUnitCost.HasValue)
+        {
+            InventoryStoragePrecision.EnsureUnitCost(
+                adjustmentUnitCost.Value,
+                "invalid-adjustment-unit-cost-precision",
+                "Adjustment unit cost");
+        }
+
         var normalizedReason = reason?.Trim() ?? string.Empty;
         if (normalizedReason.Length is < 1 or > MaxReasonLength)
         {

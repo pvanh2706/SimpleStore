@@ -19,6 +19,18 @@ public sealed class CreateStockAdjustmentUseCase(
         CreateStockAdjustmentCommand command,
         CancellationToken cancellationToken)
     {
+        InventoryStoragePrecision.EnsureQuantity(
+            command.QuantityDelta,
+            "invalid-adjustment-quantity-precision",
+            "Adjustment quantity");
+        if (command.AdjustmentUnitCost.HasValue)
+        {
+            InventoryStoragePrecision.EnsureUnitCost(
+                command.AdjustmentUnitCost.Value,
+                "invalid-adjustment-unit-cost-precision",
+                "Adjustment unit cost");
+        }
+
         var userId = CurrentUserGuard.GetRequiredUserId(currentUser);
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
         var fingerprint = Fingerprint.Create(
@@ -170,6 +182,28 @@ public sealed class SubmitStocktakeUseCase(
         SubmitStocktakeCommand command,
         CancellationToken cancellationToken)
     {
+        InventoryStoragePrecision.EnsureQuantity(
+            command.ExpectedQuantity,
+            "invalid-stocktake-expected-quantity-precision",
+            "Stocktake expected quantity");
+        InventoryStoragePrecision.EnsureQuantity(
+            command.CountedQuantity,
+            "invalid-stocktake-counted-quantity-precision",
+            "Stocktake counted quantity");
+        if (command.CountedQuantity < 0)
+        {
+            throw new Domain.DomainRuleException(
+                "invalid-stocktake-counted-quantity",
+                "Stocktake counted quantity cannot be negative.");
+        }
+        if (command.AdjustmentUnitCost.HasValue)
+        {
+            InventoryStoragePrecision.EnsureUnitCost(
+                command.AdjustmentUnitCost.Value,
+                "invalid-adjustment-unit-cost-precision",
+                "Adjustment unit cost");
+        }
+
         var userId = CurrentUserGuard.GetRequiredUserId(currentUser);
         var storeId = await CurrentUserGuard.GetRequiredStoreIdAsync(currentUser, slice1Repository, cancellationToken);
         var expectedRevision = ParseRevision(command.ExpectedRevision);
@@ -231,6 +265,10 @@ public sealed class SubmitStocktakeUseCase(
             }
 
             var difference = command.CountedQuantity - command.ExpectedQuantity;
+            InventoryStoragePrecision.EnsureQuantity(
+                difference,
+                "invalid-stocktake-difference",
+                "Stocktake difference");
             var cost = difference == 0
                 ? null
                 : InventoryAdjustmentCostResolver.Resolve(
