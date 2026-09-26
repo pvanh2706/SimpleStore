@@ -24,10 +24,12 @@ async function submit() {
     const redirect = candidate?.startsWith('/') && !candidate.startsWith('//') && !candidate.startsWith('/login')
       ? candidate
       : null
-    const defaultPath = auth.session.hasStore
+    const defaultPath = auth.session.mustChangePassword
+      ? '/change-password'
+      : auth.session.hasStore
       ? (auth.session.roles.includes('Owner') ? '/today' : '/products')
       : '/setup'
-    await router.push(redirect ?? defaultPath)
+    await router.push(auth.session.mustChangePassword ? defaultPath : (redirect ?? defaultPath))
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Không thể đăng nhập.'
   } finally {

@@ -62,6 +62,24 @@ describe('router authentication guard', () => {
     expect(router.currentRoute.value.name).toBe('products')
   })
 
+  it('forces a temporary-password Cashier to change password before any business route', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      isAuthenticated: true, email: 'cashier@test', storeId: 'store-1', roles: ['Cashier'], hasStore: true,
+      mustChangePassword: true, isEnabled: true,
+    }), { status: 200 })))
+    await router.push('/products')
+    expect(router.currentRoute.value.name).toBe('change-password')
+  })
+
+  it('does not leave a changed-password user on the password-change route', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      isAuthenticated: true, email: 'cashier@test', storeId: 'store-1', roles: ['Cashier'], hasStore: true,
+      mustChangePassword: false, isEnabled: true,
+    }), { status: 200 })))
+    await router.push('/change-password')
+    expect(router.currentRoute.value.name).toBe('products')
+  })
+
   it('honors an explicit safe authorized redirect instead of forcing Today', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       isAuthenticated: true, email: 'owner@test', storeId: 'store-1', roles: ['Owner'], hasStore: true,

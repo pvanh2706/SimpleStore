@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SimpleStore.Api.ErrorHandling;
 using SimpleStore.Api.Security;
+using SimpleStore.Api;
 using SimpleStore.Application;
 using SimpleStore.Application.Abstractions;
 using SimpleStore.Infrastructure;
@@ -48,6 +49,16 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
+if (OwnerBootstrapCommand.IsRequested(args))
+{
+    Environment.ExitCode = await OwnerBootstrapCommand.RunAsync(
+        args,
+        app.Services,
+        CancellationToken.None);
+    await app.DisposeAsync();
+    return;
+}
+
 if (app.Environment.IsDevelopment())
 {
     await app.Services.SeedDevelopmentOwnerAsync(builder.Configuration, app.Logger);
@@ -61,6 +72,7 @@ app.UseStatusCodePages(async statusCodeContext =>
 });
 app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseMiddleware<ForcedPasswordChangeMiddleware>();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())

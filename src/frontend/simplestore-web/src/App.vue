@@ -16,7 +16,7 @@ async function logout() {
     <header v-if="auth.session.isAuthenticated" class="border-b border-stone-200 bg-white">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-5 px-5 py-4">
         <RouterLink class="text-xl font-black tracking-tight text-emerald-800" to="/">SimpleStore</RouterLink>
-        <nav v-if="auth.session.hasStore" class="flex flex-1 gap-4 text-sm font-semibold">
+        <nav v-if="auth.session.hasStore && !auth.session.mustChangePassword" class="flex flex-1 gap-4 text-sm font-semibold">
           <RouterLink class="nav-link" to="/sales/new">Bán hàng</RouterLink>
           <RouterLink class="nav-link" to="/sales">Đơn bán</RouterLink>
           <RouterLink class="nav-link" to="/products">Sản phẩm</RouterLink>
@@ -29,6 +29,7 @@ async function logout() {
             <RouterLink class="nav-link" to="/suppliers">Nhà cung cấp</RouterLink>
             <RouterLink class="nav-link" to="/purchases">Nhập hàng</RouterLink>
             <RouterLink class="nav-link" to="/settings/operations">Thiết lập</RouterLink>
+            <RouterLink class="nav-link" to="/settings/users">Nhân viên</RouterLink>
           </template>
         </nav>
         <span class="ml-auto hidden text-sm text-slate-500 sm:inline">{{ auth.session.email }}</span>
@@ -36,6 +37,7 @@ async function logout() {
       </div>
     </header>
     <main class="mx-auto max-w-6xl px-5 py-8">
+      <p v-if="auth.session.mustChangePassword" class="mb-5 rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">Bạn phải đổi mật khẩu tạm thời trước khi sử dụng cửa hàng.</p>
       <RouterView />
     </main>
   </div>

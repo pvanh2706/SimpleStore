@@ -48,6 +48,10 @@ public sealed class InventoryMovementConfiguration : IEntityTypeConfiguration<In
         builder.Property(movement => movement.QuantityDelta).HasPrecision(18, 3);
         builder.Property(movement => movement.InventoryValueDelta).HasPrecision(18, 2);
         builder.Property(movement => movement.UnitCost).HasPrecision(18, 4);
+        builder.Property(movement => movement.CostReliability).HasConversion<string>().HasMaxLength(32);
+        builder.Property(movement => movement.Reason).HasMaxLength(StockAdjustment.MaxReasonLength);
+        builder.Property(movement => movement.StocktakeExpectedQuantity).HasPrecision(18, 3);
+        builder.Property(movement => movement.StocktakeCountedQuantity).HasPrecision(18, 3);
         builder.Property(movement => movement.MovementType).HasConversion<string>().HasMaxLength(32);
         builder.Property(movement => movement.SourceType).HasMaxLength(64).IsRequired();
         builder.HasOne<Store>()

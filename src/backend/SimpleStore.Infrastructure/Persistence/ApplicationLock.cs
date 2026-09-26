@@ -55,6 +55,11 @@ internal static class ApplicationLock
             $"SimpleStore:C14ExperimentEvent:{eventId:N}",
             cancellationToken);
 
+    public static Task AcquireOwnerBootstrapAsync(
+        ApplicationDbContext dbContext,
+        CancellationToken cancellationToken) =>
+        AcquireAsync(dbContext, "SimpleStore:OwnerBootstrap", cancellationToken);
+
     private static async Task AcquireAsync(
         ApplicationDbContext dbContext,
         string resource,

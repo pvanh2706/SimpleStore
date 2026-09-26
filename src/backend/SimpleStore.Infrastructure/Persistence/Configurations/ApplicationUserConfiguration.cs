@@ -9,6 +9,8 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> builder)
     {
+        builder.Property(user => user.IsEnabled).HasDefaultValue(true);
+        builder.Property(user => user.MustChangePassword).HasDefaultValue(false);
         builder.HasOne<Store>()
             .WithMany()
             .HasForeignKey(user => user.StoreId)

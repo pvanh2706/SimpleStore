@@ -67,6 +67,12 @@ public sealed class ApplicationDbContext(
 
     public DbSet<C14ExperimentEvent> C14ExperimentEvents => Set<C14ExperimentEvent>();
 
+    public DbSet<AccountLifecycleAudit> AccountLifecycleAudits => Set<AccountLifecycleAudit>();
+
+    public DbSet<StockAdjustment> StockAdjustments => Set<StockAdjustment>();
+
+    public DbSet<StocktakeResult> StocktakeResults => Set<StocktakeResult>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

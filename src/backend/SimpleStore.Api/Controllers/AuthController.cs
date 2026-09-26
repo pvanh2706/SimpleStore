@@ -9,7 +9,8 @@ namespace SimpleStore.Api.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(
     SignInManager<ApplicationUser> signInManager,
-    UserManager<ApplicationUser> userManager) : ControllerBase
+    UserManager<ApplicationUser> userManager,
+    AccountManagementService accountManagement) : ControllerBase
 {
     [AllowAnonymous]
     [HttpPost("login")]
@@ -19,6 +20,11 @@ public sealed class AuthController(
     {
         var user = await userManager.FindByEmailAsync(request.Email.Trim());
         if (user is null)
+        {
+            return InvalidCredentials();
+        }
+
+        if (!user.IsEnabled)
         {
             return InvalidCredentials();
         }
@@ -44,19 +50,48 @@ public sealed class AuthController(
         return NoContent();
     }
 
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(
+        ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user is null || !user.IsEnabled)
+        {
+            return InvalidCredentials();
+        }
+
+        await accountManagement.ChangePasswordAsync(
+            user.Id,
+            request.CurrentPassword,
+            request.NewPassword,
+            cancellationToken);
+        user = await userManager.FindByIdAsync(user.Id.ToString())
+            ?? throw new InvalidOperationException("Changed user could not be reloaded.");
+        await signInManager.RefreshSignInAsync(user);
+        return Ok(await CreateSessionResponseAsync(user));
+    }
+
     [AllowAnonymous]
     [HttpGet("session")]
     public async Task<ActionResult<SessionResponse>> Session(CancellationToken cancellationToken)
     {
         if (User.Identity?.IsAuthenticated != true)
         {
-            return Ok(new SessionResponse(false, null, null, [], false));
+            return Ok(SessionResponse.Anonymous);
         }
 
         var user = await userManager.GetUserAsync(User);
         if (user is null)
         {
-            return Ok(new SessionResponse(false, null, null, [], false));
+            return Ok(SessionResponse.Anonymous);
+        }
+
+        if (!user.IsEnabled)
+        {
+            await signInManager.SignOutAsync();
+            return Ok(SessionResponse.Anonymous);
         }
 
         return Ok(await CreateSessionResponseAsync(user));
@@ -70,7 +105,9 @@ public sealed class AuthController(
             user.Email,
             user.StoreId,
             roles.ToArray(),
-            user.StoreId.HasValue);
+            user.StoreId.HasValue,
+            user.MustChangePassword,
+            user.IsEnabled);
     }
 
     private ObjectResult InvalidCredentials() => Problem(
@@ -85,9 +122,16 @@ public sealed class AuthController(
 
 public sealed record LoginRequest(string Email, string Password, bool RememberMe = false);
 
+public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
 public sealed record SessionResponse(
     bool IsAuthenticated,
     string? Email,
     Guid? StoreId,
     IReadOnlyCollection<string> Roles,
-    bool HasStore);
+    bool HasStore,
+    bool MustChangePassword,
+    bool IsEnabled)
+{
+    public static SessionResponse Anonymous { get; } = new(false, null, null, [], false, false, false);
+}

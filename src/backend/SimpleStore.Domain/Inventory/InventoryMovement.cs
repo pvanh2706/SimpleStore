@@ -60,6 +60,14 @@ public sealed class InventoryMovement
 
     public DateTimeOffset OccurredAt { get; private set; }
 
+    public CostReliability? CostReliability { get; private set; }
+
+    public string? Reason { get; private set; }
+
+    public decimal? StocktakeExpectedQuantity { get; private set; }
+
+    public decimal? StocktakeCountedQuantity { get; private set; }
+
     public static InventoryMovement CreateOpeningBalance(
         Guid storeId,
         Guid warehouseId,
@@ -237,6 +245,113 @@ public sealed class InventoryMovement
             InventoryMovementType.PurchaseVoid,
             "PurchaseVoid",
             purchaseVoidId,
+            performedByUserId,
+            occurredAt);
+    }
+
+    public static InventoryMovement CreateAdjustment(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantityDelta,
+        decimal inventoryValueDelta,
+        decimal unitCost,
+        CostReliability costReliability,
+        string reason,
+        Guid adjustmentId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        var movement = CreateInventoryAdjustment(
+            storeId,
+            warehouseId,
+            productId,
+            quantityDelta,
+            inventoryValueDelta,
+            unitCost,
+            InventoryMovementType.Adjustment,
+            "StockAdjustment",
+            adjustmentId,
+            performedByUserId,
+            occurredAt);
+        movement.CostReliability = costReliability;
+        movement.Reason = reason;
+        return movement;
+    }
+
+    public static InventoryMovement CreateStocktakeAdjustment(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantityDelta,
+        decimal inventoryValueDelta,
+        decimal unitCost,
+        CostReliability costReliability,
+        string? note,
+        decimal expectedQuantity,
+        decimal countedQuantity,
+        Guid stocktakeId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        var movement = CreateInventoryAdjustment(
+            storeId,
+            warehouseId,
+            productId,
+            quantityDelta,
+            inventoryValueDelta,
+            unitCost,
+            InventoryMovementType.StocktakeAdjustment,
+            "StocktakeResult",
+            stocktakeId,
+            performedByUserId,
+            occurredAt);
+        movement.CostReliability = costReliability;
+        movement.Reason = note;
+        movement.StocktakeExpectedQuantity = expectedQuantity;
+        movement.StocktakeCountedQuantity = countedQuantity;
+        return movement;
+    }
+
+    private static InventoryMovement CreateInventoryAdjustment(
+        Guid storeId,
+        Guid warehouseId,
+        Guid productId,
+        decimal quantityDelta,
+        decimal inventoryValueDelta,
+        decimal unitCost,
+        InventoryMovementType movementType,
+        string sourceType,
+        Guid sourceId,
+        Guid performedByUserId,
+        DateTimeOffset occurredAt)
+    {
+        if (quantityDelta == 0 || unitCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-inventory-adjustment-movement",
+                "Inventory adjustment movement values are invalid.");
+        }
+
+        if ((quantityDelta > 0 && inventoryValueDelta < 0)
+            || (quantityDelta < 0 && inventoryValueDelta > 0))
+        {
+            throw new DomainRuleException(
+                "invalid-inventory-adjustment-value-direction",
+                "Inventory adjustment quantity and value must have matching directions.");
+        }
+
+        return new InventoryMovement(
+            Guid.NewGuid(),
+            storeId,
+            warehouseId,
+            productId,
+            quantityDelta,
+            inventoryValueDelta,
+            unitCost,
+            movementType,
+            sourceType,
+            sourceId,
             performedByUserId,
             occurredAt);
     }

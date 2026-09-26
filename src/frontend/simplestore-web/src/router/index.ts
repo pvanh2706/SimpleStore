@@ -6,6 +6,7 @@ const router = createRouter({
   routes: [
     { path: '/', redirect: '/today' },
     { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { public: true } },
+    { path: '/change-password', name: 'change-password', component: () => import('../views/PasswordChangeView.vue') },
     { path: '/setup', name: 'setup', component: () => import('../views/StoreSetupView.vue') },
     { path: '/products', name: 'products', component: () => import('../views/ProductListView.vue') },
     { path: '/products/new', name: 'product-create', component: () => import('../views/ProductFormView.vue') },
@@ -29,6 +30,7 @@ const router = createRouter({
     { path: '/today/attention', name: 'attention-list', component: () => import('../views/AttentionListView.vue'), meta: { ownerOnly: true } },
     { path: '/today/attention/:productId', name: 'attention-detail', component: () => import('../views/AttentionDetailView.vue'), meta: { ownerOnly: true } },
     { path: '/settings/operations', name: 'operational-settings', component: () => import('../views/OperationalSettingsView.vue'), meta: { ownerOnly: true } },
+    { path: '/settings/users', name: 'user-settings', component: () => import('../views/UserSettingsView.vue'), meta: { ownerOnly: true } },
   ],
 })
 
@@ -36,6 +38,12 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const session = await auth.loadSession()
   if (!session.isAuthenticated && !to.meta.public) return { name: 'login', query: { redirect: to.fullPath } }
+  if (session.isAuthenticated && session.mustChangePassword && to.name !== 'change-password') return { name: 'change-password' }
+  if (session.isAuthenticated && !session.mustChangePassword && to.name === 'change-password') {
+    return session.hasStore
+      ? { name: session.roles.includes('Owner') ? 'today' : 'products' }
+      : { name: 'setup' }
+  }
   if (session.isAuthenticated && to.name === 'login') {
     const redirect = safeRedirect(to.query.redirect)
     if (redirect) return redirect

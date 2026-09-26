@@ -10,6 +10,7 @@ using SimpleStore.Application.Returns;
 using SimpleStore.Application.Corrections;
 using SimpleStore.Application.Debts;
 using SimpleStore.Application.Reports;
+using SimpleStore.Application.Inventory;
 
 namespace SimpleStore.Application;
 
@@ -69,6 +70,9 @@ public static class DependencyInjection
         services.AddScoped<GetC14AttentionListUseCase>();
         services.AddScoped<GetC14AttentionDetailUseCase>();
         services.AddScoped<RecordC14ExperimentEventUseCase>();
+        services.AddScoped<CreateStockAdjustmentUseCase>();
+        services.AddScoped<GetStocktakeContextUseCase>();
+        services.AddScoped<SubmitStocktakeUseCase>();
 
         return services;
     }

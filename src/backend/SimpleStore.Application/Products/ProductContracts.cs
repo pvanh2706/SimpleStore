@@ -1,3 +1,5 @@
+using SimpleStore.Domain.Inventory;
+
 namespace SimpleStore.Application.Products;
 
 public sealed record ProductWriteCommand(
@@ -61,4 +63,9 @@ public sealed record InventoryMovementResult(
     decimal UnitCost,
     string SourceType,
     Guid SourceId,
-    DateTimeOffset OccurredAt);
+    Guid PerformedByUserId,
+    DateTimeOffset OccurredAt,
+    string? CostReliability,
+    string? Reason,
+    decimal? StocktakeExpectedQuantity,
+    decimal? StocktakeCountedQuantity);

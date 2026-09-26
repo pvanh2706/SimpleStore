@@ -7,5 +7,7 @@ public enum InventoryMovementType
     Sale = 3,
     ReturnRestock = 4,
     SaleVoid = 5,
-    PurchaseVoid = 6
+    PurchaseVoid = 6,
+    Adjustment = 7,
+    StocktakeAdjustment = 8
 }

@@ -294,7 +294,12 @@ public sealed class GetInventoryMovementsUseCase(
                 movement.UnitCost,
                 movement.SourceType,
                 movement.SourceId,
-                movement.OccurredAt))
+                movement.PerformedByUserId,
+                movement.OccurredAt,
+                movement.CostReliability?.ToString(),
+                movement.Reason,
+                movement.StocktakeExpectedQuantity,
+                movement.StocktakeCountedQuantity))
             .ToArray();
     }
 }

@@ -134,6 +134,44 @@ public sealed class InventoryBalance
         InventoryValue -= inventoryValue;
         UpdatedAt = updatedAt;
     }
+
+    public void ApplyInventoryAdjustment(
+        decimal quantityDelta,
+        decimal inventoryValueDelta,
+        decimal effectiveUnitCost,
+        bool establishesReliableBasis,
+        DateTimeOffset updatedAt)
+    {
+        if (quantityDelta == 0)
+        {
+            throw new DomainRuleException(
+                "adjustment-quantity-required",
+                "Adjustment quantity must not be zero.");
+        }
+
+        if (effectiveUnitCost < 0)
+        {
+            throw new DomainRuleException(
+                "invalid-adjustment-unit-cost",
+                "Adjustment unit cost cannot be negative.");
+        }
+
+        var wasReliable = HasAverageCost;
+        QuantityOnHand += quantityDelta;
+        InventoryValue += inventoryValueDelta;
+
+        if (quantityDelta > 0 && establishesReliableBasis)
+        {
+            AverageCost = effectiveUnitCost;
+            HasAverageCost = true;
+        }
+        else if (!wasReliable)
+        {
+            HasAverageCost = false;
+        }
+
+        UpdatedAt = updatedAt;
+    }
 }
 
 public sealed record SaleCost(decimal UnitCost, CostReliability Reliability);

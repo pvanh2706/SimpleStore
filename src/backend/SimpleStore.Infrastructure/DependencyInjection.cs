@@ -35,6 +35,9 @@ public static class DependencyInjection
         services.AddScoped<ISlice6ARepository>(provider =>
             provider.GetRequiredService<Slice5BRepository>());
         services.AddScoped<ISlice6BRepository, Slice6BRepository>();
+        services.AddScoped<IPilotReadinessRepository, PilotReadinessRepository>();
+        services.AddScoped<AccountManagementService>();
+        services.AddScoped<OwnerBootstrapService>();
 
         services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
@@ -56,6 +59,7 @@ public static class DependencyInjection
             options.ExpireTimeSpan = TimeSpan.FromHours(8);
             options.Events = new CookieAuthenticationEvents
             {
+                OnValidatePrincipal = SecurityStampValidator.ValidatePrincipalAsync,
                 OnRedirectToLogin = context =>
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -68,6 +72,8 @@ public static class DependencyInjection
                 }
             };
         });
+        services.Configure<SecurityStampValidatorOptions>(options =>
+            options.ValidationInterval = TimeSpan.Zero);
 
         return services;
     }

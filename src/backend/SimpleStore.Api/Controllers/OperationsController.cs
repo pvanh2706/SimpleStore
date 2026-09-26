@@ -22,6 +22,11 @@ public sealed class OperationsController(GetOperationStatusUseCase getOperationS
         {
             return Forbid();
         }
+        if (result?.OperationType is BusinessOperationTypes.AdjustStock or BusinessOperationTypes.RecordStocktake
+            && !User.IsInRole(ApplicationRoles.Owner))
+        {
+            return Forbid();
+        }
         return result is null
             ? Problem(
                 statusCode: StatusCodes.Status404NotFound,

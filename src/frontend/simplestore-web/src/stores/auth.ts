@@ -8,6 +8,8 @@ const anonymous: Session = {
   storeId: null,
   roles: [],
   hasStore: false,
+  mustChangePassword: false,
+  isEnabled: false,
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -31,6 +33,13 @@ export const useAuthStore = defineStore('auth', {
       await apiRequest<void>('/api/auth/logout', { method: 'POST' })
       resetAntiforgeryToken()
       this.session = { ...anonymous }
+      this.initialized = true
+    },
+    async changePassword(currentPassword: string, newPassword: string) {
+      this.session = await apiRequest<Session>('/api/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
       this.initialized = true
     },
   },

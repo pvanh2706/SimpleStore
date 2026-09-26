@@ -4,6 +4,8 @@ export interface Session {
   storeId: string | null
   roles: string[]
   hasStore: boolean
+  mustChangePassword?: boolean
+  isEnabled?: boolean
 }
 
 export interface StoreInfo {
@@ -70,7 +72,80 @@ export interface InventoryMovement {
   unitCost: number
   sourceType: string
   sourceId: string
+  performedByUserId: string
   occurredAt: string
+  costReliability: CostReliability | null
+  reason: string | null
+  stocktakeExpectedQuantity: number | null
+  stocktakeCountedQuantity: number | null
+}
+
+export interface CashierAccount {
+  id: string
+  email: string
+  isEnabled: boolean
+  mustChangePassword: boolean
+  disabledAt: string | null
+  passwordChangeRequiredAt: string | null
+  passwordChangedAt: string | null
+}
+
+export interface CashierCredential {
+  id: string
+  email: string
+  temporaryPassword: string
+  mustChangePassword: boolean
+  wasAlreadyCompleted: boolean
+}
+
+export interface StockAdjustmentResult {
+  id: string
+  operationId: string
+  productId: string
+  quantityDelta: number
+  adjustmentUnitCost: number | null
+  effectiveUnitCost: number
+  costReliability: CostReliability
+  inventoryValueDelta: number
+  reason: string
+  quantityBefore: number
+  quantityAfter: number
+  inventoryValueBefore: number
+  inventoryValueAfter: number
+  averageCostAfter: number
+  hasAverageCostAfter: boolean
+  inventoryMovementId: string
+  occurredAt: string
+  wasAlreadyCompleted: boolean
+}
+
+export interface StocktakeContext {
+  productId: string
+  productName: string
+  productSku: string
+  unit: string
+  expectedQuantity: number
+  expectedRevision: string
+  hasAverageCost: boolean
+  averageCost: number
+}
+
+export interface StocktakeResult {
+  id: string
+  operationId: string
+  productId: string
+  expectedQuantity: number
+  expectedRevision: string
+  countedQuantity: number
+  difference: number
+  adjustmentUnitCost: number | null
+  effectiveUnitCost: number
+  costReliability: CostReliability
+  inventoryValueDelta: number
+  note: string | null
+  inventoryMovementId: string | null
+  occurredAt: string
+  wasAlreadyCompleted: boolean
 }
 
 export interface ImportError {
