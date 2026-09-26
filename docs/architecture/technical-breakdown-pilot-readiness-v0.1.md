@@ -6,7 +6,7 @@
 
 Implementation baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; Product Owner reviewed/approved baseline: `5e5720659cee1fd400001d2a2f7c5b750e0483b6`. GitHub Actions CI #49 / `36037545751` tại approved baseline là `SUCCESS`; backend và frontend đều `SUCCESS`. Đây là approval-baseline evidence, không phải PR-A implementation evidence.
 
-Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A/PR-B/PR-C đều `APPROVED FOR IMPLEMENTATION / NOT STARTED`; M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
+Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A hiện là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; PR-B/PR-C vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`. M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
 
 ## 1. Mục tiêu và nguyên tắc
 
@@ -53,9 +53,9 @@ Trình tự implementation/review đã approve tại D-092:
 
 ## 3. Approved staging và blocker closure
 
-| Stage | Trạng thái sau D-092 | Trọng tâm | Blocker/gate đóng khi có reviewed evidence |
+| Stage | Trạng thái hiện tại | Trọng tâm | Blocker/gate đóng khi có reviewed evidence |
 |---|---|---|---|
-| PR-A — Functional pilot blockers | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Production account provisioning; Stock Adjustment; Stocktake | PR-BLOCKER-01, PR-BLOCKER-02 |
+| PR-A — Functional pilot blockers | `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` | Production account provisioning; Stock Adjustment; Stocktake | PR-BLOCKER-01, PR-BLOCKER-02 remain open pending review |
 | PR-B — Operational safety | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 |
 | PR-C — Pilot certification and release gate | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Printer certification, formal release evidence, onboarding/support plan, validation execution plan | PR-BLOCKER-06, PR-BLOCKER-07, Pilot operations gate, Validation readiness gate |
 
@@ -520,6 +520,19 @@ The following are safely derived from approved decisions and existing architectu
 - Domain, SQL Server integration, frontend and critical real E2E pass; existing Slice 0–6 regression remains green.
 - PR-BLOCKER-01 and PR-BLOCKER-02 may close only after reviewed evidence, not code merge alone.
 
+#### PR-A implementation evidence — pending Product Owner review
+
+- Approved implementation baseline: `40cdb6acb8e1ee8fba9d4a99bae219bfd56025e4`; implementation commit: `ceae40ee97da3468954da8e27b852bcbbfa94113`.
+- D-085: explicit `bootstrap-owner --email <email>` admin CLI with protected prompt or ephemeral `--password-stdin`, normalized identity, Identity password policy, global serialization, first-Owner-only behavior, exact safe retry and non-secret version/SHA evidence. No public bootstrap endpoint was added; Development seeding remains Development-only.
+- D-086: Owner-only, server-side Store-scoped Cashier list/create/disable/reset; generated one-time temporary credentials; mandatory password change; backend business-API denial before change; security-stamp invalidation on reset/disable; generic failed login; immutable lifecycle audit without secret material; minimal `/settings/users` and password-change UI.
+- D-087: immutable `StockAdjustment`, closed `Adjustment` movement, exact OperationId fingerprint retry, SQL balance lock, atomic source/movement/balance/BusinessOperation write, reliable/explicit/estimated/unavailable costing and no retroactive revaluation or unsafe reliability promotion.
+- D-088/D-089: separate immutable `StocktakeResult`, opaque balance revision, typed `409 stocktake-stale`, refresh/recount flow, D-087 costing, closed `StocktakeAdjustment` movement, and persisted zero-difference count with no fake movement.
+- Product inventory history now projects typed reason/note, actor id, occurred time, quantity/value/unit cost, `CostReliability`, and Stocktake expected/count evidence. UI keeps an ambiguous Adjustment/Stocktake attempt immutable for exact retry.
+- Additive migration: `20260926023259_ImplementPilotReadinessPrA`; clean migration and upgrade from `20260924010903_ImplementSlice6Stage6BC14` preserve existing Identity/Store/Product/InventoryBalance data.
+- Local verification on 2026-09-26: .NET Release build `0 warnings / 0 errors`; Domain `91/91`; SQL Server integration `94/94`; frontend `23` test files / `106` tests and production build pass; real PR-A Playwright `1/1` pass through Vue → ASP.NET Core → temporary LocalDB with production CLI bootstrap. GitHub CI does not currently run this real Playwright flow, so this is local evidence only.
+- Environment note: local Node `22.19.0` emits the repository engine warning (`>=24` expected), while frozen install, frontend tests and build pass.
+- Governance boundary: PR-A remains `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`. No D-093 is created, PR-BLOCKER-01/02 remain open, PR-B/PR-C remain not started, and M7 remains not achieved.
+
 ### PR-B DoD
 
 - production-like Windows/IIS deployment from versioned artifact succeeds with no Node required on server;
@@ -554,6 +567,6 @@ C14 remains an experiment. Technical delivery and event counts do not validate d
 
 1. PR-Q1–PR-Q7 remain resolved by D-085–D-091.
 2. Product Owner approved this Technical Breakdown and exact stage contracts at D-092 using reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`.
-3. PR-A may begin implementation with status `APPROVED FOR IMPLEMENTATION / NOT STARTED`; PR-B and PR-C remain approved later stages and are also `NOT STARTED`.
+3. PR-A is `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` at `ceae40ee97da3468954da8e27b852bcbbfa94113`; PR-B and PR-C remain approved later stages and are still `NOT STARTED`.
 4. Each stage requires separate implementation evidence and Product Owner review/approval before it can be marked complete or close its mapped blockers/gates.
 5. Completion of all stages does not automatically achieve M7; final Pilot Readiness/M7 still requires separate explicit Product Owner approval.

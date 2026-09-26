@@ -2,7 +2,7 @@
 
 ## Giai đoạn hiện tại
 
-**MVP / Pilot Readiness — `TECHNICAL BREAKDOWN APPROVED / PR-A READY FOR IMPLEMENTATION`**
+**MVP / Pilot Readiness — `PR-A IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`**
 
 Slice 6 — Understand & Act giữ trạng thái `APPROVED / COMPLETED — D-076`. Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
@@ -77,12 +77,12 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 - Tài liệu [Pilot Readiness v0.1](docs/product/pilot-readiness-v0.1.md) là `APPROVED`; mục tiêu hiện tại là đạt `M7 — Pilot-ready` bằng implementation và reviewed evidence. Decision approval không có nghĩa M7 đã đạt.
 - [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) là `APPROVED FOR IMPLEMENTATION — D-092`; approved sequence gồm PR-A functional blockers, PR-B operational safety và PR-C certification/release gate.
 - PR-Q1–PR-Q7 đã `RESOLVED` tại D-085–D-091 và không được reopen; D-092 approve architecture/sequence/contracts nhưng không phải implementation completion.
-- PR-A — Functional pilot blockers: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
+- PR-A — Functional pilot blockers: `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW` tại implementation commit `ceae40ee97da3468954da8e27b852bcbbfa94113`.
 - PR-B — Operational safety: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
 - PR-C — Pilot certification and release gate: `APPROVED FOR IMPLEMENTATION / NOT STARTED`.
 - `PR-BLOCKER-01..07` đều còn `OPEN` cho tới khi reviewed implementation/evidence của stage tương ứng được approve; D-092 không tự đóng blocker/gate nào.
-- `PR-BLOCKER-01` — chưa có production-safe Owner bootstrap/Cashier management workflow.
-- `PR-BLOCKER-02` — C4 MVP MUST còn thiếu Stock Adjustment, Stocktake và stocktake difference recording.
+- `PR-BLOCKER-01` — production-safe Owner bootstrap và Store-scoped Cashier lifecycle đã implement trong PR-A, nhưng blocker vẫn `OPEN / PENDING PRODUCT OWNER REVIEW`.
+- `PR-BLOCKER-02` — Stock Adjustment, Stocktake và stocktake difference recording đã implement trong PR-A, nhưng blocker vẫn `OPEN / PENDING PRODUCT OWNER REVIEW`.
 - `PR-BLOCKER-03` — chưa có documented automated SQL Server backup/retention/restore drill.
 - `PR-BLOCKER-04` — Windows Server/IIS production deployment, versioning, rollback/recovery runbook chưa hoàn thiện.
 - `PR-BLOCKER-05` — health/logging foundation có sẵn nhưng persistent logs, DB-aware readiness, retention và support evidence chưa đủ.
@@ -200,7 +200,7 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ### Bước tiếp theo
 
-**Implement Stage PR-A — Functional pilot blockers.** PR-A là `APPROVED FOR IMPLEMENTATION / NOT STARTED`; PR-B/PR-C là approved later stages nhưng vẫn `NOT STARTED`. PR-BLOCKER-01..07 còn mở và M7 chưa đạt.
+**Product Owner review / approval Stage PR-A — Functional pilot blockers.** PR-A là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; PR-B/PR-C là approved later stages nhưng vẫn `NOT STARTED`. Không tự đóng PR-BLOCKER-01/02; PR-BLOCKER-01..07 còn mở và M7 chưa đạt.
 
 ## Chưa triển khai
 
@@ -210,4 +210,4 @@ Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vậ
 
 ## Cập nhật gần nhất
 
-2026-09-25 — Product Owner approve [Technical Breakdown Pilot Readiness v0.1](docs/architecture/technical-breakdown-pilot-readiness-v0.1.md) tại D-092 và reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`; CI #49 / `36037545751` `SUCCESS` là approval-baseline evidence. PR-A/PR-B/PR-C chuyển thành `APPROVED FOR IMPLEMENTATION / NOT STARTED`; chưa stage nào implemented hoặc complete và PR-BLOCKER-01..07 vẫn mở. M7 vẫn `NOT ACHIEVED`; pilot vẫn `NOT STARTED`; production readiness chưa được tuyên bố và C14 value/willingness-to-pay vẫn unvalidated. Next step: Implement Stage PR-A — Functional pilot blockers.
+2026-09-26 — Stage PR-A được implement tại `ceae40ee97da3468954da8e27b852bcbbfa94113` từ approved baseline `40cdb6acb8e1ee8fba9d4a99bae219bfd56025e4`: production Owner bootstrap CLI, Store-scoped Cashier lifecycle với temporary-password/mandatory-change/session invalidation/audit, immutable Stock Adjustment, separate Stocktake với stale rowversion protection, typed inventory evidence, Owner UI và additive migration `20260926023259_ImplementPilotReadinessPrA`. Local verification: Release build 0 warnings; Domain 91/91; SQL Server integration 94/94, gồm clean migration/current-baseline upgrade và concurrency/isolation; frontend 23 files/106 tests + production build pass; real PR-A Playwright 1/1 qua Vue → ASP.NET Core → temporary LocalDB, dùng production bootstrap CLI và không dùng public bootstrap endpoint. Local Node 22 phát engine warning vì workspace yêu cầu Node >=24; install/build/tests vẫn pass. PR-A chỉ là `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; không tạo D-093, không đóng PR-BLOCKER-01/02, không implement PR-B/PR-C và không đánh dấu M7 đạt. Next step: Product Owner review / approval Stage PR-A.
