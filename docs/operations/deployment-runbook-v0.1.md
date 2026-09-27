@@ -164,6 +164,6 @@ If the database must be recovered, use the separate backup/restore runbook with 
 
 ## 9. Current exercise status
 
-`PRODUCTION-LIKE IIS SMOKE PENDING — ENVIRONMENT LIMITATION`
+`WINDOWS 11 IIS PREREQUISITES INSTALLED — DEPLOYMENT/SMOKE PENDING`
 
-The current development workstation must not be represented as a Windows Server/IIS production-like exercise unless the IIS role, ASP.NET Core Module, administrator access, target certificate/binding, least-privilege app-pool identity, and protected target configuration are all available and the full procedure above is executed. Record actual evidence when that environment exists.
+The [2026-09-27 Windows 11 exercise](evidence/pr-b-win11-iis-deployment-2026-09-27.md) enabled IIS and installed the .NET 10 Hosting Bundle/ASP.NET Core Module, but dedicated site/app-pool creation was blocked by automatic command approval. The installer, HTTPS binding, protected runtime configuration and IIS smoke were not exercised. This workstation is not Windows Server; do not treat its prerequisite setup as a production deployment pass.

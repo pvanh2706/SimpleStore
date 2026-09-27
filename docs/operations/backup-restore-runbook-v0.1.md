@@ -139,6 +139,6 @@ Application rollback changes the deployed application artifact only after schema
 
 ## 9. Current drill status
 
-`LOCAL ACTUAL FULL + LOG RESTORE DRILL — PASS`
+`LOCAL SCHEDULED FULL + LOG AND ISOLATED RESTORE — PASS; PILOT EVIDENCE INCOMPLETE`
 
-The retained [2026-09-26 local restore evidence](evidence/pr-b-local-restore-drill-2026-09-26.md) proves native full/log creation, checksum/verify, ordered isolated-database restore, DB integrity/data checks, and restored-artifact readiness/authenticated read smoke. The exercise used LocalDB/SQL Express on a development workstation and local same-failure-domain storage. Pilot-infrastructure schedule, separate protected storage, alerting, elapsed retention, and actual operator exercise remain pending; PR-B evidence is therefore incomplete and PR-BLOCKER-03 remains open until sufficient reviewed environment evidence exists.
+The [2026-09-26 local restore evidence](evidence/pr-b-local-restore-drill-2026-09-26.md) proves restored-artifact readiness/authenticated read smoke. The [2026-09-27 Windows 11 evidence](evidence/pr-b-win11-backup-schedule-2026-09-27.md) additionally proves actual scheduled Full and 15-minute log task runs under a service identity, non-zero/JSONL failure handling, verified backup freshness, and a new isolated ordered restore with post-Full data. This remains same-disk SQL Express evidence. Separate protected failure-domain storage, alert routing, elapsed retention, this chain's IIS restored-app smoke, and another human operator exercise remain pending; PR-BLOCKER-03 stays open.
