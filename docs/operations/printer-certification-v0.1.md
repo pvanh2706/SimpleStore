@@ -4,7 +4,7 @@
 
 Primary target: **80 mm thermal receipt, browser `window.print()`**. The printed Sale is a read-only view of a committed transaction. A canceled, unavailable, or failed print must leave the Sale Completed, reloadable, and reprintable. An additional print agent/service needs a later Product Owner decision if browser printing fails certification.
 
-**PHYSICAL 80 MM PRINTER CERTIFICATION PENDING — HARDWARE NOT AVAILABLE.** PR-BLOCKER-06 remains OPEN. DOM/unit tests and browser PDF/preview inspection, if performed, do not certify paper output. A secondary configuration is needed only if the pilot actually uses it; 58 mm and A4 are not the baseline.
+**PHYSICAL 80 MM PRINTER CERTIFICATION PENDING — HARDWARE NOT AVAILABLE.** `PENDING — ENVIRONMENT/HARDWARE LIMITATION`. PR-BLOCKER-06 remains OPEN. DOM/unit tests and browser PDF/preview inspection, if performed, do not certify paper output. A secondary configuration is needed only if the pilot actually uses it; 58 mm and A4 are not the baseline.
 
 ## Safe discovery on this Windows workstation (2026-09-27)
 
@@ -31,11 +31,11 @@ At certification, select the actual 80 mm roll/media in the driver, browser scal
 | Field | Actual value/evidence |
 |---|---|
 | Store/environment, operator, reviewer, UTC timestamp | PENDING — HARDWARE NOT AVAILABLE |
-| Candidate exact commit SHA, application version, artifact SHA-256 | PENDING — exact candidate required |
+| Candidate exact commit SHA, application version, artifact SHA-256 | Prepared candidate `4f3a70108c1273fd918a82d4239a8a49eb226fad`, `0.1.0`, `a764f82c5355b54e1814d7271127fa5422d18625de825caed04f9c46858be5a8`; not yet physically certified |
 | Printer manufacturer/model/serial-safe identifier | PENDING — HARDWARE NOT AVAILABLE |
 | USB/network/actual interface and port | PENDING — HARDWARE NOT AVAILABLE |
-| Driver name/version and Windows version | PENDING — HARDWARE NOT AVAILABLE |
-| Browser name/version | PENDING — HARDWARE NOT AVAILABLE |
+| Driver name/version and Windows version | Thermal driver PENDING; discovery host Windows 11 Pro build 26200 |
+| Browser name/version | Actual print browser PENDING; Edge 154.0.4258.37 installed on discovery host |
 | Actual paper/driver width and roll length/cut behavior | PENDING — HARDWARE NOT AVAILABLE |
 | Browser scale, margins, headers/footers and print-dialog settings | PENDING — HARDWARE NOT AVAILABLE |
 | Sample IDs/photo or redacted scan references, without customer/payment sensitive data | PENDING — HARDWARE NOT AVAILABLE |

@@ -1,0 +1,59 @@
+# PR-C candidate evidence — 2026-09-27
+
+## Identity and result
+
+- Implementation commit: `0de3d14f80ec5962e5918d908c6d468943494c0e`; PR-C execution-artifact commit and exact clean build candidate: `4f3a70108c1273fd918a82d4239a8a49eb226fad`.
+- Application version: `0.1.0`. Artifact: `SimpleStore-0.1.0-4f3a70108c12.zip`; SHA-256 **`a764f82c5355b54e1814d7271127fa5422d18625de825caed04f9c46858be5a8`**, independently matched to its `.sha256` file. The ZIP manifest reports the exact candidate SHA/version, Windows/IIS target, migration bundle and 110 manifest-listed files. Artifact and checksum remain under ignored local `artifacts/` rather than Git.
+- Local operator: `admin` (initial inspection in a Medium-integrity shell, IIS steps through elevated helpers); independent release reviewer and Product Owner review **PENDING**. Manifest build time: `2026-09-27T15:44:52Z`. Evidence inspected on 2026-09-27 UTC. No pilot deployment window or sign-off has been assigned.
+- Candidate release gate: **FAIL / NOT READY**. Physical 80 mm printer certification is unavailable, the pilot environment is not this Windows 11 test workstation, and Product Owner review has not occurred. The exact candidate Windows/IIS installation, authenticated smoke and schema-compatible rollback rehearsal below did pass locally. This is implementation evidence for Product Owner review, not PR-C approval/completion, PR-B approval, M7 or pilot start.
+- GitHub Actions CI run for this candidate: [run 36330755074](https://github.com/pvanh2706/SimpleStore/actions/runs/36330755074) — **SUCCESS**, backend and frontend jobs concluded. GitHub CI does not run real E2E, physical printing or IIS deployment.
+
+| Required candidate check | Result | Evidence in this record |
+|---|---|---|
+| Exact clean SHA/version/ZIP manifest and independent SHA-256 | PASS | Identity, matching ZIP hash above |
+| GitHub CI backend/frontend | PASS | Run 36330755074 |
+| .NET restore/Release build/Domain and SQL integration tests | PASS | Counts below |
+| pnpm frozen install/frontend build/Vitest | PASS | Counts below |
+| Reviewed migration, clean E2E database and existing-data upgrade | PASS — local | No new migration; isolated clean E2E and A→candidate IIS migration/read smoke |
+| Critical real E2E | PASS — local | PR-A, Sale/reprint, Return/Void, debt/EOD, Today/C14 below |
+| Backup freshness and recovery reference | PASS — local only | `Healthy` Full/Log at preflight; retained PR-B restore evidence; pilot failure-domain requirement pending D-094 |
+| Exact artifact Windows 11 IIS deploy/version/live/ready/authenticated read/log | PASS — local | Installer and smoke below |
+| Reviewed schema-compatible application rollback/recovery | PASS — local | Candidate→A→candidate, both authenticated smoke below |
+| Physical 80 mm thermal print certification | **PENDING — HARDWARE NOT AVAILABLE** | Printer matrix below; no paper result |
+| Actual pilot infrastructure/operator evidence | **PENDING — D-094** | PR-B deferred evidence and pilot differences below |
+| Independent reviewer and Product Owner PR-C approval | **PENDING** | No sign-off recorded |
+
+**Final candidate release gate: FAIL / NOT READY.** Local PASS rows do not convert pending physical/pilot/review rows to PASS; `N/A` was not used.
+
+## Implementation and automated/browser evidence
+
+- `SaleReceipt.vue` now uses a full-width Product name row, SKU/unit row and quantity × unit-price/line-amount row; original total, Cash/Transfer, customer and original debt remain visible. A later Return adds a clearly labeled current-correction note; Void retains a prominent state banner and the original transaction facts. Print CSS requests `@page` 80 mm × 200 mm with 2 mm margins and removes desktop width, navigation and controls. Vietnamese Product names wrap at words; an unbroken SKU can wrap separately. The 200 mm page length/cut behavior remains a physical certification question.
+- `SaleReceipt` Vitest covers Completed Sale, long Vietnamese name/diacritics, SKU/unit, decimal quantity, Cash, Transfer, customer/original debt, Void, Return correction, canceled print, thrown print error, retry and unchanged Sale data. Stored-Sale reprint remains read-only in `SaleDetailView` and real E2E.
+- Local regression at candidate code: `dotnet restore SimpleStore.sln` PASS; Release build **0 warnings, 0 errors**; Domain **96/96**, SQL Server integration **100/100**; `pnpm install --frozen-lockfile` PASS; frontend production build PASS; **23 files / 109 tests** PASS.
+- The clean isolated E2E databases migrated through `20260926023259_ImplementPilotReadinessPrA`; PR-C adds no EF migration. Windows/IIS candidate pre-deploy backup freshness was `Healthy` (Full age 13.83 h, Log age 10.6 min at `2026-09-27T15:55:37Z`), and migration before/after install/rollback remained `20260926023259_ImplementPilotReadinessPrA`. Existing PR-B backup/restore evidence is retained; the pilot separate-failure-domain requirement remains pending.
+- Real Playwright via Vue → ASP.NET Core → isolated temporary LocalDB, each database dropped afterwards: `run-real-pr-a.ps1` **1/1**; `run-real-slice3.ps1` **2/2** (Sale completion, browser `window.print()` boundary and stored-Sale reprint); `run-real-slice4.ps1` **3/3** (Return, Sale Void, Purchase Void); `run-real-slice5.ps1` **1/1** (debt/EOD); `run-real-slice6.ps1` **2/2** (Today/C14). Slice 3 uses a long Vietnamese Product name and Chromium print-media emulation; receipt content width was between 280 and 300 CSS px (76 mm target) and navigation/print button were hidden. This proves browser layout/behavior only, not physical print quality. Slice 4/5 E2E route-wait assertions were hardened after observed test races; no transaction implementation was changed.
+
+## Printer/environment discovery and pending physical matrix
+
+`Get-Printer`, `Win32_Printer`, `Get-PrinterDriver`, `Get-PrintConfiguration` and OS/browser file-version inspection found one physical **HP LaserJet P2035**, USB001, HP driver **3.0.1.52444**, default Letter, monochrome/one-sided, plus virtual PDF/XPS/OneNote/Fax printers. Host is Windows 11 Pro build 26200; Microsoft Edge 154.0.4258.37 is installed. The HP LaserJet is not an 80 mm thermal printer and was not used to claim certification. See the full [printer discovery and physical matrix](../printer-certification-v0.1.md): **PHYSICAL 80 MM PRINTER CERTIFICATION PENDING — HARDWARE NOT AVAILABLE**. All matrix paper, print-failure/cancel, driver, cut/length and glyph results remain pending. PR-BLOCKER-06 is OPEN.
+
+## Release, onboarding and validation artifacts
+
+- [Repeatable release checklist](../pilot-release-checklist.md) and [per-candidate evidence template](../templates/pilot-release-evidence-template.md) require exact SHA/version/artifact/checksum, CI, backend/frontend tests, migration and data preservation, real E2E, backup, IIS version/live/ready/authenticated smoke, printer certification, rollback/recovery, operators/reviewer/timestamps and final result. Missing required evidence fails the gate. PR-B deferred items are shown as `PENDING — D-094`.
+- [Per-Store onboarding record](../pilot-store-onboarding-v0.1.md) covers Owner/Cashier, source Product CSV validation/preview/confirm, opening quantity/cost reconciliation, timezone, negative-stock policy, real print station, release/backup and support contact. No real pilot Store has been onboarded.
+- [Core MVP and C14 execution plan](../../research/pilot-validation-plan-v0.1.md), [observation template](../../research/templates/pilot-observation-template.md) and [incident template](../../research/templates/pilot-incident-template.md) prepare field evidence without claiming interviews or hypothesis validation.
+
+## Windows 11 IIS exact-candidate exercise
+
+- The isolated PR-B test site `SimpleStore-Pilot-Test` at `https://localhost:8443` was safely reused after elevated preflight: prior physical path was retained release A (`0.1.0-00e11d4c1a33`), site and app pool were `Started`, app pool was **No Managed Code**, database `SimpleStorePilotIisTest` on `.\SQLEXPRESS` had the expected migration, ZIP hash matched and verified backup freshness was `Healthy`. Initial read-only SPA, `/today`, live and ready checks returned `200`; anonymous `/api/system/version` returned expected `401`. No pilot-production claim is made.
+- The actual `Install-SimpleStoreRelease.ps1` installed `SimpleStore-0.1.0-4f3a70108c12.zip` at `2026-09-27T15:56:35Z`. Its checked phases preserved A, invoked the reviewed migration bundle explicitly, moved the versioned candidate, switched the IIS physical path to `D:\SimpleStorePilotTest\releases\0.1.0-4f3a70108c12\app`, and left the dedicated pool `Started`. Migration before/after remained `20260926023259_ImplementPilotReadinessPrA`. Non-secret installer evidence is retained under Administrator-restricted `D:\SimpleStorePilotTest\deployment-evidence`.
+- `Invoke-DeploymentSmoke.ps1` through local HTTPS passed at `2026-09-27T15:57:38Z`: `/health/live` and `/health/ready` `Healthy`; authenticated `/api/system/version` returned exact candidate SHA `4f3a70108c1273fd918a82d4239a8a49eb226fad`, version `0.1.0`, `Production`; session authenticated; Store and Product reads succeeded. SPA `/` and direct Vue `/today` returned `200`; missing `/api/*` returned `404`, not SPA HTML. Candidate smoke JSON is retained as `D:\SimpleStorePilotTest\deployment-evidence\0.1.0-4f3a70108c12-smoke.json`, without credential material.
+- External JSON log `D:\SimpleStorePilotTest\logs\simplestore-20260927.json` remained outside `releases`; after the install/smoke/rollback checks it had 24 candidate-SHA records, including `SimpleStore starting` and HTTP request templates. Prior PR-B log records remained present. This is a targeted log check, not elapsed retention or pilot alert-delivery evidence.
+- Since Git diff from retained A to the candidate contains **no backend or EF migration file changes** and the actual SQL migration state was unchanged, an explicit schema-compatible release switch was reviewed. `Switch-SimpleStoreRelease.ps1 -SchemaCompatibilityReviewed -Confirm:$false` switched candidate → A; authenticated A smoke matched SHA `00e11d4c1a33be90cb04648c9fecb78007f9f30b`. The same reviewed switch returned A → candidate; authenticated candidate smoke again matched `4f3a70108c1273fd918a82d4239a8a49eb226fad`. At `2026-09-27T15:59:38Z`, candidate path was active, pool `Started`, migration unchanged. No EF `Down()` or DB restore was used. Both smoke JSON files are retained under the restricted deployment-evidence directory.
+- This proves local Windows 11 IIS deployment/recovery behavior for this exact candidate. It does **not** satisfy pilot-specific Windows Server/certificate/network/operator evidence or physical 80 mm print certification. The earlier Medium-integrity shell could not inspect IIS, so preflight/install/smoke/switch were run via elevated, single-purpose local helpers; helper scripts/results stayed in ignored `artifacts/` and no credential was committed.
+
+## Remaining review gates
+
+- PR-B remains `IMPLEMENTED / WIN11 IIS ENVIRONMENT EXERCISED / REMAINING OPERATIONAL EVIDENCE DEFERRED — D-094 / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-03/04/05 remain OPEN. Separate failure-domain protected/off-host backup, alert delivery, retention, backup-service SQL privilege review, materially different pilot infrastructure and another-human-operator runbook exercise remain required before M7. D-090 is unchanged.
+- PR-C remains `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-06/07 remain OPEN. Exact candidate local IIS/recovery evidence passed, but the release gate has not passed: physical 80 mm paper certification, pilot-specific differences and separate Product Owner review remain.
+- `M7 — NOT ACHIEVED`; `Pilot — NOT STARTED`; `Production readiness — NOT DECLARED`; `C14 value / willingness-to-pay — NOT VALIDATED`.
