@@ -65,11 +65,21 @@ $sitePath = "IIS:\Sites\$IisSiteName"
 if (-not (Test-Path $poolPath) -or -not (Test-Path $sitePath)) {
     throw 'Configured IIS site or application pool does not exist.'
 }
-if ((Get-ItemPropertyValue -Path $poolPath -Name managedRuntimeVersion) -ne '') {
+if ([string](Get-Item $poolPath).managedRuntimeVersion -ne '') {
     throw "Application pool '$AppPoolName' must use No Managed Code."
 }
 
-$previousPhysicalPath = [string](Get-ItemPropertyValue -Path $sitePath -Name physicalPath)
+function Wait-AppPoolState([string]$ExpectedState) {
+    $deadline = [DateTimeOffset]::UtcNow.AddSeconds(30)
+    do {
+        $state = [string](Get-WebAppPoolState -Name $AppPoolName).Value
+        if ($state -eq $ExpectedState) { return }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTimeOffset]::UtcNow -lt $deadline)
+    throw "Application pool '$AppPoolName' did not reach '$ExpectedState' within 30 seconds (last state: '$state')."
+}
+
+$previousPhysicalPath = [string](Get-Item $sitePath).physicalPath
 $previousPathLeaf = Split-Path -Leaf $previousPhysicalPath.TrimEnd('\', '/')
 $previousReleaseId = if ($previousPathLeaf -eq 'app') {
     Split-Path -Leaf (Split-Path -Parent $previousPhysicalPath.TrimEnd('\', '/'))
@@ -91,6 +101,7 @@ $failureEvidencePath = Join-Path $installRoot (
 
 try {
     Stop-WebAppPool -Name $AppPoolName
+    Wait-AppPoolState 'Stopped'
     $appPoolStopped = $true
 
     $phase = 'RunExplicitMigration'
@@ -118,6 +129,7 @@ try {
     $phase = 'StartCandidateApplication'
     $newAppStartAttempted = $true
     Start-WebAppPool -Name $AppPoolName
+    Wait-AppPoolState 'Started'
 
     $phase = 'WriteInstallEvidence'
     [ordered]@{
@@ -149,7 +161,7 @@ catch {
     $recoveryAction = 'ApplicationPoolLeftStoppedForManualReviewedRecovery'
 
     try {
-        $currentPhysicalPath = [string](Get-ItemPropertyValue -Path $sitePath -Name physicalPath)
+        $currentPhysicalPath = [string](Get-Item $sitePath).physicalPath
         $pathStillPrevious = [string]::Equals(
             $currentPhysicalPath,
             $previousPhysicalPath,
@@ -166,6 +178,7 @@ catch {
         try {
             if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Started') {
                 Start-WebAppPool -Name $AppPoolName
+                Wait-AppPoolState 'Started'
                 $existingApplicationAutoRestarted = $true
                 $recoveryAction = 'ExistingApplicationRestartedAfterProvenPreMigrationFailure'
             }
@@ -182,9 +195,11 @@ catch {
         # candidate application automatically. A partially started pool is
         # stopped again so schema compatibility must be reviewed explicitly.
         try {
-            if ((Get-WebAppPoolState -Name $AppPoolName).Value -ne 'Stopped') {
+            $state = [string](Get-WebAppPoolState -Name $AppPoolName).Value
+            if ($state -notin @('Stopped', 'Stopping')) {
                 Stop-WebAppPool -Name $AppPoolName
             }
+            Wait-AppPoolState 'Stopped'
             $poolStopEnforced = $true
         }
         catch {
