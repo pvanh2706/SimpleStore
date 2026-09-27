@@ -6,7 +6,7 @@
 
 Implementation baseline đã inspect: `94dfe79086df63a499d85e3a0c1c9e3e259f22a6`; Product Owner reviewed/approved baseline: `5e5720659cee1fd400001d2a2f7c5b750e0483b6`. GitHub Actions CI #49 / `36037545751` tại approved baseline là `SUCCESS`; backend và frontend đều `SUCCESS`. Đây là approval-baseline evidence, không phải PR-A implementation evidence.
 
-Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A hiện là `APPROVED / COMPLETED — D-093`; PR-B là `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; PR-C vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`. M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
+Tài liệu này chuyển D-077–D-091 và [Pilot Readiness v0.1](../product/pilot-readiness-v0.1.md) thành implementation stages, contracts, operational artifacts, evidence và review gates được Product Owner approve tại D-092. PR-A hiện là `APPROVED / COMPLETED — D-093`; PR-B là `IMPLEMENTED / WIN11 IIS ENVIRONMENT EXERCISED / REMAINING OPERATIONAL EVIDENCE DEFERRED — D-094 / PENDING PRODUCT OWNER REVIEW`; PR-C là `AUTHORIZED TO START — D-094 / NOT STARTED`. M7 vẫn `NOT ACHIEVED`, pilot vẫn `NOT STARTED` và application chưa được tuyên bố production-ready.
 
 ## 1. Mục tiêu và nguyên tắc
 
@@ -17,13 +17,17 @@ Technical Breakdown phải:
 - giữ nguyên behavior Slice 0–6 và toàn bộ approved C14 semantics;
 - ưu tiên một deployable application + một SQL Server database trên Windows Server/IIS;
 - không dùng document/code existence thay cho completion evidence;
-- áp dụng chính xác các Product Owner decisions D-085–D-091 đã resolve PR-Q1–PR-Q7, approval D-092 và explicit PR-A approval D-093; không suy diễn PR-B/PR-C complete hoặc M7 achieved.
+- áp dụng chính xác các Product Owner decisions D-085–D-091 đã resolve PR-Q1–PR-Q7, approval D-092, explicit PR-A approval D-093 và sequencing decision D-094; không suy diễn PR-B/PR-C complete hoặc M7 achieved.
 
 Trình tự implementation/review đã approve tại D-092:
 
 `PR-A implementation + separate review/approval → PR-B implementation + separate review/approval → PR-C implementation + separate review/approval → final M7 readiness review/approval`
 
-## 2. Baseline implementation findings
+D-094 điều chỉnh **chỉ sequencing**: PR-A đã completed; PR-B core implementation và một phần environment evidence đã completed nhưng remaining operational evidence được defer; PR-C implementation có thể bắt đầu trước final PR-B approval. Sau PR-C implementation/review, toàn bộ PR-B evidence còn thiếu vẫn phải được giải quyết; PR-B và PR-C mỗi stage cần Product Owner review/approval riêng trước final separate M7 review. D-092 technical contracts và D-090 backup contract giữ nguyên; D-094 không waive blocker hay requirement nào.
+
+## 2. Baseline implementation findings (D-092 pre-implementation snapshot)
+
+Các findings bên dưới mô tả baseline trước PR-A/PR-B; trạng thái hiện tại nằm ở Section 3 và implementation evidence bên dưới.
 
 ### 2.1 Identity, authorization và tenancy
 
@@ -56,10 +60,10 @@ Trình tự implementation/review đã approve tại D-092:
 | Stage | Trạng thái hiện tại | Trọng tâm | Blocker/gate đóng khi có reviewed evidence |
 |---|---|---|---|
 | PR-A — Functional pilot blockers | `APPROVED / COMPLETED — D-093` | Production account provisioning; Stock Adjustment; Stocktake | PR-BLOCKER-01, PR-BLOCKER-02 `CLOSED — D-093` |
-| PR-B — Operational safety | `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW` | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 remain open pending sufficient reviewed environment evidence |
-| PR-C — Pilot certification and release gate | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | Printer certification, formal release evidence, onboarding/support plan, validation execution plan | PR-BLOCKER-06, PR-BLOCKER-07, Pilot operations gate, Validation readiness gate |
+| PR-B — Operational safety | `IMPLEMENTED / WIN11 IIS ENVIRONMENT EXERCISED / REMAINING OPERATIONAL EVIDENCE DEFERRED — D-094 / PENDING PRODUCT OWNER REVIEW` | Deployment, configuration/secrets, version, backup/restore, logs, health/readiness, support | PR-BLOCKER-03, PR-BLOCKER-04, PR-BLOCKER-05 remain open pending sufficient reviewed environment evidence |
+| PR-C — Pilot certification and release gate | `AUTHORIZED TO START — D-094 / NOT STARTED` | Printer certification, formal release evidence, onboarding/support plan, validation execution plan | PR-BLOCKER-06, PR-BLOCKER-07, Pilot operations gate, Validation readiness gate |
 
-Stage order được approve tại D-092. PR-A và mapped blockers PR-BLOCKER-01/02 được Product Owner approve/close tại D-093. PR-B implementation tồn tại tại `1284487939b26a7370b499d48d760e9335b011cc`, nhưng Windows Server/IIS và pilot-infrastructure backup/schedule/operator evidence chưa đủ nên stage chưa được approve/complete. PR-C vẫn `APPROVED FOR IMPLEMENTATION / NOT STARTED`. PR-B và PR-C vẫn cần separate Product Owner review/approval; PR-BLOCKER-03..07 và các later gates còn mở. M7 vẫn là separate final Product Owner gate sau cả ba stage.
+Stage order ban đầu được approve tại D-092; D-094 cho phép PR-C bắt đầu trước final PR-B approval. PR-A và mapped blockers PR-BLOCKER-01/02 được Product Owner approve/close tại D-093. PR-B core implementation tồn tại tại `1284487939b26a7370b499d48d760e9335b011cc`; Windows 11 IIS deployment/rollback/failure-safety và local backup/schedule/restore exercise đã pass, nhưng pilot-specific storage/alert/retention/deployment/operator evidence còn thiếu và được defer, không waive. PR-B chưa approved/completed. PR-C chưa bắt đầu implementation. PR-B và PR-C vẫn cần separate Product Owner review/approval; PR-BLOCKER-03..07 và các later gates còn mở. M7 vẫn là separate final Product Owner gate sau cả ba stage.
 
 ## 4. Stage PR-A — Production account provisioning
 
@@ -306,6 +310,8 @@ Baseline design:
 
 Backup storage must be separate and access-restricted, not only the live database volume/failure domain; job, backup and log-chain failures must be detectable. If the pilot environment cannot support D-090, implementation must raise a new Product Owner decision with explicit limitation/tradeoff and must not silently downgrade the recovery model, schedule, retention or restore proof.
 
+D-094 chỉ defer remaining PR-B environment evidence để PR-C có thể bắt đầu; D-090 không bị sửa hoặc waive. FULL recovery, nightly Full, 15-minute transaction-log backups, usable 14-day recovery chain, weekly Full retention 8 weeks, separate restricted failure-domain storage và actual restore proof vẫn là điều kiện trước M7. C: và D: trên cùng physical disk không đáp ứng separate failure domain.
+
 ## 11. Persistent logging and trace correlation
 
 Minimal pilot proposal: structured JSON rolling files on the Windows server (for example a small supported file logging provider), not ELK/Grafana/Application Insights/Sentry.
@@ -549,7 +555,7 @@ The following are safely derived from approved decisions and existing architectu
 - rollback/recovery instruction is specific to the tested release;
 - PR-BLOCKER-03, PR-BLOCKER-04 and PR-BLOCKER-05 close only after evidence review.
 
-#### PR-B implementation evidence — incomplete / pending Product Owner review
+#### PR-B implementation evidence — Windows 11 IIS exercised; remaining evidence deferred under D-094
 
 - Implementation commit: `1284487939b26a7370b499d48d760e9335b011cc`. No new EF migration was required; current migration remains `20260926023259_ImplementPilotReadinessPrA`.
 - ASP.NET Core now serves the prebuilt Vue SPA from publish `wwwroot` with history fallback, while unknown `/api/*`, `/health*`, and missing assets never return `index.html`; OpenAPI remains Development-only.
@@ -563,8 +569,8 @@ The following are safely derived from approved decisions and existing architectu
 - Automated regression: .NET Release build `0 warnings / 0 errors`; Domain `96/96`; SQL Server integration `100/100`; frontend production build and `23` files / `106` tests pass. Real PR-A Playwright `1/1` and real Slice 6 Playwright `2/2` pass. The PR-A E2E now waits for the disable UI refresh before checking session invalidation, removing an observed test race without changing account behavior.
 - Deployment recovery hardening commit `0e82af292320875471495768bc0ee8e6154b0abb` removes automatic previous-release restart after migration invocation begins. The installer records explicit phases and non-secret `IisReleaseInstallFailed` evidence, attempts to keep the pool stopped after any post-migration failure, and requires reviewed schema compatibility plus the existing `Switch-SimpleStoreRelease.ps1 -SchemaCompatibilityReviewed` gate, a forward fix, or verified database recovery. Automatic existing-app resume is limited to a proven pre-migration failure where migration was never invoked and IIS still has the exact previous path. PowerShell parsing `11/11`, injected proven pre-migration resume and post-migration no-restart failure paths, evidence secret checks, Release build `0 warnings / 0 errors`, Domain `96/96`, SQL Server integration `100/100`, and frontend build/tests `106/106` passed. No migration or change to the explicit switch script was required.
 - GitHub Actions CI #55 / `36251258900` at PR-B evidence head `7ddc974763f018f095214edef5be0f7f44132ef1` is `SUCCESS`; backend and frontend both succeeded. GitHub CI does not run the real Playwright, restore, or IIS exercises, which remain separately scoped environment evidence.
-- [Windows 11 IIS prerequisite/artifact evidence](../operations/evidence/pr-b-win11-iis-deployment-2026-09-27.md), [scheduled backup/restore evidence](../operations/evidence/pr-b-win11-backup-schedule-2026-09-27.md), and [rollback limitation](../operations/evidence/pr-b-win11-rollback-2026-09-27.md): IIS features and .NET 10 Hosting Bundle/Module were installed; a clean reviewed artifact was built; nightly Full and 15-minute log tasks were registered and forced successfully under `LOCAL SERVICE`; an ordered Full + two-log isolated restore passed `CHECKDB` and post-Full data verification. A subsequent code fix makes freshness require successful verified operation records. Dedicated IIS site/app-pool creation was blocked by automatic command approval, so IIS deployment/HTTPS/authenticated smoke/logging/rollback/failure safety were not exercised. The workstation is Windows 11, not Windows Server; backup storage shares the data disk. Pilot separate-failure-domain storage, alerting, elapsed retention, least-privilege IIS runtime configuration, restored-app IIS smoke, and another-human-operator exercise remain pending.
-- Governance boundary: PR-B is only `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-03/04/05 remain open. No D-094 exists. PR-C remains not started. M7 remains not achieved; Pilot has not started; Production readiness has not been declared.
+- [Windows 11 IIS deployment evidence](../operations/evidence/pr-b-win11-iis-deployment-2026-09-27.md), [scheduled backup/restore evidence](../operations/evidence/pr-b-win11-backup-schedule-2026-09-27.md), and [rollback/failure-safety evidence](../operations/evidence/pr-b-win11-rollback-2026-09-27.md): IIS features and .NET 10 Hosting Bundle/ANCM were installed; dedicated No Managed Code app pool and local HTTPS site served a reviewed versioned artifact through the actual installer with explicit migration. SPA/API routing, live/readiness, authenticated version/session/Store/Product smoke, external JSON logs/trace correlation, app-pool restart, schema-compatible rollback, and controlled pre-/post-migration failure behavior passed. Nightly Full and 15-minute Log tasks were registered/exercised under `LOCAL SERVICE`; ordered Full + two-log isolated restore passed `CHECKDB` and post-Full data verification; verified-operation freshness was Healthy. This is Windows 11/local evidence, not Windows Server/pilot-production evidence. Separate-failure-domain/off-host storage, alert delivery, elapsed retention, backup-service SQL privilege review, materially different pilot Windows Server/certificate/network/deployment evidence, and another-human-operator exercise remain pending.
+- Governance boundary: PR-B is `IMPLEMENTED / WIN11 IIS ENVIRONMENT EXERCISED / REMAINING OPERATIONAL EVIDENCE DEFERRED — D-094 / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-03/04/05 remain open. D-094 permits PR-C to start but does not approve/complete PR-B or waive D-090. PR-C is `AUTHORIZED TO START — D-094 / NOT STARTED`. M7 remains not achieved; Pilot has not started; Production readiness has not been declared.
 
 ### PR-C DoD
 
@@ -590,5 +596,5 @@ C14 remains an experiment. Technical delivery and event counts do not validate d
 1. PR-Q1–PR-Q7 remain resolved by D-085–D-091.
 2. Product Owner approved this Technical Breakdown and exact stage contracts at D-092 using reviewed baseline `5e5720659cee1fd400001d2a2f7c5b750e0483b6`.
 3. Product Owner approved PR-A at D-093 using final reviewed state/evidence `bf733a6923b2d0b7c2162b37fdcddd7f42643b74`; PR-A is `APPROVED / COMPLETED`, and PR-BLOCKER-01/02 are closed.
-4. PR-B is `IMPLEMENTED / EVIDENCE INCOMPLETE / PENDING PRODUCT OWNER REVIEW` at `1284487939b26a7370b499d48d760e9335b011cc`; PR-BLOCKER-03/04/05 remain open. PR-C remains approved and `NOT STARTED`.
-5. Completion of all stages does not automatically achieve M7; final Pilot Readiness/M7 still requires separate explicit Product Owner approval.
+4. PR-B implementation exists at `1284487939b26a7370b499d48d760e9335b011cc`, and the Windows 11 IIS/backup exercise is recorded above. D-094 defers only remaining PR-B environment/operational evidence: PR-B is `IMPLEMENTED / WIN11 IIS ENVIRONMENT EXERCISED / REMAINING OPERATIONAL EVIDENCE DEFERRED — D-094 / PENDING PRODUCT OWNER REVIEW`; PR-BLOCKER-03/04/05 remain open. PR-C is `AUTHORIZED TO START — D-094 / NOT STARTED` and still requires implementation/evidence and separate Product Owner review/approval.
+5. D-094 changes the D-092 sequence only to let PR-C work proceed before final PR-B approval. D-092 technical contracts and D-090 remain unchanged. All outstanding PR-B evidence must return for review before final M7 review; completion of PR-C does not automatically achieve M7. Final Pilot Readiness/M7 still requires separate explicit Product Owner approval.
