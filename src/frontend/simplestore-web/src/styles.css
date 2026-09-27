@@ -30,3 +30,33 @@ a {
   .input { @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100; }
   .error { @apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700; }
 }
+
+@page {
+  size: 80mm 200mm;
+  margin: 2mm;
+}
+
+@media print {
+  html, body, #app, #app > div {
+    box-sizing: border-box;
+    width: 76mm !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  header, .no-print { display: none !important; }
+  main:has(.receipt), main:has(.receipt) > section,
+  main:has(.receipt) > section > :has(> .receipt) {
+    box-sizing: border-box;
+    width: 76mm !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  main:has(.receipt) > section > :not(.receipt):not(:has(> .receipt)) {
+    display: none !important;
+  }
+}

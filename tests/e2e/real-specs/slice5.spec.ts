@@ -27,6 +27,7 @@ async function createProduct(page: Page, productName: string) {
   await page.locator('#opening-quantity').fill('5')
   await page.locator('#opening-cost').fill('8000')
   await page.locator('button[type="submit"]').click()
+  await expect(page).toHaveURL(/\/products\/[0-9a-f-]+$/)
 }
 
 test.describe.serial('Slice 5B real debt and end-of-day flows', () => {

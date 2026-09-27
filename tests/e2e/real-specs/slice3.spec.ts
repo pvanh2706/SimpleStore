@@ -8,7 +8,7 @@ const runId = process.env.SIMPLESTORE_E2E_RUN_ID
 
 test('Owner prepares Slice 3 cashier scenario', async ({ page }) => {
   if (!ownerEmail || !ownerPassword || !runId) throw new Error('Run through run-real-slice3.ps1.')
-  const productName = `Sale E2E ${runId}`
+  const productName = `Tỏi khô bóc vỏ đặc sản miền Trung Sale E2E ${runId}`
   await page.goto('/login')
   await page.locator('#email').fill(ownerEmail)
   await page.locator('#password').fill(ownerPassword)
@@ -32,7 +32,7 @@ test('Owner prepares Slice 3 cashier scenario', async ({ page }) => {
 
 test('Cashier completes, prints and reprints a real sale without duplicate effects', async ({ page }) => {
   if (!cashierEmail || !cashierPassword || !runId) throw new Error('Run through run-real-slice3.ps1.')
-  const productName = `Sale E2E ${runId}`
+  const productName = `Tỏi khô bóc vỏ đặc sản miền Trung Sale E2E ${runId}`
   await page.addInitScript(() => {
     window.print = () => sessionStorage.setItem('simplestore-print-called', 'true')
   })
@@ -54,6 +54,15 @@ test('Cashier completes, prints and reprints a real sale without duplicate effec
   await expect(page.getByRole('region', { name: 'Hóa đơn bán hàng' })).toContainText(productName)
   await page.getByRole('button', { name: 'In hóa đơn' }).click()
   expect(await page.evaluate(() => sessionStorage.getItem('simplestore-print-called'))).toBe('true')
+
+  // Browser print layout check only: physical 80 mm paper still needs certification.
+  await page.emulateMedia({ media: 'print' })
+  await expect(page.locator('header')).toBeHidden()
+  await expect(page.getByRole('button', { name: 'In hóa đơn', includeHidden: true })).toBeHidden()
+  const printWidth = await page.locator('.receipt').evaluate(element => element.getBoundingClientRect().width)
+  expect(printWidth).toBeGreaterThan(280) // 76 mm content box at CSS 96 px/in.
+  expect(printWidth).toBeLessThan(300)
+  await page.emulateMedia({ media: 'screen' })
 
   await page.getByRole('link', { name: 'Đơn bán', exact: true }).click()
   await expect(page.getByRole('row')).toHaveCount(2)

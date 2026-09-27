@@ -10,7 +10,7 @@ async function login(page: Page) {
   await page.locator('#email').fill(email)
   await page.locator('#password').fill(password)
   await page.getByRole('button', { name: 'Đăng nhập' }).click()
-  await expect(page).toHaveURL(/\/(setup|products)$/)
+  await expect(page).toHaveURL(/\/(setup|products|today)$/)
   if (page.url().endsWith('/setup')) {
     await page.locator('#store-name').fill(`Cửa hàng Slice 4 ${runId}`)
     await page.getByRole('button', { name: 'Bắt đầu quản lý sản phẩm' }).click()
@@ -123,6 +123,7 @@ test.describe.serial('Slice 4 real correction flows', () => {
     await createProduct(page, productName, `S4-PV-${runId!.slice(-8)}`, '2')
 
     await page.getByRole('link', { name: 'Nhà cung cấp' }).click()
+    await expect(page).toHaveURL(/\/suppliers$/)
     const supplierForm = page.locator('form').first()
     await supplierForm.locator('input').nth(0).fill(supplierName)
     await supplierForm.getByRole('button', { name: 'Lưu' }).click()
