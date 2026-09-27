@@ -10,6 +10,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+Import-Module Microsoft.PowerShell.Utility
 $started = [DateTimeOffset]::UtcNow
 $session = [Microsoft.PowerShell.Commands.WebRequestSession]::new()
 

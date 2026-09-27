@@ -30,7 +30,10 @@ function Wait-AppPoolState([string]$ExpectedState) {
     throw "Application pool '$AppPoolName' did not reach '$ExpectedState' within 30 seconds (last state: '$state')."
 }
 if ($PSCmdlet.ShouldProcess($IisSiteName, "Switch IIS physical path to '$applicationPath'")) {
-    Stop-WebAppPool -Name $AppPoolName
+    $state = [string](Get-WebAppPoolState -Name $AppPoolName).Value
+    if ($state -notin @('Stopped', 'Stopping')) {
+        Stop-WebAppPool -Name $AppPoolName
+    }
     Wait-AppPoolState 'Stopped'
     Set-ItemProperty -Path "IIS:\Sites\$IisSiteName" -Name physicalPath -Value $applicationPath
     Start-WebAppPool -Name $AppPoolName
