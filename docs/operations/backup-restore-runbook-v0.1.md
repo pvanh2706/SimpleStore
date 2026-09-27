@@ -11,6 +11,7 @@ This runbook implements operational tooling for D-090 outside the SimpleStore ap
 - Run backup jobs under a restricted Windows/SQL Server service identity using integrated authentication. No credential is stored in repository scripts.
 - Install Microsoft `sqlcmd` and ensure the service identity can connect and perform the approved backup operations.
 - The SQL Server service identity needs write access to the configured backup destination; the operator/service identity needs the minimum required read/retention access.
+- `db_backupoperator` permits `BACKUP DATABASE` and `BACKUP LOG`. The script also runs `RESTORE VERIFYONLY`, which requires `CREATE DATABASE` permission in `master`; grant and audit that extra permission for the restricted job identity or use a reviewed, separately authorized verification step.
 - Backup destination must be a separate protected volume/server/share or a protected volume with an external replicated copy. A folder on the live DB disk alone does not satisfy D-090.
 - Restrict ACLs to backup operators/services; do not allow public write. Enable infrastructure encryption at rest where supported and protect network transport/share credentials.
 - Test task/job commands interactively under the exact scheduled identity before enabling schedules.
@@ -61,7 +62,7 @@ pwsh .\tools\operations\backup\Test-BackupFreshness.ps1 `
   -BackupRoot '<backup-root>'
 ```
 
-Defaults fail with exit code `2` when the latest full is older than 26 hours or the latest log is older than 20 minutes. Operators must inspect:
+Defaults fail with exit code `2` when the latest verified successful full is older than 26 hours, the latest verified successful log is older than 20 minutes, or the latest attempt for either type failed. A backup file without a matching successful `NativeBackup` operation record does not count as fresh. Operators must inspect:
 
 - latest successful full filename/time and job result;
 - latest successful log filename/time and job result;
