@@ -6,6 +6,11 @@
 
 Slice 6 — Understand & Act giữ trạng thái `APPROVED / COMPLETED — D-076`. Slice 5 — Debt + End-of-day giữ trạng thái `APPROVED / COMPLETED` tại D-060; baseline trước Slice 6 là commit `9f57a37ef97ab9f8f672b5309a42141ea6e267b8`.
 
+## Design direction v0.1
+
+- D-095 — SimpleStore Visual Direction v0.1: `APPROVED` by Product Owner on 2026-09-28. [Design System v0.1](docs/design/simple-store-design-system-v0.1.md), [Sales screen spec](docs/design/screens/sales-screen-v0.1.md) and [Appearance settings spec](docs/design/screens/appearance-settings-v0.1.md), with their approved images in [docs/design/references](docs/design/references), are the source of truth for future UI work.
+- Sales and Appearance visual/spec direction is approved; current Vue implementation predates it and redesign implementation is **NOT STARTED**. Held Sale is approved UX/product direction only; technical/domain implementation and discount rules remain pending separate Product Owner review. D-095 does not change PR-A/PR-B/PR-C, PR-BLOCKER, M7, Pilot or C14 status.
+
 ## Primary Persona
 
 Chủ cửa hàng tạp hóa nhỏ tại Việt Nam, trực tiếp tham gia vận hành và chịu trách nhiệm ít nhất cho bán hàng, nhập hàng/tồn kho và kết quả kinh doanh — `APPROVED`.
