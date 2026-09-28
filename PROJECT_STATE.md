@@ -10,6 +10,7 @@ Slice 6 — Understand & Act giữ trạng thái `APPROVED / COMPLETED — D-076
 
 - D-095 — SimpleStore Visual Direction v0.1: `APPROVED` by Product Owner on 2026-09-28. [Design System v0.1](docs/design/simple-store-design-system-v0.1.md), [Sales screen spec](docs/design/screens/sales-screen-v0.1.md) and [Appearance settings spec](docs/design/screens/appearance-settings-v0.1.md), with their approved images in [docs/design/references](docs/design/references), are the source of truth for future UI work.
 - Sales and Appearance visual/spec direction is approved; current Vue implementation predates it and redesign implementation is **NOT STARTED**. Held Sale is approved UX/product direction only; technical/domain implementation and discount rules remain pending separate Product Owner review. D-095 does not change PR-A/PR-B/PR-C, PR-BLOCKER, M7, Pilot or C14 status.
+- D-096 — Today Screen & Explainability Pattern v0.1: `APPROVED` by Product Owner on 2026-09-29. [Today screen spec](docs/design/screens/today-screen-v0.1.md) and [Explainability Pattern](docs/design/screens/explainability-pattern-v0.1.md), with approved [Today](docs/design/references/today-screen-v0.1.png) and [explanation](docs/design/references/today-explainability-v0.1.png) images, extend the Design System source of truth. Today UI redesign implementation is **NOT STARTED**; existing Slice 6/C14 implementation and validation status, PR-B/PR-C, readiness blockers, M7 and Pilot states remain unchanged.
 
 ## Primary Persona
 
