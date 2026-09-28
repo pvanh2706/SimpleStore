@@ -1,6 +1,6 @@
 # SimpleStore Design System v0.1
 
-**Status:** Approved visual and UI direction — D-095, 2026-09-28; Today/explainability extension — D-096, 2026-09-29. **UI redesign implementation:** NOT STARTED.
+**Status:** Approved visual and UI direction — D-095, 2026-09-28; Today/explainability extension — D-096, 2026-09-29; Product Management extension — D-097, 2026-09-29. **UI redesign implementation:** NOT STARTED.
 
 ## Direction
 
@@ -52,9 +52,10 @@ Exact token values may be refined during future implementation; their semantic r
 - [Appearance settings](screens/appearance-settings-v0.1.md): Owner-managed Store branding, presets, display mode, density and live previews.
 - [Today screen](screens/today-screen-v0.1.md): operational overview with a clear KPI hierarchy, supporting evidence, inventory attention and a path to the next action.
 - [Explainability Pattern](screens/explainability-pattern-v0.1.md): contextual explanations and source drill-down for important derived metrics and signals.
+- [Product Management](screens/product-management-v0.1.md): scan-friendly list, focused detail/form/filter, future Category/Unit configuration direction, and clear Stock Adjustment, Stocktake and inventory-history interactions. Follow its linked screen specifications and both approved Product images.
 
 ## Explain important numbers, not every number
 
 Explainability is especially useful for aggregates, estimates, derived KPIs, attention signals, accounting-like totals and figures affected materially by corrections or cutoffs. Raw facts generally need no formula explanation. Use a small **Vì sao?** / **Cách tính** action, keep the default screen calm, and place multi-section detail in a focused side panel. Explanations should state meaning, formula, included/excluded data, exact Store-local scope and a safe path to source records when supported. Preserve authorization, Store isolation, data reliability and existing backend semantics. Do not add decorative info icons throughout the interface.
 
-These specifications capture approved direction, not completed software. Existing domain decisions remain authoritative. Held Sale persistence and discount rules need separate Product Owner technical/domain review before implementation. Today redesign and any new metric, date/shift control or drill-down capability likewise require separate implementation/technical review; D-096 does not alter approved Slice 6/C14 contracts.
+These specifications capture approved direction, not completed software. Existing domain decisions remain authoritative. Held Sale persistence and discount rules need separate Product Owner technical/domain review before implementation. Today redesign and any new metric, date/shift control or drill-down capability likewise require separate implementation/technical review; D-096 does not alter approved Slice 6/C14 contracts. D-097 does not authorize Category/Unit schema, Product images, conversions or derived Product profit metrics without their own review.
