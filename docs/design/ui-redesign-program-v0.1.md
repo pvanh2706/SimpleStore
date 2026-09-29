@@ -1,6 +1,6 @@
 # UI Redesign Program v0.1
 
-**Status:** Product Owner-approved staged frontend program — D-103, 2026-09-29. **Implementation:** UI-A and all later UI stages NOT STARTED at this approval commit. This is not a new business/domain Slice and does not change current Slice, Pilot Readiness or C14 governance.
+**Status:** Product Owner-approved staged frontend program — D-103, 2026-09-29; program **NOT COMPLETED**. **Implementation:** UI-A **APPROVED / COMPLETED — D-104**, at head `eb487be1c4290dad3e1ddd6fa039d2470dcaf495`; UI-B–UI-F **NOT STARTED**. This is not a new business/domain Slice and does not change current Slice, Pilot Readiness or C14 governance.
 
 ## Authority and stage rule
 
@@ -20,4 +20,4 @@ Each stage follows **Technical Breakdown approval → implementation → impleme
 
 Dedicated global Inventory workspace, whole-inventory Stocktake, global Movement History, printer architecture, Held Sale, discounts, Category/Unit master data and unsupported report evidence/data are **future/separate review**, not automatically part of the implementation program. D-099 remains design direction for Inventory where dedicated capabilities are pending.
 
-UI-A should leave the current workflows usable inside the new shell, even if the views themselves remain pre-redesign. After separately reviewed UI-A implementation and Product Owner stage approval, the next stage is **UI-B — Sales**. Approval of UI-A will not mean the UI Redesign Program is complete.
+UI-A leaves the current workflows usable inside the new shell while business-screen internals remain pre-redesign. [D-104](../../DECISIONS.md#d-104--ui-a-design-foundation--application-shell-implementation-approval) records UI-A implementation approval and its reviewed CI/targeted Playwright evidence; D-095–D-103 semantics and boundaries remain unchanged. The next step is **Technical Breakdown UI-B — Sales redesign**. UI-B is **NOT STARTED** and requires separate Product Owner approval before implementation. UI-A approval does not complete the UI Redesign Program.
