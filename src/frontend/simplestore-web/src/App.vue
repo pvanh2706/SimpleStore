@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
+import AppShell from './components/app/AppShell.vue'
+import AppButton from './components/ui/AppButton.vue'
+import AppSkeleton from './components/ui/AppSkeleton.vue'
 import { useAuthStore } from './stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const showShell = computed(() => auth.initialized && auth.session.isAuthenticated
+  && auth.session.hasStore && !auth.session.mustChangePassword)
 
 async function logout() {
   await auth.logout()
@@ -12,32 +18,24 @@ async function logout() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-stone-50 text-slate-900">
-    <header v-if="auth.session.isAuthenticated" class="border-b border-stone-200 bg-white">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-5 px-5 py-4">
-        <RouterLink class="text-xl font-black tracking-tight text-emerald-800" to="/">SimpleStore</RouterLink>
-        <nav v-if="auth.session.hasStore && !auth.session.mustChangePassword" class="flex flex-1 gap-4 text-sm font-semibold">
-          <RouterLink class="nav-link" to="/sales/new">Bán hàng</RouterLink>
-          <RouterLink class="nav-link" to="/sales">Đơn bán</RouterLink>
-          <RouterLink class="nav-link" to="/products">Sản phẩm</RouterLink>
-          <RouterLink class="nav-link" to="/customers/debts">Công nợ khách</RouterLink>
-          <template v-if="auth.session.roles.includes('Owner')">
-            <RouterLink class="nav-link" to="/today">Hôm nay</RouterLink>
-            <RouterLink class="nav-link" to="/suppliers/debts">Công nợ NCC</RouterLink>
-            <RouterLink class="nav-link" to="/reports/end-of-day">Cuối ngày</RouterLink>
-            <RouterLink class="nav-link" to="/import">Nhập từ CSV</RouterLink>
-            <RouterLink class="nav-link" to="/suppliers">Nhà cung cấp</RouterLink>
-            <RouterLink class="nav-link" to="/purchases">Nhập hàng</RouterLink>
-            <RouterLink class="nav-link" to="/settings/operations">Thiết lập</RouterLink>
-            <RouterLink class="nav-link" to="/settings/users">Nhân viên</RouterLink>
-          </template>
-        </nav>
-        <span class="ml-auto hidden text-sm text-slate-500 sm:inline">{{ auth.session.email }}</span>
-        <button class="btn-secondary" type="button" @click="logout">Đăng xuất</button>
+  <div v-if="!auth.initialized" class="auth-layout min-h-screen px-5 py-8">
+    <p class="mx-auto max-w-3xl text-xl font-black text-emerald-800">SimpleStore</p>
+    <AppSkeleton class="mx-auto mt-8 h-20 max-w-3xl" aria-label="Đang tải ứng dụng" />
+  </div>
+  <AppShell v-else-if="showShell" :email="auth.session.email" :roles="auth.session.roles" @logout="logout">
+    <RouterView />
+  </AppShell>
+  <div v-else class="auth-layout min-h-screen">
+    <header v-if="auth.session.isAuthenticated" class="no-print border-b border-stone-200 bg-white">
+      <div class="mx-auto flex max-w-4xl items-center justify-between gap-4 px-5 py-4">
+        <RouterLink class="text-xl font-black text-emerald-800" to="/">SimpleStore</RouterLink>
+        <AppButton variant="secondary" type="button" @click="logout">Đăng xuất</AppButton>
       </div>
     </header>
-    <main class="mx-auto max-w-6xl px-5 py-8">
-      <p v-if="auth.session.mustChangePassword" class="mb-5 rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">Bạn phải đổi mật khẩu tạm thời trước khi sử dụng cửa hàng.</p>
+    <main class="mx-auto w-full max-w-4xl px-5 py-8">
+      <p v-if="auth.session.mustChangePassword" class="mb-5 rounded-lg bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+        Bạn phải đổi mật khẩu tạm thời trước khi sử dụng cửa hàng.
+      </p>
       <RouterView />
     </main>
   </div>

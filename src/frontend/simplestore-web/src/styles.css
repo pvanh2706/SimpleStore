@@ -1,34 +1,338 @@
 @import "tailwindcss";
 
+/* UI-A baseline: Emerald + Light + Standard. Roles stay stable for later appearance work. */
 :root {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+  --brand-primary: #047857;
+  --brand-primary-hover: #065f46;
+  --surface-page: #f6f9f8;
+  --surface: #ffffff;
+  --surface-muted: #eef5f2;
+  --surface-elevated: #ffffff;
+  --border: #d7e2de;
+  --border-strong: #afc5bc;
+  --text: #14242b;
+  --text-muted: #45576a;
+  --text-subtle: #607183;
+  --text-on-brand: #ffffff;
+  --positive: #067647;
+  --warning: #b45309;
+  --danger: #b42318;
+  --info: #175cd3;
+  --focus-ring: #0f766e;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --density-control-y: 0.625rem;
+  --density-gap: 1rem;
+  --density-section-gap: 1.5rem;
+  --shadow-elevated: 0 10px 30px rgb(14 43 33 / 8%);
 }
 
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-}
+@layer base {
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: var(--surface-page);
+    color: var(--text);
+  }
 
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
-  .btn-primary { @apply inline-flex items-center justify-center rounded-lg bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex items-center justify-center rounded-lg border border-stone-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-stone-50 disabled:opacity-50; }
-  .nav-link { @apply text-slate-600 hover:text-emerald-800; }
-  .nav-link.router-link-active { @apply text-emerald-800; }
-  .card { @apply rounded-2xl border border-stone-200 bg-white p-5 shadow-sm; }
-  .field { @apply grid gap-1.5; }
-  .field label { @apply text-sm font-semibold text-slate-700; }
-  .input { @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100; }
-  .error { @apply rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700; }
+  /* Existing business views keep these classes while later stages migrate them. */
+  .btn-primary,
+  .btn-secondary {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: var(--density-control-y) 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 650;
+    line-height: 1.25;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .btn-primary {
+    background: var(--brand-primary);
+    color: var(--text-on-brand);
+  }
+
+  .btn-primary:hover:not(:disabled) { background: var(--brand-primary-hover); }
+
+  .btn-secondary {
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-muted); }
+
+  .btn-primary:disabled,
+  .btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .nav-link { color: var(--text-muted); }
+  .nav-link:hover,
+  .nav-link.router-link-active { color: var(--brand-primary-hover); }
+
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgb(14 43 33 / 5%);
+  }
+
+  .field { display: grid; gap: 0.375rem; }
+  .field label { color: var(--text); font-size: 0.875rem; font-weight: 650; }
+
+  .input {
+    width: 100%;
+    min-height: 2.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--density-control-y) 0.75rem;
+    color: var(--text);
+  }
+
+  .input:focus { border-color: var(--brand-primary); }
+  .input:disabled { cursor: not-allowed; opacity: 0.6; }
+
+  .error {
+    border: 1px solid #fecdca;
+    border-radius: var(--radius-md);
+    background: #fef3f2;
+    padding: 0.5rem 0.75rem;
+    color: #912018;
+    font-size: 0.875rem;
+  }
+
+  /* The shell supplies navigation and space; business views keep their own layouts. */
+  .app-shell {
+    display: grid;
+    grid-template-columns: 15.5rem minmax(0, 1fr);
+    min-height: 100vh;
+    background: var(--surface-page);
+  }
+
+  .app-skip-link {
+    position: fixed;
+    z-index: 60;
+    top: 0.5rem;
+    left: 0.5rem;
+    transform: translateY(-160%);
+    border-radius: var(--radius-sm);
+    background: var(--brand-primary);
+    padding: 0.625rem 0.875rem;
+    color: var(--text-on-brand);
+  }
+
+  .app-skip-link:focus { transform: translateY(0); }
+
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: column;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    padding: 1rem 0.75rem;
+  }
+
+  .app-brand {
+    display: flex;
+    min-height: 3.25rem;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    color: var(--brand-primary-hover);
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+
+  .app-brand-name {
+    color: var(--brand-primary-hover);
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.15;
+  }
+
+  .app-store-name {
+    overflow-wrap: anywhere;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .app-sidebar-body {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--density-gap);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: var(--density-gap);
+  }
+
+  .app-nav-group { display: grid; gap: 0.25rem; }
+
+  .app-nav-group-label {
+    padding: 0.375rem 0.75rem;
+    color: var(--text-subtle);
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  .app-workspace,
+  .app-main { min-width: 0; }
+
+  .app-main {
+    width: 100%;
+    padding: clamp(1rem, 2.4vw, 2rem);
+  }
+
+  .app-nav-link {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-md);
+    padding: 0.625rem 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-decoration: none;
+  }
+
+  .app-nav-link:hover { background: var(--surface-muted); color: var(--text); }
+
+  .app-nav-link[aria-current="page"],
+  .app-nav-link.is-active,
+  .app-nav-link[data-active="true"] {
+    border-left-color: var(--brand-primary);
+    background: var(--surface-muted);
+    color: var(--brand-primary-hover);
+    font-weight: 700;
+  }
+
+  .app-account-area {
+    display: grid;
+    gap: 0.625rem;
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding: 0.75rem;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .app-mobile-header,
+  .app-mobile-drawer,
+  .app-backdrop { display: none; }
+
+  .app-mobile-drawer[hidden],
+  .app-backdrop[hidden] { display: none !important; }
+
+  .app-mobile-store-name {
+    max-width: min(36vw, 16rem);
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-mobile-drawer-header {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell { display: block; }
+  .app-sidebar { display: none; }
+
+  .app-mobile-header {
+    position: sticky;
+    z-index: 30;
+    top: 0;
+    display: flex;
+    min-height: 3.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.5rem 1rem;
+  }
+
+  .app-mobile-drawer {
+    position: fixed;
+    z-index: 50;
+    inset: 0 auto 0 0;
+    display: flex;
+    width: min(20rem, calc(100vw - 3rem));
+    height: 100vh;
+    height: 100dvh;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-elevated);
+    padding: 1rem 0.75rem;
+  }
+
+  .app-backdrop {
+    position: fixed;
+    z-index: 40;
+    inset: 0;
+    display: block;
+    background: rgb(12 28 23 / 55%);
+  }
+}
+
+@media (max-width: 560px) {
+  .app-mobile-store-name { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-secondary { transition: none; }
 }
 
 @page {
@@ -37,16 +341,23 @@ a {
 }
 
 @media print {
-  html, body, #app, #app > div {
+  html, body, #app, #app > div,
+  .app-shell, .app-workspace, .app-main {
     box-sizing: border-box;
+    display: block !important;
     width: 76mm !important;
+    max-width: none !important;
     min-width: 0 !important;
     min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
   }
-  header, .no-print { display: none !important; }
+
+  header, .no-print,
+  .app-sidebar, .app-mobile-header, .app-mobile-drawer,
+  .app-backdrop, .app-account-area { display: none !important; }
+
   main:has(.receipt), main:has(.receipt) > section,
   main:has(.receipt) > section > :has(> .receipt) {
     box-sizing: border-box;
@@ -56,6 +367,7 @@ a {
     margin: 0 !important;
     padding: 0 !important;
   }
+
   main:has(.receipt) > section > :not(.receipt):not(:has(> .receipt)) {
     display: none !important;
   }
