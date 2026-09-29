@@ -1,6 +1,6 @@
 # SimpleStore Design System v0.1
 
-**Status:** Approved visual and UI direction — D-095, 2026-09-28; Today/explainability — D-096, Product Management — D-097, Purchase Management — D-098, 2026-09-29. **UI redesign implementation:** NOT STARTED.
+**Status:** Approved visual and UI direction — D-095, 2026-09-28; Today/explainability — D-096, Product Management — D-097, Purchase Management — D-098, Inventory Management — D-099, 2026-09-29. **UI redesign implementation:** NOT STARTED.
 
 ## Direction
 
@@ -54,9 +54,10 @@ Exact token values may be refined during future implementation; their semantic r
 - [Explainability Pattern](screens/explainability-pattern-v0.1.md): contextual explanations and source drill-down for important derived metrics and signals.
 - [Product Management](screens/product-management-v0.1.md): scan-friendly list, focused detail/form/filter, future Category/Unit configuration direction, and clear Stock Adjustment, Stocktake and inventory-history interactions. Follow its linked screen specifications and both approved Product images.
 - [Purchase Management](screens/purchase-management-v0.1.md): Purchase list/filter/detail, staged Draft creation and completion, payment/debt clarity and safe Void. Follow its linked specs and approved Purchase image.
+- [Inventory Management](screens/inventory-management-v0.1.md): operational inventory overview, Product-level adjustment and Stocktake entry, C14 evidence, and future whole-inventory Stocktake/history direction. Follow its linked specs and approved Inventory image.
 
 ## Explain important numbers, not every number
 
 Explainability is especially useful for aggregates, estimates, derived KPIs, attention signals, accounting-like totals and figures affected materially by corrections or cutoffs. Raw facts generally need no formula explanation. Use a small **Vì sao?** / **Cách tính** action, keep the default screen calm, and place multi-section detail in a focused side panel. Explanations should state meaning, formula, included/excluded data, exact Store-local scope and a safe path to source records when supported. Preserve authorization, Store isolation, data reliability and existing backend semantics. Do not add decorative info icons throughout the interface.
 
-These specifications capture approved direction, not completed software. Existing domain decisions remain authoritative. Held Sale persistence and discount rules need separate Product Owner technical/domain review before implementation. Today redesign and any new metric, date/shift control or drill-down capability likewise require separate implementation/technical review; D-096 does not alter approved Slice 6/C14 contracts. D-097 does not authorize Category/Unit schema, Product images, conversions or derived Product profit metrics without their own review. D-098 does not authorize Purchase discount, Purchase-level note, document-date editing or Purchase printing; the existing `Draft|Completed` lifecycle, payment/debt and Void contracts remain authoritative.
+These specifications capture approved direction, not completed software. Existing domain decisions remain authoritative. Held Sale persistence and discount rules need separate Product Owner technical/domain review before implementation. Today redesign and any new metric, date/shift control or drill-down capability likewise require separate implementation/technical review; D-096 does not alter approved Slice 6/C14 contracts. D-097 does not authorize Category/Unit schema, Product images, conversions or derived Product profit metrics without their own review. D-098 does not authorize Purchase discount, Purchase-level note, document-date editing or Purchase printing; the existing `Draft|Completed` lifecycle, payment/debt and Void contracts remain authoritative. D-099 does not authorize bulk Stocktake/Adjustment, global movement API or arbitrary low-stock thresholds; existing Product-level inventory and C14 semantics remain authoritative.
