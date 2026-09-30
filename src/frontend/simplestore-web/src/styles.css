@@ -130,13 +130,16 @@
     font-size: 0.875rem;
   }
 
-  /* The shell supplies navigation and space; business views keep their own layouts. */
+  /* The shell supplies navigation and space; business views keep their own layouts.
+     Sidebar and topbar proportions follow TemplateHTML/Sales/index.html. */
   .app-shell {
     display: grid;
-    grid-template-columns: 15.5rem minmax(0, 1fr);
+    grid-template-columns: 206px minmax(0, 1fr);
     min-height: 100vh;
-    background: var(--surface-page);
+    background: #f7f9fc;
   }
+
+  .line-icon { width: 20px; height: 20px; flex: none; }
 
   .app-skip-link {
     position: fixed;
@@ -152,38 +155,48 @@
 
   .app-skip-link:focus { transform: translateY(0); }
 
+  /* Spans the page height like the reference, so "Thu gọn" sits at the end of the page. */
   .app-sidebar {
-    position: sticky;
-    top: 0;
     display: flex;
-    height: 100vh;
-    height: 100dvh;
+    min-height: 100vh;
     flex-direction: column;
-    overflow-y: auto;
-    border-right: 1px solid var(--border);
-    background: var(--surface);
-    padding: 1rem 0.75rem;
+    gap: 14px;
+    border-right: 1px solid #e3e9ef;
+    background: #fff;
+    padding: 16px 0 14px;
+    color: #151d2b;
+    font-size: 16px;
+    line-height: normal;
   }
 
   .app-brand {
     display: flex;
-    min-height: 3.25rem;
-    align-items: flex-start;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.75rem;
-    color: var(--brand-primary-hover);
-    text-decoration: none;
     flex-shrink: 0;
+    align-items: center;
+    gap: 12px;
+    padding: 0 22px;
+    color: #15352f;
+    text-decoration: none;
+  }
+
+  /* Shrinks like the reference's flex item (to ~30px wide beside the 20px wordmark). */
+  .app-brand-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 9px;
+    background: linear-gradient(180deg, #0daa6e, #0a915f);
+    box-shadow: 0 8px 18px rgb(10 163 107 / 25%);
+    color: #fff;
   }
 
   .app-brand-name {
-    color: var(--brand-primary-hover);
-    font-size: 1.2rem;
-    font-weight: 800;
-    letter-spacing: -0.035em;
-    line-height: 1.15;
+    color: #15352f;
+    font-size: 20px;
+    font-weight: 850;
+    line-height: normal;
+    text-decoration: none;
   }
 
   .app-store-name {
@@ -193,15 +206,13 @@
     line-height: 1.35;
   }
 
+  .app-brand .app-store-name { display: none; }
+
   .app-sidebar-body {
     display: flex;
-    min-height: 0;
     flex: 1;
     flex-direction: column;
-    gap: var(--density-gap);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-top: var(--density-gap);
+    padding-top: 8px;
   }
 
   .app-nav-group { display: grid; gap: 0.25rem; }
@@ -249,8 +260,66 @@
     font-weight: 700;
   }
 
+  .app-nav-sales { display: flex; flex-direction: column; gap: 4px; padding: 0 10px; }
+  .app-nav-sales .app-nav-link {
+    position: relative;
+    height: 50px;
+    min-height: 0;
+    gap: 14px;
+    border: 0;
+    border-radius: 14px;
+    padding: 0 16px;
+    color: #33435a;
+    font-size: 16px;
+    font-weight: 650;
+    line-height: normal;
+  }
+  .app-nav-sales .app-nav-link .line-icon { width: 22px; height: 22px; }
+  .app-nav-sales .app-nav-link:hover { background: #f5f8fc; color: #0f2a25; }
+  .app-nav-sales .app-nav-link.is-active {
+    background: linear-gradient(90deg, rgb(10 163 107 / 12%), rgb(10 163 107 / 8%));
+    color: #0f2a25;
+    font-weight: 650;
+  }
+  .app-nav-sales .app-nav-link.is-active::before {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -10px;
+    width: 4px;
+    border-radius: 0 10px 10px 0;
+    background: #0aa06a;
+    content: "";
+  }
+  .app-nav-extra { margin-top: 8px; }
+  .app-nav-extra summary {
+    padding: 8px 12px;
+    color: #8b98ab;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .app-nav-sales .app-nav-extra .app-nav-link { height: 40px; padding-left: 52px; font-size: 14px; }
+
+  .app-sidebar-collapse {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid #e3e9ef;
+    padding: 16px 12px 0;
+    color: #5f6f84;
+    cursor: pointer;
+    font-weight: 600;
+    text-align: left;
+  }
+  .app-sidebar-collapse .line-icon { width: 18px; height: 18px; }
+  .app-sidebar-collapse:hover { color: #0f2a25; }
+
   .app-account-area {
-    display: grid;
+    display: none;
     gap: 0.625rem;
     margin-top: auto;
     border-top: 1px solid var(--border);
@@ -259,9 +328,134 @@
     flex-shrink: 0;
   }
 
+  .app-shell--collapsed { grid-template-columns: 84px minmax(0, 1fr); }
+  .app-shell--collapsed .app-sidebar { padding-inline: 10px; }
+  .app-shell--collapsed .app-brand { justify-content: center; padding: 0; }
+  .app-shell--collapsed .app-brand-name,
+  .app-shell--collapsed .app-nav-sales .app-nav-link span,
+  .app-shell--collapsed .app-nav-extra,
+  .app-shell--collapsed .app-sidebar-collapse span { display: none; }
+  .app-shell--collapsed .app-nav-sales { padding: 0; }
+  .app-shell--collapsed .app-nav-sales .app-nav-link { justify-content: center; padding: 0; }
+  .app-shell--collapsed .app-sidebar-collapse { justify-content: center; padding-inline: 0; }
+
   .app-mobile-header,
   .app-mobile-drawer,
   .app-backdrop { display: none; }
+
+  .app-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    height: 58px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid #e3e9ef;
+    background: rgb(255 255 255 / 92%);
+    padding: 0 26px 0 34px;
+    color: #151d2b;
+    font-size: 16px;
+    line-height: normal;
+    backdrop-filter: blur(14px);
+  }
+  .app-topbar-store { display: flex; min-width: 0; align-items: center; gap: 10px; font-weight: 820; }
+  .app-topbar-store span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-topbar-store .line-icon,
+  .app-topbar-profile summary .line-icon,
+  .app-top-icon .line-icon { width: 18px; height: 18px; }
+  .app-topbar-actions { display: flex; align-items: center; gap: 18px; color: #42536a; white-space: nowrap; }
+  .app-search-shortcut,
+  .app-top-icon {
+    display: flex;
+    height: 36px;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e3e9ef;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0 14px;
+    color: #526074;
+    font-weight: 700;
+  }
+  .app-search-shortcut { cursor: pointer; }
+  .app-search-shortcut:hover { border-color: rgb(10 163 107 / 48%); color: #078b5d; }
+  .app-top-icon { width: 36px; justify-content: center; padding: 0; }
+  .app-mock-toggle {
+    display: flex;
+    height: 36px;
+    align-items: center;
+    gap: 8px;
+    border: 1px dashed rgb(10 163 107 / 45%);
+    border-radius: 10px;
+    background: #fff;
+    padding: 0 12px;
+    color: #118458;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .app-mock-toggle .line-icon { width: 18px; height: 18px; }
+  .app-mock-toggle:hover { background: #f8fdfa; }
+  .app-mock-toggle[aria-pressed="true"] { border-style: solid; background: #0aa06a; color: #fff; }
+  /* Sample-data mode reproduces the reference, which has no extra navigation group. */
+  .app-shell--demo .app-nav-extra { display: none; }
+  .app-topbar-date { font-weight: 700; }
+  .app-topbar-profile { position: relative; }
+  .app-topbar-profile[open] { z-index: 31; }
+  .app-topbar-profile summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #29384d;
+    cursor: pointer;
+    font-weight: 700;
+    list-style: none;
+  }
+  .app-topbar-profile summary::-webkit-details-marker { display: none; }
+  .app-topbar-avatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 999px;
+    background: #52b877;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .app-topbar-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 30;
+    display: grid;
+    min-width: 220px;
+    gap: 4px;
+    border: 1px solid #e3e9ef;
+    border-radius: 12px;
+    background: #fff;
+    padding: 6px;
+    box-shadow: 0 16px 32px rgb(16 39 68 / 14%);
+    font-size: 14px;
+    white-space: normal;
+  }
+  .app-topbar-identity { display: grid; gap: 2px; border-bottom: 1px solid #e3e9ef; padding: 6px 10px 10px; }
+  .app-topbar-identity strong { overflow-wrap: anywhere; color: #29384d; }
+  .app-topbar-identity span { color: #66758a; font-size: 12.5px; font-weight: 600; }
+  .app-topbar-menu > button {
+    border-radius: 9px;
+    padding: 9px 10px;
+    color: #29384d;
+    cursor: pointer;
+    font-weight: 700;
+    text-align: left;
+  }
+  .app-topbar-menu > button:hover { background: #f5f8fc; }
+  .app-demo-toggle { display: inline-flex; align-items: center; gap: 0.45rem; border-radius: 9px; padding: 9px 10px; cursor: pointer; font-weight: 700; }
+  .app-demo-toggle:hover { background: #f5f8fc; }
+  .app-demo-toggle input { width: 1rem; height: 1rem; accent-color: #0aa06a; cursor: pointer; }
+  .app-mobile-header .app-demo-toggle { border: 1px solid #dce5ef; padding: 0.45rem 0.65rem; }
 
   .app-mobile-drawer[hidden],
   .app-backdrop[hidden] { display: none !important; }
@@ -282,11 +476,26 @@
     justify-content: space-between;
     gap: 0.75rem;
   }
+  .app-mobile-drawer .app-account-area { display: grid; }
+  .app-mobile-drawer .app-nav-sales { padding: 0; }
+}
+
+@media (min-width: 901px) and (max-width: 1080px) {
+  .app-shell { grid-template-columns: 84px minmax(0, 1fr); }
+  .app-sidebar { padding-inline: 10px; }
+  .app-brand { justify-content: center; padding: 0; }
+  .app-brand-name,
+  .app-nav-sales .app-nav-link span,
+  .app-nav-extra,
+  .app-sidebar-collapse { display: none; }
+  .app-nav-sales { padding: 0; }
+  .app-nav-sales .app-nav-link { justify-content: center; padding: 0; }
 }
 
 @media (max-width: 900px) {
   .app-shell { display: block; }
   .app-sidebar { display: none; }
+  .app-topbar { display: none; }
 
   .app-mobile-header {
     position: sticky;

@@ -8,7 +8,7 @@ function activeIds(path: string, roles: readonly string[] = ['Owner']) {
 describe('navigation presentation', () => {
   it('shows all supported Owner destinations, including CSV import and both Settings routes', () => {
     expect(visibleNavigation(['Owner']).map(item => item.to)).toEqual([
-      '/today', '/sales/new', '/sales', '/products', '/import', '/purchases', '/suppliers',
+      '/today', '/sales/new', '/sales', '/products', '/products?view=inventory', '/import', '/purchases', '/suppliers',
       '/customers/debts', '/suppliers/debts', '/reports/end-of-day',
       '/settings/operations', '/settings/users',
     ])
@@ -16,7 +16,7 @@ describe('navigation presentation', () => {
 
   it('omits Owner-only entries for Cashier and shows no menu for an unknown role', () => {
     expect(visibleNavigation(['Cashier']).map(item => item.to)).toEqual([
-      '/sales/new', '/sales', '/products', '/customers/debts',
+      '/sales/new', '/sales', '/products', '/products?view=inventory', '/customers/debts',
     ])
     expect(visibleNavigation([])).toEqual([])
     expect(visibleNavigation(['Unknown'])).toEqual([])
@@ -27,6 +27,11 @@ describe('navigation presentation', () => {
       expect(activeIds(path)).toEqual(['products'])
     },
   )
+
+  it('uses the stock view of the supported Product list for Tồn kho', () => {
+    expect(activeIds('/products?view=inventory')).toEqual(['inventory'])
+    expect(activeIds('/products?view=inventory#stock')).toEqual(['inventory'])
+  })
 
   it.each(['/purchases', '/purchases/new', '/purchases/123', '/purchases/123/edit'])(
     'keeps Purchase navigation active for %s', path => {

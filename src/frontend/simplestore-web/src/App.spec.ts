@@ -37,10 +37,10 @@ describe('App navigation', () => {
 
     expect(owner.text()).toContain('Nhà cung cấp')
     expect(owner.text()).toContain('Nhập hàng')
-    expect(owner.text()).toContain('Hôm nay')
+    expect(owner.text()).toContain('Tổng quan')
     expect(cashier.text()).not.toContain('Nhà cung cấp')
     expect(cashier.text()).not.toContain('Nhập hàng')
-    expect(cashier.text()).not.toContain('Hôm nay')
+    expect(cashier.text()).not.toContain('Tổng quan')
   })
 
   it('keeps the business navigation hidden while the session is unresolved', async () => {

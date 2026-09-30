@@ -39,16 +39,21 @@ test('Owner desktop shell presents authorized navigation, active state and logou
   await expect(navigation).toBeVisible()
   await expect(page.locator('.app-sidebar')).toContainText('Tạp hóa Việt Anh')
   await expect(page.locator('.app-sidebar')).toContainText('owner@example.test')
-  await expect(navigation.getByRole('link', { name: 'Hôm nay' })).toBeVisible()
+  await expect(navigation.getByRole('link', { name: 'Tổng quan' })).toBeVisible()
   await expect(navigation.getByRole('link', { name: 'Nhập hàng' })).toBeVisible()
   await expect(navigation.getByRole('link', { name: 'Sản phẩm' })).toHaveAttribute('aria-current', 'page')
+  await navigation.getByRole('link', { name: 'Tồn kho' }).click()
+  await expect(page.getByRole('heading', { name: 'Tồn kho' })).toBeVisible()
+  await expect(navigation.getByRole('link', { name: 'Tồn kho' })).toHaveAttribute('aria-current', 'page')
 
+  await navigation.getByText('Chức năng khác').click()
   await navigation.getByRole('link', { name: 'Đơn bán' }).click()
   await expect(page).toHaveURL(/\/sales$/)
   await expect(page.getByRole('heading', { name: 'Lịch sử bán hàng' })).toBeVisible()
   await expect(navigation.getByRole('link', { name: 'Đơn bán' })).toHaveAttribute('aria-current', 'page')
 
-  await page.locator('.app-sidebar').getByRole('button', { name: 'Đăng xuất' }).click()
+  await page.locator('.app-topbar-profile summary').click()
+  await page.locator('.app-topbar-profile').getByRole('button', { name: 'Đăng xuất' }).click()
   await expect(page).toHaveURL(/\/login$/)
   await expect(page.locator('.app-sidebar')).toHaveCount(0)
 })
@@ -59,10 +64,12 @@ test('Cashier sees only currently permitted shell destinations', async ({ page }
 
   const navigation = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
   await expect(navigation).toBeVisible()
-  for (const label of ['Bán hàng', 'Đơn bán', 'Sản phẩm', 'Công nợ khách']) {
+  for (const label of ['Bán hàng', 'Sản phẩm', 'Tồn kho', 'Công nợ']) {
     await expect(navigation.getByRole('link', { name: label })).toBeVisible()
   }
-  for (const label of ['Hôm nay', 'Nhập hàng', 'Nhà cung cấp', 'Công nợ NCC', 'Cuối ngày', 'Thiết lập', 'Nhân viên']) {
+  await navigation.getByText('Chức năng khác').click()
+  await expect(navigation.getByRole('link', { name: 'Đơn bán' })).toBeVisible()
+  for (const label of ['Tổng quan', 'Nhập hàng', 'Nhà cung cấp', 'Công nợ NCC', 'Báo cáo', 'Cài đặt', 'Nhân viên']) {
     await expect(navigation.getByRole('link', { name: label })).toHaveCount(0)
   }
   await expect(page.locator('.app-sidebar')).toContainText('cashier@example.test')

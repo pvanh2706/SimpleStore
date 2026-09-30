@@ -6,6 +6,9 @@ import type { StoreInfo } from '../../api/types'
 import { visibleNavigation } from '../../navigation'
 import AppButton from '../ui/AppButton.vue'
 import AppNavigation from './AppNavigation.vue'
+import LineIcon from '../ui/LineIcon'
+import { demoIdentity, salesDemoEnabled } from '../../sales/demo'
+import { liveOrderBook } from '../../sales/orders'
 
 const props = defineProps<{ email: string | null; roles: readonly string[] }>()
 const emit = defineEmits<{ logout: [] }>()
@@ -13,14 +16,35 @@ const route = useRoute()
 const items = computed(() => visibleNavigation(props.roles))
 const storeName = ref('')
 const menuOpen = ref(false)
+const sidebarCollapsed = ref(false)
 const menuTrigger = ref<InstanceType<typeof AppButton> | null>(null)
 const drawer = ref<HTMLElement | null>(null)
 const closeButton = ref<InstanceType<typeof AppButton> | null>(null)
 let previousOverflow: string | null = null
 
 const roleLabel = computed(() => props.roles.includes('Owner') ? 'Chủ cửa hàng' : 'Thu ngân')
+const isSalesWorkspace = computed(() => route.path.startsWith('/sales/new'))
+const now = ref(new Date())
+const dateLabel = computed(() => {
+  const value = now.value
+  const weekday = value.getDay() === 0 ? 'Chủ nhật' : `Thứ ${value.getDay() + 1}`
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${weekday}, ${pad(value.getDate())}/${pad(value.getMonth() + 1)}/${value.getFullYear()}\u00a0\u00a0${pad(value.getHours())}:${pad(value.getMinutes())}`
+})
+const accountLabel = computed(() => props.email?.split('@')[0] || roleLabel.value)
+const demoActive = computed(() => isSalesWorkspace.value && salesDemoEnabled.value)
+const shownStoreName = computed(() => demoActive.value ? demoIdentity.storeName : storeName.value || 'SimpleStore')
+const shownDate = computed(() => demoActive.value ? demoIdentity.dateLabel : dateLabel.value)
+const userLabel = computed(() => demoActive.value ? demoIdentity.userName : accountLabel.value)
+const initials = computed(() => {
+  if (demoActive.value) return demoIdentity.initials
+  const parts = accountLabel.value.split(/[\s._-]+/).filter(Boolean)
+  return (parts.length > 1 ? parts[0]!.charAt(0) + parts[1]!.charAt(0) : accountLabel.value.slice(0, 2)).toUpperCase()
+})
+let clockTimer: ReturnType<typeof setInterval> | undefined
 
 onMounted(async () => {
+  clockTimer = setInterval(() => { now.value = new Date() }, 60_000)
   window.addEventListener('keydown', onWindowKeydown)
   window.addEventListener('resize', onResize)
   try {
@@ -32,6 +56,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer)
+  salesDemoEnabled.value = false
   window.removeEventListener('keydown', onWindowKeydown)
   window.removeEventListener('resize', onResize)
   restoreScroll()
@@ -64,6 +90,11 @@ function closeMenu(restoreFocus = true) {
 }
 
 function onWindowKeydown(event: KeyboardEvent) {
+  if (!menuOpen.value && isSalesWorkspace.value && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    focusProductSearch()
+    return
+  }
   if (!menuOpen.value) return
   if (event.key === 'Escape') {
     event.preventDefault()
@@ -86,27 +117,37 @@ function onWindowKeydown(event: KeyboardEvent) {
   }
 }
 
+function focusProductSearch() {
+  // The live and the preview checkout can both be mounted; focus the visible one.
+  Array.from(document.querySelectorAll<HTMLInputElement>('.sales-pos__search-box input'))
+    .find(input => input.offsetParent !== null)?.focus()
+}
+
 function onResize() {
   if (window.innerWidth > 900) closeMenu(false)
 }
 
 function logout() {
   closeMenu(false)
+  salesDemoEnabled.value = false
+  liveOrderBook.reset()
   emit('logout')
 }
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :class="{ 'app-shell--sales': isSalesWorkspace, 'app-shell--collapsed': sidebarCollapsed, 'app-shell--demo': demoActive }">
     <a class="app-skip-link no-print" href="#main-content" :inert="menuOpen">Chuyển đến nội dung</a>
     <aside class="app-sidebar no-print" :inert="menuOpen" aria-label="Thanh điều hướng ứng dụng">
       <RouterLink class="app-brand" to="/">
+        <span class="app-brand-icon" aria-hidden="true"><LineIcon name="brand" /></span>
         <span class="app-brand-name">SimpleStore</span>
         <span v-if="storeName" class="app-store-name">{{ storeName }}</span>
       </RouterLink>
       <nav class="app-sidebar-body" aria-label="Điều hướng chính">
-        <AppNavigation :items="items" :path="route.path" />
+        <AppNavigation :items="items" :path="route.fullPath" sales-layout />
       </nav>
+      <button class="app-sidebar-collapse" type="button" :aria-label="sidebarCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'" :aria-expanded="!sidebarCollapsed" @click="sidebarCollapsed = !sidebarCollapsed"><LineIcon :name="sidebarCollapsed ? 'expand' : 'collapse'" /><span>{{ sidebarCollapsed ? 'Mở rộng' : 'Thu gọn' }}</span></button>
       <div class="app-account-area">
         <div class="min-w-0">
           <p class="truncate font-semibold">{{ email }}</p>
@@ -119,6 +160,10 @@ function logout() {
     <header class="app-mobile-header no-print" :inert="menuOpen">
       <AppButton ref="menuTrigger" variant="secondary" type="button" aria-label="Mở điều hướng" :aria-controls="menuOpen ? 'app-mobile-menu' : undefined" :aria-expanded="menuOpen" @click="menuOpen = true">Menu</AppButton>
       <RouterLink class="app-brand-name" to="/">SimpleStore</RouterLink>
+      <label v-if="isSalesWorkspace" class="app-demo-toggle" title="Hiển thị dữ liệu mẫu trên màn Bán hàng">
+        <input v-model="salesDemoEnabled" type="checkbox" aria-label="Dữ liệu mẫu Bán hàng trên điện thoại" />
+        <span>Mẫu</span>
+      </label>
       <span class="app-mobile-store-name">{{ storeName }}</span>
     </header>
 
@@ -130,7 +175,7 @@ function logout() {
       </div>
       <p v-if="storeName" class="app-store-name">{{ storeName }}</p>
       <nav aria-label="Điều hướng chính trên điện thoại">
-        <AppNavigation :items="items" :path="route.path" @navigate="closeMenu(false)" />
+        <AppNavigation :items="items" :path="route.fullPath" sales-layout expand-extras @navigate="closeMenu(false)" />
       </nav>
       <div class="app-account-area">
         <div class="min-w-0">
@@ -142,6 +187,25 @@ function logout() {
     </aside>
 
     <div class="app-workspace" :inert="menuOpen">
+      <header class="app-topbar no-print">
+        <!-- A single Store per account today: the chevron mirrors the reference, there is no Store switcher yet. -->
+        <div class="app-topbar-store" :title="shownStoreName"><span>{{ shownStoreName }}</span><LineIcon name="chevron" /></div>
+        <div class="app-topbar-actions">
+          <button v-if="isSalesWorkspace" class="app-mock-toggle" type="button" :aria-pressed="salesDemoEnabled" title="Hiển thị dữ liệu mẫu giống bản thiết kế; không lưu giao dịch" @click="salesDemoEnabled = !salesDemoEnabled"><LineIcon name="box" />Dữ liệu mẫu</button>
+          <button v-if="isSalesWorkspace" class="app-search-shortcut" type="button" aria-label="Tìm sản phẩm (Ctrl K)" @click="focusProductSearch">Ctrl + K</button>
+          <!-- Help and calendar are visual placeholders until those destinations exist. -->
+          <span class="app-top-icon" aria-hidden="true"><LineIcon name="help" /></span>
+          <span class="app-top-icon" aria-hidden="true"><LineIcon name="calendar" /></span>
+          <time class="app-topbar-date" :datetime="demoActive ? undefined : now.toISOString()">{{ shownDate }}</time>
+          <details class="app-topbar-profile">
+            <summary :aria-label="`Tài khoản ${email ?? ''}`"><span class="app-topbar-avatar" aria-hidden="true">{{ initials }}</span><span class="app-topbar-user">{{ userLabel }}</span><LineIcon name="chevron" /></summary>
+            <div class="app-topbar-menu">
+              <p class="app-topbar-identity"><strong>{{ email }}</strong><span>{{ roleLabel }}</span></p>
+              <button type="button" @click="logout">Đăng xuất</button>
+            </div>
+          </details>
+        </div>
+      </header>
       <main id="main-content" class="app-main" tabindex="-1">
         <slot />
       </main>

@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref } from 'vue'
+import { routerKey } from 'vue-router'
 import { ApiError } from '../api/client'
 import type { Customer, CustomerPage, OperationStatus, ProductListItem, ProductPage, Sale } from '../api/types'
+import LineIcon from './ui/LineIcon'
+import type { IconName } from './ui/icons'
+import { productCategories, productCategory, stockStatus, type ProductCategory } from '../sales/catalog'
+import { createDemoOrderBook, demoImageById, demoProducts } from '../sales/demo'
+import {
+  createOrderBook, lineAmount, lineDiscount, orderTotal,
+  type OrderBook, type PaymentInput, type PayMode,
+} from '../sales/orders'
 
-type PaymentInput = { amount: number; method: 'Cash' | 'Transfer' }
-type CartLine = { product: ProductListItem; quantity: number }
 type State = 'idle' | 'completing' | 'checking' | 'retryable' | 'completed'
 interface AttemptSnapshot {
   operationId: string
@@ -21,8 +28,31 @@ const props = defineProps<{
   completeSale: (attempt: AttemptSnapshot) => Promise<Sale>
   checkOperation: (operationId: string) => Promise<OperationStatus | null>
   loadSale: (saleId: string) => Promise<Sale>
+  previewOnly?: boolean
+  /** Shared working orders; a standalone form keeps its own. */
+  orderBook?: OrderBook
 }>()
 const emit = defineEmits<{ completed: [sale: Sale] }>()
+const router = inject(routerKey, null)
+
+const root = ref<HTMLElement | null>(null)
+const searchInput = ref<HTMLInputElement | null>(null)
+const customerPicker = ref<HTMLDetailsElement | null>(null)
+const createPicker = ref<HTMLDetailsElement | null>(null)
+const queueMenu = ref<HTMLDetailsElement | null>(null)
+const idSuffix = props.previewOnly ? '-preview' : ''
+
+const book = props.orderBook ?? (props.previewOnly ? createDemoOrderBook() : createOrderBook())
+const orders = book.orders
+const order = computed(() => book.active.value)
+const cart = computed(() => order.value.cart)
+const payments = computed(() => order.value.payments)
+const customer = computed(() => order.value.customer)
+const railOrders = computed(() => {
+  const shown = orders.value.slice(0, 3)
+  if (!shown.includes(order.value)) shown[2] = order.value
+  return shown
+})
 
 const productSearch = ref('')
 const productQuery = ref('')
@@ -30,12 +60,22 @@ const products = ref<ProductPage | null>(null)
 const productPage = ref(1)
 const productLoading = ref(false)
 const productError = ref('')
+const category = ref<ProductCategory>('Tất cả')
+const selectedProductId = ref<string | null>(props.previewOnly ? 'demo-coke' : null)
+const shownProducts = computed(() => {
+  const items = products.value?.items ?? []
+  return category.value === 'Tất cả' ? items : items.filter(item => productCategory(item) === category.value)
+})
 let productRequestId = 0
 
-const cart = ref<CartLine[]>([])
-const amount = ref(0)
-const method = ref<'Cash' | 'Transfer'>('Cash')
-const payments = ref<PaymentInput[]>([])
+const amount = ref<number | null>(null)
+const splitOpen = ref(false)
+const splitShown = computed(() => splitOpen.value || payments.value.length > 0)
+const payModes: ReadonlyArray<{ id: PayMode; label: string; icon: IconName }> = [
+  { id: 'Cash', label: 'Tiền mặt', icon: 'cash' },
+  { id: 'Transfer', label: 'Chuyển khoản', icon: 'bank' },
+  { id: 'Debt', label: 'Bán nợ', icon: 'debt' },
+]
 
 const customerSearch = ref('')
 const customerQuery = ref('')
@@ -45,23 +85,47 @@ const customerLoading = ref(false)
 const customerError = ref('')
 const creatingCustomer = ref(false)
 let customerRequestId = 0
-const customer = ref<Customer | null>(null)
 const newCustomerName = ref('')
 const newCustomerPhone = ref('')
 
 const state = ref<State>('idle')
 const attempt = ref<AttemptSnapshot | null>(null)
 const message = ref('')
+const notice = ref('')
 
-function lineAmount(line: CartLine) {
-  if (!Number.isFinite(line.quantity) || line.quantity <= 0) return 0
-  return Math.round(line.quantity * line.product.salePrice * 100) / 100
-}
-const total = computed(() => cart.value.reduce((sum, line) => sum + lineAmount(line), 0))
-const paid = computed(() => payments.value.reduce((sum, payment) => sum + payment.amount, 0))
+const itemCount = computed(() => cart.value.reduce((sum, line) => sum + (Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 0), 0))
+const subtotal = computed(() => cart.value.reduce((sum, line) => sum + lineAmount(line), 0))
+const discount = computed(() => cart.value.reduce((sum, line) => sum + lineDiscount(line), 0))
+const total = computed(() => subtotal.value - discount.value)
+const explicitPaid = computed(() => payments.value.reduce((sum, payment) => sum + payment.amount, 0))
+/** Entered amounts win; otherwise Tiền mặt/Chuyển khoản pays the whole order and Bán nợ pays nothing. */
+const effectivePayments = computed<PaymentInput[]>(() => {
+  if (payments.value.length) return payments.value
+  if (order.value.payMode === 'Debt' || total.value <= 0) return []
+  return [{ amount: total.value, method: order.value.payMode }]
+})
+const paid = computed(() => effectivePayments.value.reduce((sum, payment) => sum + payment.amount, 0))
 const outstanding = computed(() => Math.max(0, total.value - paid.value))
 const locked = computed(() => ['completing', 'checking', 'retryable', 'completed'].includes(state.value))
+const busy = computed(() => locked.value || creatingCustomer.value)
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value)
+const unitLabel = (unit: string) => unit.charAt(0).toLocaleUpperCase('vi-VN') + unit.slice(1)
+const methodLabel = (method: PaymentInput['method']) => method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản'
+
+function productImage(product: ProductListItem): string | null {
+  if (demoImageById[product.id]) return demoImageById[product.id]!
+  const match = demoProducts.find(sample => sample.sku === product.sku && sample.name === product.name)
+  return match ? demoImageById[match.id] ?? null : null
+}
+
+function closeDetails(element: HTMLDetailsElement | null) {
+  if (element) element.open = false
+}
+
+function resetFeedback() {
+  message.value = ''
+  notice.value = ''
+}
 
 async function findProducts(page = 1) {
   if (locked.value) return
@@ -86,40 +150,59 @@ async function findProducts(page = 1) {
   }
 }
 
+async function quickAdd() {
+  await findProducts(1)
+  const items = products.value?.items ?? []
+  if (productQuery.value && items.length === 1) addProduct(items[0]!)
+}
+
+function focusSearch() {
+  searchInput.value?.focus()
+  searchInput.value?.select()
+}
+
 function addProduct(product: ProductListItem) {
   if (locked.value) return
-  message.value = ''
+  resetFeedback()
   if (cart.value.some(line => line.product.id === product.id)) {
     message.value = 'Sản phẩm đã có trong giỏ hàng.'
     return
   }
   cart.value.push({ product, quantity: 1 })
+  selectedProductId.value = product.id
 }
 
 function removeProduct(productId: string) {
   if (locked.value) return
-  cart.value = cart.value.filter(line => line.product.id !== productId)
+  order.value.cart = cart.value.filter(line => line.product.id !== productId)
+  if (selectedProductId.value === productId) selectedProductId.value = null
 }
 
-function changeQuantity(line: CartLine, delta: number) {
+function changeQuantity(line: { quantity: number }, delta: number) {
   if (locked.value) return
   const current = Number.isFinite(line.quantity) ? line.quantity : 0
   line.quantity = Math.max(0.001, Math.round((current + delta) * 1000) / 1000)
 }
 
+function setPayMode(mode: PayMode) {
+  if (locked.value) return
+  order.value.payMode = mode
+}
+
 function addPayment() {
   if (locked.value) return
-  message.value = ''
-  if (!Number.isFinite(amount.value) || amount.value <= 0) {
+  resetFeedback()
+  const value = amount.value
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     message.value = 'Số tiền phải lớn hơn 0.'
     return
   }
-  if (paid.value + amount.value > total.value) {
+  if (explicitPaid.value + value > total.value) {
     message.value = 'Tổng thanh toán không được vượt tổng đơn.'
     return
   }
-  payments.value.push({ amount: amount.value, method: method.value })
-  amount.value = 0
+  payments.value.push({ amount: value, method: order.value.payMode === 'Transfer' ? 'Transfer' : 'Cash' })
+  amount.value = null
 }
 
 function removePayment(index: number) {
@@ -150,13 +233,15 @@ async function findCustomers(page = 1) {
   }
 }
 
-function selectCustomer(item: Customer) {
-  if (locked.value || creatingCustomer.value) return
-  customer.value = item
+function selectCustomer(item: Customer | null) {
+  if (busy.value) return
+  order.value.customer = item
+  closeDetails(customerPicker.value)
 }
 
 async function createAndSelectCustomer() {
-  if (locked.value || creatingCustomer.value || !newCustomerName.value.trim()) return
+  if (busy.value || !newCustomerName.value.trim()) return
+  const target = order.value
   creatingCustomer.value = true
   customerError.value = ''
   try {
@@ -165,9 +250,10 @@ async function createAndSelectCustomer() {
       newCustomerPhone.value.trim() || null,
     )
     if (locked.value) return
-    customer.value = created
+    target.customer = created
     newCustomerName.value = ''
     newCustomerPhone.value = ''
+    closeDetails(createPicker.value)
   } catch (reason) {
     customerError.value = reason instanceof Error
       ? 'Không thể tạo khách hàng. ' + reason.message
@@ -177,10 +263,59 @@ async function createAndSelectCustomer() {
   }
 }
 
+function switchOrder(number: number) {
+  if (busy.value) return
+  book.activate(number)
+  resetFeedback()
+  closeDetails(queueMenu.value)
+}
+
+function newOrder() {
+  if (busy.value) return
+  book.create()
+  resetFeedback()
+}
+
+function holdOrder() {
+  if (busy.value || !cart.value.length) return
+  const held = order.value.number
+  book.create()
+  resetFeedback()
+  notice.value = `Đã giữ Đơn ${held}. Chọn lại đơn trên thanh đơn hàng để tiếp tục.`
+}
+
+function clearOrder() {
+  if (busy.value) return
+  book.clearActive()
+  selectedProductId.value = null
+  resetFeedback()
+}
+
+function invoiceDiscount() {
+  resetFeedback()
+  notice.value = 'Giảm giá hóa đơn sẽ dùng được khi backend hỗ trợ giảm giá.'
+}
+
+function openHistory(event: MouseEvent) {
+  if (!router) return
+  event.preventDefault()
+  void router.push('/sales')
+}
+
+function finish(sale: Sale) {
+  state.value = 'completed'
+  book.completeActive()
+  emit('completed', sale)
+}
+
 async function complete() {
+  if (props.previewOnly) {
+    message.value = 'Đây là dữ liệu mẫu để xem giao diện. Tắt Dữ liệu mẫu trên header để bán hàng thật.'
+    return
+  }
   if (state.value === 'completing' || state.value === 'checking' || state.value === 'completed') return
   if (creatingCustomer.value) return
-  message.value = ''
+  resetFeedback()
 
   // Retry always uses the saved attempt. Validate mutable inputs only for a new attempt.
   if (!attempt.value) {
@@ -204,7 +339,7 @@ async function complete() {
       operationId: crypto.randomUUID(),
       customerId: customer.value?.id ?? null,
       lines: cart.value.map(line => ({ productId: line.product.id, quantity: line.quantity })),
-      payments: payments.value.map(payment => ({ ...payment })),
+      payments: effectivePayments.value.map(payment => ({ ...payment })),
     }
   }
 
@@ -216,8 +351,7 @@ async function complete() {
       lines: current.lines.map(line => ({ ...line })),
       payments: current.payments.map(payment => ({ ...payment })),
     })
-    state.value = 'completed'
-    emit('completed', sale)
+    finish(sale)
   } catch (reason) {
     const ambiguous = !(reason instanceof ApiError)
       || reason.status === 408
@@ -236,9 +370,7 @@ async function complete() {
       if (operation?.status === 'Completed'
         && operation.operationType === 'CompleteSale'
         && operation.resultReference) {
-        const sale = await props.loadSale(operation.resultReference)
-        state.value = 'completed'
-        emit('completed', sale)
+        finish(await props.loadSale(operation.resultReference))
         return
       }
     } catch { /* Keep the exact attempt because the outcome remains ambiguous. */ }
@@ -248,119 +380,230 @@ async function complete() {
   }
 }
 
-onMounted(() => { void findProducts(1) })
+function onKeydown(event: KeyboardEvent) {
+  // Both the live and the preview form can be mounted; only the visible one reacts.
+  if (event.key !== 'F12' || !root.value?.offsetParent) return
+  event.preventDefault()
+  void complete()
+}
+
+function onPointerDown(event: PointerEvent) {
+  root.value?.querySelectorAll('details[open]').forEach(details => {
+    if (!details.contains(event.target as Node)) details.removeAttribute('open')
+  })
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+  document.addEventListener('pointerdown', onPointerDown)
+  void findProducts(1)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+  document.removeEventListener('pointerdown', onPointerDown)
+})
 defineExpose({ state, attempt, cart, payments, customer, total, paid, outstanding })
 </script>
 
 <template>
-  <div class="sales-pos no-print">
-    <section class="sales-pos__products" aria-labelledby="sales-products-heading">
+  <div ref="root" class="sales-pos no-print" :class="{ 'sales-pos--demo': previewOnly }">
+    <section class="sales-pos__products" :aria-labelledby="`sales-products-heading${idSuffix}`">
+      <h2 :id="`sales-products-heading${idSuffix}`" class="sales-pos__sr-only">Chọn sản phẩm</h2>
+
+      <div class="sales-pos__order-rail" role="group" aria-label="Các đơn đang bán">
+        <button
+          v-for="(item, index) in railOrders"
+          :key="item.number"
+          class="sales-pos__order-pill"
+          :class="{ 'is-active': item === order }"
+          type="button"
+          :aria-pressed="item === order"
+          :aria-label="`Đơn ${item.number}: ${item.cart.length} sản phẩm, ${money(orderTotal(item))} đồng`"
+          :disabled="busy"
+          @click="switchOrder(item.number)"
+        >
+          <span v-if="item === order" class="sales-pos__order-badge">{{ item.number }}</span>
+          <span class="sales-pos__pill-main">
+            <span class="sales-pos__pill-icon"><LineIcon :name="item === order ? 'cart' : index % 2 ? 'bag' : 'box'" class="sales-pos__icon-sm" /></span>
+            <span class="sales-pos__pill-text">
+              <span class="sales-pos__pill-title">Đơn {{ item.number }}</span>
+              <span class="sales-pos__pill-meta">{{ item.cart.length }} SP ・ {{ money(orderTotal(item)) }} đ</span>
+            </span>
+          </span>
+          <span class="sales-pos__pill-more" aria-hidden="true"><LineIcon v-if="item === order" name="kebab" class="sales-pos__icon-sm" /><template v-else>⋮</template></span>
+        </button>
+        <span v-for="slot in 3 - railOrders.length" :key="`slot-${slot}`" aria-hidden="true" />
+        <button class="sales-pos__ghost-pill" type="button" :disabled="busy" @click="newOrder"><LineIcon name="plus" class="sales-pos__icon-sm" /> Đơn mới</button>
+        <details ref="queueMenu" class="sales-pos__queue">
+          <summary class="sales-pos__order-pill sales-pos__queue-pill">
+            <span class="sales-pos__pill-icon"><LineIcon name="clock" class="sales-pos__icon-sm" /></span>
+            Danh sách đơn đang chờ ({{ orders.length }})
+          </summary>
+          <div class="sales-pos__dropdown sales-pos__dropdown--end">
+            <button
+              v-for="item in orders"
+              :key="item.number"
+              class="sales-pos__queue-item"
+              :class="{ 'is-active': item === order }"
+              type="button"
+              :disabled="busy"
+              @click="switchOrder(item.number)"
+            ><strong>Đơn {{ item.number }}</strong><span>{{ item.cart.length }} SP ・ {{ money(orderTotal(item)) }} đ</span></button>
+            <a class="sales-pos__queue-history" href="/sales" @click="openHistory">Lịch sử bán hàng</a>
+          </div>
+        </details>
+      </div>
+
       <div v-if="allowNegativeStock" class="sales-pos__warning" role="note">
         <strong>Lưu ý về tồn kho</strong>
         <span>Cửa hàng đang cho phép bán âm tồn. Giá vốn có thể ở trạng thái ước tính hoặc chưa xác định.</span>
       </div>
 
-      <div class="sales-pos__section-heading">
-        <h2 id="sales-products-heading">Chọn sản phẩm</h2>
-        <p>Tìm theo tên, SKU hoặc quét mã vạch.</p>
-      </div>
-
       <form class="sales-pos__search" role="search" @submit.prevent="findProducts(1)">
-        <label for="sales-product-search">Tìm hoặc quét sản phẩm</label>
-        <div class="sales-pos__search-controls">
-          <div class="sales-pos__search-input">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
-            <input
-              id="sales-product-search"
-              v-model="productSearch"
-              class="input"
-              type="text"
-              autocomplete="off"
-              aria-label="Tìm hoặc quét sản phẩm"
-              placeholder="Tên sản phẩm, SKU hoặc mã vạch..."
-              :disabled="locked"
-            />
-          </div>
-          <button class="btn-secondary sales-pos__search-button" type="submit" aria-label="Tìm sản phẩm" :disabled="locked">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
-            <span>Tìm sản phẩm</span>
-          </button>
+        <label :for="`sales-product-search${idSuffix}`" class="sales-pos__sr-only">Tìm hoặc quét sản phẩm</label>
+        <div class="sales-pos__search-box">
+          <LineIcon name="search" />
+          <input
+            :id="`sales-product-search${idSuffix}`"
+            ref="searchInput"
+            v-model="productSearch"
+            type="text"
+            autocomplete="off"
+            aria-label="Tìm hoặc quét sản phẩm"
+            placeholder="Tìm sản phẩm theo tên, mã SKU hoặc quét mã vạch..."
+            :disabled="locked"
+          />
+          <span class="sales-pos__barcode-chip" aria-hidden="true"><LineIcon name="barcode" class="sales-pos__icon-sm" /></span>
         </div>
+        <button class="sales-pos__tool-btn" type="button" :disabled="locked" @click="quickAdd"><LineIcon name="plus" class="sales-pos__icon-sm" /> Thêm nhanh</button>
+        <button class="sales-pos__tool-btn sales-pos__tool-btn--scan" type="button" :disabled="locked" @click="focusSearch"><LineIcon name="scan" class="sales-pos__icon-sm" />Quét mã</button>
       </form>
 
-      <div class="sales-pos__results-heading">
-        <div>
-          <h3>Sản phẩm</h3>
-        </div>
-        <p v-if="products" role="status">{{ products.totalCount }} kết quả · Trang {{ productPage }}/{{ products.totalPages || 1 }}</p>
+      <div class="sales-pos__categories" role="group" aria-label="Nhóm sản phẩm">
+        <button
+          v-for="item in productCategories"
+          :key="item"
+          class="sales-pos__chip"
+          :class="{ 'is-active': category === item }"
+          type="button"
+          :aria-pressed="category === item"
+          @click="category = item"
+        >{{ item }}</button>
       </div>
 
       <p v-if="productLoading" class="sales-pos__empty" role="status">Đang tìm sản phẩm…</p>
       <p v-else-if="productError" class="error" role="alert">{{ productError }}</p>
       <p v-else-if="products && products.items.length === 0" class="sales-pos__empty" role="status">Không tìm thấy sản phẩm phù hợp.</p>
       <p v-else-if="!products" class="sales-pos__empty" role="status">Nhập tên, SKU hoặc barcode để tìm sản phẩm.</p>
+      <p v-else-if="shownProducts.length === 0" class="sales-pos__empty" role="status">Không có sản phẩm thuộc nhóm “{{ category }}” trong kết quả hiện tại.</p>
       <div v-else class="sales-pos__product-grid" aria-live="polite">
-        <article v-for="product in products.items" :key="product.id" class="sales-pos__product-card">
-          <div class="sales-pos__product-main">
-            <h4>{{ product.name }}</h4>
-            <p class="sales-pos__meta">{{ product.sku }} · {{ product.unit }}</p>
+        <article v-for="product in shownProducts" :key="product.id" class="sales-pos__product-card" :class="{ 'is-selected': selectedProductId === product.id }">
+          <div class="sales-pos__product-image">
+            <img v-if="productImage(product)" :src="productImage(product)!" :alt="product.name" />
+            <svg v-else class="sales-pos__placeholder" aria-hidden="true" viewBox="0 0 80 80" fill="none"><rect x="17" y="21" width="46" height="42" rx="7" fill="#EAF3F1" /><path d="M17 32h46M30 21v42m22-42v42" stroke="#93B9AA" stroke-width="3" /><path d="M35 43h10" stroke="#0AA06A" stroke-width="3" stroke-linecap="round" /></svg>
           </div>
-          <div class="sales-pos__product-bottom">
-            <strong class="sales-pos__product-price">{{ money(product.salePrice) }} ₫</strong>
-            <span class="sales-pos__stock" :class="{ 'sales-pos__stock--empty': product.quantityOnHand <= 0 }">Tồn {{ money(product.quantityOnHand) }} {{ product.unit }}</span>
-            <button
-              class="sales-pos__add"
-              type="button"
-              :disabled="locked"
-              :aria-label="'Thêm sản phẩm ' + product.name"
-              @click="addProduct(product)"
-            ><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Thêm</span></button>
+          <div class="sales-pos__product-body">
+            <h3 class="sales-pos__product-name" :title="product.name">{{ product.name }}</h3>
+            <p class="sales-pos__product-meta">{{ product.sku }} ・ {{ unitLabel(product.unit) }}</p>
+            <p class="sales-pos__product-price">{{ money(product.salePrice) }} đ</p>
+            <div class="sales-pos__product-footer">
+              <span
+                v-if="stockStatus(product.quantityOnHand)"
+                class="sales-pos__stock-tag"
+                :class="`is-${stockStatus(product.quantityOnHand)!.tone}`"
+                :title="`Tồn ${money(product.quantityOnHand)} ${product.unit}`"
+              >{{ stockStatus(product.quantityOnHand)!.label }}</span>
+              <span v-else class="sales-pos__product-stock">Còn {{ money(product.quantityOnHand) }} {{ product.unit }}</span>
+              <button class="sales-pos__add-btn" type="button" :disabled="locked" :aria-label="'Thêm sản phẩm ' + product.name" @click="addProduct(product)">+</button>
+            </div>
           </div>
         </article>
       </div>
       <nav v-if="products && products.totalPages > 1" class="sales-pos__pager" aria-label="Trang sản phẩm">
-        <button class="btn-secondary" type="button" :disabled="productPage <= 1 || locked || productLoading" @click="findProducts(productPage - 1)">Trước</button>
+        <button type="button" :disabled="productPage <= 1 || locked || productLoading" @click="findProducts(productPage - 1)">Trước</button>
         <span>Trang {{ productPage }}/{{ products.totalPages }}</span>
-        <button class="btn-secondary" type="button" :disabled="productPage >= products.totalPages || locked || productLoading" @click="findProducts(productPage + 1)">Sau</button>
+        <button type="button" :disabled="productPage >= products.totalPages || locked || productLoading" @click="findProducts(productPage + 1)">Sau</button>
       </nav>
     </section>
 
-    <section class="sales-pos__checkout" aria-labelledby="sales-checkout-heading">
-      <div class="sales-pos__checkout-header">
+    <section class="sales-pos__checkout" :aria-labelledby="`sales-checkout-heading${idSuffix}`">
+      <div class="sales-pos__checkout-top">
         <div class="sales-pos__checkout-title">
-          <span class="sales-pos__checkout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.1 10h11.7L21 7H6"/><circle cx="9" cy="19" r="1"/><circle cx="18" cy="19" r="1"/></svg></span>
-          <div>
-            <h2 id="sales-checkout-heading">Đơn bán</h2>
-            <span class="sales-pos__status">Đang bán</span>
-          </div>
+          <h2 :id="`sales-checkout-heading${idSuffix}`">Đơn {{ order.number }}</h2>
+          <span class="sales-pos__status-chip">Đang bán</span>
         </div>
-        <span class="sales-pos__count">{{ cart.length }} sản phẩm</span>
+        <div class="sales-pos__checkout-tools">
+          <div class="sales-pos__muted-row"><LineIcon name="kebab" class="sales-pos__icon-sm" /></div>
+          <button class="sales-pos__danger-link" type="button" :disabled="busy || !cart.length" @click="clearOrder"><LineIcon name="trash" class="sales-pos__icon-sm" /> Xóa đơn</button>
+        </div>
       </div>
 
-      <div class="sales-pos__checkout-body">
-        <section class="sales-pos__cart" aria-label="Sản phẩm trong giỏ">
-          <p v-if="cart.length === 0" class="sales-pos__cart-empty">Chưa có sản phẩm. Tìm sản phẩm ở bên trái để bắt đầu đơn bán.</p>
-          <div v-for="line in cart" :key="line.product.id" class="sales-pos__cart-line">
-            <div class="sales-pos__line-heading">
-              <div>
-                <strong>{{ line.product.name }}</strong>
-                <p>{{ money(line.product.salePrice) }} ₫ / {{ line.product.unit }}</p>
-              </div>
+      <span class="sales-pos__field-label">Khách hàng</span>
+      <div class="sales-pos__field-row">
+        <details ref="customerPicker" class="sales-pos__customer-picker">
+          <summary class="sales-pos__select" :aria-label="`Khách hàng: ${customer?.name ?? 'Khách lẻ'}`">
+            <span class="sales-pos__select-value">{{ customer?.name ?? 'Khách lẻ' }}</span>
+            <LineIcon name="chevron" class="sales-pos__icon-sm" />
+          </summary>
+          <div class="sales-pos__dropdown sales-pos__dropdown--row">
+            <form class="sales-pos__dropdown-search" @submit.prevent="findCustomers(1)">
+              <label :for="`sales-customer-search${idSuffix}`" class="sales-pos__sr-only">Tìm khách hàng</label>
+              <input :id="`sales-customer-search${idSuffix}`" v-model="customerSearch" class="sales-pos__control" type="text" autocomplete="off" aria-label="Tìm khách hàng" placeholder="Tên hoặc số điện thoại" :disabled="locked || creatingCustomer" />
+              <button class="sales-pos__control-btn" type="submit" :disabled="locked || creatingCustomer || customerLoading">Tìm khách hàng</button>
+            </form>
+            <p v-if="customerLoading" class="sales-pos__hint" role="status">Đang tìm khách hàng…</p>
+            <p v-else-if="customerError" class="sales-pos__hint sales-pos__hint--error" role="alert">{{ customerError }}</p>
+            <p v-else-if="customers && customers.items.length === 0" class="sales-pos__hint" role="status">Không tìm thấy khách hàng phù hợp.</p>
+            <div v-else-if="customers" class="sales-pos__customer-results">
               <button
-                class="sales-pos__remove"
+                v-for="item in customers.items"
+                :key="item.id"
+                class="sales-pos__customer-result"
                 type="button"
-                :disabled="locked"
-                :aria-label="'Xóa ' + line.product.name"
-                @click="removeProduct(line.product.id)"
-              ><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2m3 0-.7 12H6.7L6 7M10 11v5m4-5v5"/></svg><span class="sales-pos__visually-hidden">Xóa</span></button>
+                :disabled="locked || creatingCustomer"
+                :aria-label="'Chọn khách hàng ' + item.name"
+                :aria-pressed="customer?.id === item.id"
+                @click="selectCustomer(item)"
+              ><strong>{{ item.name }}</strong><span>{{ item.phone || 'Không có số điện thoại' }}</span></button>
             </div>
-            <div class="sales-pos__line-bottom">
-              <div class="sales-pos__quantity">
+            <p v-else class="sales-pos__hint">Tìm theo tên hoặc số điện thoại để ghi công nợ.</p>
+            <nav v-if="customers && customers.totalPages > 1" class="sales-pos__pager" aria-label="Trang khách hàng">
+              <button type="button" :disabled="customerPage <= 1 || locked || creatingCustomer || customerLoading" @click="findCustomers(customerPage - 1)">Trước</button>
+              <span>Trang {{ customerPage }}/{{ customers.totalPages }}</span>
+              <button type="button" :disabled="customerPage >= customers.totalPages || locked || creatingCustomer || customerLoading" @click="findCustomers(customerPage + 1)">Sau</button>
+            </nav>
+            <button v-if="customer" class="sales-pos__walk-in" type="button" :disabled="locked || creatingCustomer" @click="selectCustomer(null)">Chuyển về Khách lẻ</button>
+          </div>
+        </details>
+        <details ref="createPicker" class="sales-pos__create-customer">
+          <summary class="sales-pos__add-customer-btn"><LineIcon name="plus" class="sales-pos__icon-sm" /> Thêm khách</summary>
+          <div class="sales-pos__dropdown sales-pos__dropdown--end">
+            <label :for="`sales-new-customer-name${idSuffix}`">Tên khách hàng</label>
+            <input :id="`sales-new-customer-name${idSuffix}`" v-model="newCustomerName" class="sales-pos__control" aria-label="Tên khách hàng mới" placeholder="Tên khách hàng mới" :disabled="locked || creatingCustomer" />
+            <label :for="`sales-new-customer-phone${idSuffix}`">Số điện thoại (không bắt buộc)</label>
+            <input :id="`sales-new-customer-phone${idSuffix}`" v-model="newCustomerPhone" class="sales-pos__control" type="tel" aria-label="Số điện thoại khách hàng mới" placeholder="Số điện thoại" :disabled="locked || creatingCustomer" />
+            <button class="sales-pos__control-btn" type="button" :disabled="locked || creatingCustomer || !newCustomerName.trim()" @click="createAndSelectCustomer">{{ creatingCustomer ? 'Đang tạo khách hàng…' : 'Tạo và chọn khách hàng' }}</button>
+          </div>
+        </details>
+      </div>
+
+      <label class="sales-pos__field-label" :for="`sales-order-note${idSuffix}`">Ghi chú đơn hàng <span class="sales-pos__optional">(tùy chọn)</span></label>
+      <input :id="`sales-order-note${idSuffix}`" v-model="order.note" class="sales-pos__note" type="text" autocomplete="off" placeholder="Thêm ghi chú..." :disabled="locked" />
+
+      <div class="sales-pos__order-items" aria-label="Sản phẩm trong giỏ">
+        <p v-if="cart.length === 0" class="sales-pos__cart-empty">Chưa có sản phẩm. Tìm hoặc quét sản phẩm ở bên trái để bắt đầu đơn bán.</p>
+        <template v-for="line in cart" :key="line.product.id">
+          <div class="sales-pos__line-item">
+            <img v-if="productImage(line.product)" class="sales-pos__line-image" :src="productImage(line.product)!" :alt="line.product.name" />
+            <span v-else class="sales-pos__line-image sales-pos__line-image--empty" aria-hidden="true"><LineIcon name="box" /></span>
+            <div class="sales-pos__line-main">
+              <div class="sales-pos__line-name">{{ line.product.name }}</div>
+              <div class="sales-pos__line-price">{{ money(line.product.salePrice) }} đ</div>
+              <div class="sales-pos__qty-box">
                 <button type="button" :disabled="locked" :aria-label="'Giảm số lượng ' + line.product.name" @click="changeQuantity(line, -1)">−</button>
                 <input
-                  :id="'sales-quantity-' + line.product.id"
+                  :id="`sales-quantity-${line.product.id}`"
                   v-model.number="line.quantity"
-                  class="input"
                   type="number"
                   min="0.001"
                   step="0.001"
@@ -370,828 +613,741 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
                 />
                 <button type="button" :disabled="locked" :aria-label="'Tăng số lượng ' + line.product.name" @click="changeQuantity(line, 1)">+</button>
               </div>
-              <strong class="sales-pos__line-total">{{ money(lineAmount(line)) }} ₫</strong>
+            </div>
+            <div class="sales-pos__line-side">
+              <button class="sales-pos__remove-mini" type="button" :disabled="locked" :aria-label="'Xóa ' + line.product.name" @click="removeProduct(line.product.id)"><LineIcon name="trashMini" class="sales-pos__icon-sm" /></button>
+              <div class="sales-pos__line-amount">{{ money(lineAmount(line)) }} đ</div>
             </div>
           </div>
-        </section>
-
-        <section class="sales-pos__panel" aria-labelledby="sales-payment-heading">
-          <div class="sales-pos__panel-heading">
-            <h3 id="sales-payment-heading">Thanh toán</h3>
-            <p>Tiền mặt hoặc chuyển khoản · Có thể thêm nhiều lần.</p>
+          <div v-if="line.discountPercent" class="sales-pos__line-discount">
+            <span>🏷 Giảm giá</span>
+            <span>{{ line.discountPercent }}% &nbsp; -{{ money(lineDiscount(line)) }} đ ›</span>
           </div>
-          <div class="sales-pos__payment-fields">
-            <div class="sales-pos__method" role="group" aria-label="Phương thức thanh toán">
-              <button type="button" :class="{ 'is-active': method === 'Cash' }" :aria-pressed="method === 'Cash'" :disabled="locked" @click="method = 'Cash'">
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>
-                Tiền mặt
-              </button>
-              <button type="button" :class="{ 'is-active': method === 'Transfer' }" :aria-pressed="method === 'Transfer'" :disabled="locked" @click="method = 'Transfer'">
-                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h16M5 10h14M12 3l8 5H4l8-5Z"/></svg>
-                Chuyển khoản
-              </button>
-            </div>
-            <div class="sales-pos__field">
-              <label for="sales-payment-amount">Số tiền thanh toán</label>
-              <input id="sales-payment-amount" v-model.number="amount" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" aria-label="Số tiền thanh toán" :disabled="locked" />
-            </div>
-            <button class="btn-secondary" type="button" :disabled="locked" @click="addPayment">Thêm thanh toán</button>
-          </div>
-          <div v-if="payments.length" class="sales-pos__payments" aria-label="Các khoản đã nhập">
-            <div v-for="(payment, index) in payments" :key="index" class="sales-pos__payment-row">
-              <span>{{ payment.method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản' }}</span>
-              <strong>{{ money(payment.amount) }} ₫</strong>
-              <button class="sales-pos__remove" type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
-            </div>
-          </div>
-        </section>
-        <section v-if="outstanding > 0" class="sales-pos__panel" aria-labelledby="sales-customer-heading">
-          <div class="sales-pos__panel-heading">
-            <h3 id="sales-customer-heading">Khách hàng</h3>
-            <p>Chọn khách hàng cho phần còn nợ.</p>
-          </div>
-          <div v-if="customer" class="sales-pos__selected-customer">
-            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
-            <strong>{{ customer.name }}</strong>
-            <span>{{ customer.phone || 'Không có số điện thoại' }}</span>
-          </div>
-          <form class="sales-pos__customer-search" @submit.prevent="findCustomers(1)">
-            <label for="sales-customer-search">Tìm khách hàng</label>
-            <div class="sales-pos__search-controls">
-              <input
-                id="sales-customer-search"
-                v-model="customerSearch"
-                class="input"
-                type="text"
-                autocomplete="off"
-                aria-label="Tìm khách hàng"
-                placeholder="Tên hoặc số điện thoại"
-                :disabled="locked || creatingCustomer"
-              />
-              <button class="btn-secondary" type="submit" :disabled="locked || creatingCustomer || customerLoading">Tìm khách hàng</button>
-            </div>
-          </form>
-          <p v-if="customerLoading" class="sales-pos__hint" role="status">Đang tìm khách hàng…</p>
-          <p v-else-if="customerError" class="error" role="alert">{{ customerError }}</p>
-          <p v-else-if="customers && customers.items.length === 0" class="sales-pos__hint" role="status">Không tìm thấy khách hàng phù hợp.</p>
-          <div v-else-if="customers" class="sales-pos__customer-results">
-            <button
-              v-for="item in customers.items"
-              :key="item.id"
-              class="sales-pos__customer-result"
-              type="button"
-              :disabled="locked || creatingCustomer"
-              :aria-label="'Chọn khách hàng ' + item.name"
-              :aria-pressed="customer?.id === item.id"
-              @click="selectCustomer(item)"
-            >
-              <strong>{{ item.name }}</strong>
-              <span>{{ item.phone || 'Không có số điện thoại' }}</span>
-            </button>
-          </div>
-          <nav v-if="customers && customers.totalPages > 1" class="sales-pos__pager" aria-label="Trang khách hàng">
-            <button class="btn-secondary" type="button" :disabled="customerPage <= 1 || locked || creatingCustomer || customerLoading" @click="findCustomers(customerPage - 1)">Trước</button>
-            <span>Trang {{ customerPage }}/{{ customers.totalPages }}</span>
-            <button class="btn-secondary" type="button" :disabled="customerPage >= customers.totalPages || locked || creatingCustomer || customerLoading" @click="findCustomers(customerPage + 1)">Sau</button>
-          </nav>
-          <details class="sales-pos__create-customer">
-            <summary>Thêm khách hàng mới</summary>
-            <div class="sales-pos__create-customer-fields">
-              <label for="sales-new-customer-name">Tên khách hàng</label>
-              <input id="sales-new-customer-name" v-model="newCustomerName" class="input" aria-label="Tên khách hàng mới" placeholder="Tên khách hàng mới" :disabled="locked || creatingCustomer" />
-              <label for="sales-new-customer-phone">Số điện thoại (không bắt buộc)</label>
-              <input id="sales-new-customer-phone" v-model="newCustomerPhone" class="input" type="tel" aria-label="Số điện thoại khách hàng mới" placeholder="Số điện thoại" :disabled="locked || creatingCustomer" />
-              <button class="btn-secondary" type="button" :disabled="locked || creatingCustomer || !newCustomerName.trim()" @click="createAndSelectCustomer">{{ creatingCustomer ? 'Đang tạo khách hàng…' : 'Tạo và chọn khách hàng' }}</button>
-            </div>
-          </details>
-        </section>
-
+        </template>
       </div>
 
-      <div class="sales-pos__checkout-footer">
-        <div class="sales-pos__total-row"><span>Tổng đơn</span><strong>{{ money(total) }} ₫</strong></div>
-        <div class="sales-pos__total-row"><span>Đã thanh toán</span><strong>{{ money(paid) }} ₫</strong></div>
-        <div class="sales-pos__total-row sales-pos__total-row--outstanding"><span>Còn nợ</span><strong>{{ money(outstanding) }} ₫</strong></div>
-        <a v-if="outstanding > 0 && !customer" class="sales-pos__customer-cue" href="#sales-customer-heading">Cần chọn khách hàng cho phần còn nợ <span aria-hidden="true">↓</span></a>
-        <p v-if="paid > total" class="sales-pos__overpaid">Đã thanh toán vượt tổng đơn. Xóa khoản thanh toán hoặc điều chỉnh số lượng.</p>
-        <p class="sales-pos__preview-note">Giá và tổng chính thức được xác nhận khi hoàn tất.</p>
-        <p v-if="message" class="error" role="alert">{{ message }}</p>
+      <button class="sales-pos__hint-card" type="button" :disabled="locked" @click="invoiceDiscount"><LineIcon name="plus" class="sales-pos__icon-sm" /> Thêm giảm giá hóa đơn</button>
+
+      <p v-if="cart.length && outstanding > 0" class="sales-pos__debt-note" role="note">
+        Còn nợ <strong>{{ money(outstanding) }} đ</strong>.
+        {{ customer ? `Ghi công nợ cho ${customer.name}.` : 'Chọn khách hàng để ghi công nợ.' }}
+      </p>
+
+      <div class="sales-pos__totals">
+        <div class="sales-pos__totals-row"><span>Tạm tính ({{ money(itemCount) }} sản phẩm)</span><strong>{{ money(subtotal) }} đ</strong></div>
+        <div class="sales-pos__totals-row"><span>Giảm giá sản phẩm</span><strong>{{ discount ? '-' : '' }}{{ money(discount) }} đ</strong></div>
+        <div class="sales-pos__totals-row"><span>Giảm giá hóa đơn</span><strong>0 đ ›</strong></div>
+      </div>
+
+      <div class="sales-pos__grand-total">
+        <h3>Tổng cộng</h3>
+        <div class="sales-pos__grand-value">{{ money(total) }} đ</div>
+      </div>
+
+      <div class="sales-pos__pay-head">
+        <h3 :id="`sales-payment-heading${idSuffix}`" class="sales-pos__pay-title">Hình thức thanh toán</h3>
+        <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="splitOpen = !splitShown">{{ splitShown ? 'Ẩn số tiền' : 'Nhập số tiền' }}</button>
+      </div>
+      <div class="sales-pos__payment-grid" role="group" :aria-labelledby="`sales-payment-heading${idSuffix}`">
         <button
-          class="btn-primary sales-pos__complete"
+          v-for="mode in payModes"
+          :key="mode.id"
+          class="sales-pos__pay-btn"
+          :class="{ 'is-active': order.payMode === mode.id }"
           type="button"
+          :aria-pressed="order.payMode === mode.id"
+          :disabled="locked"
+          @click="setPayMode(mode.id)"
+        ><LineIcon :name="mode.icon" class="sales-pos__icon-sm" /> {{ mode.label }}</button>
+      </div>
+      <div v-show="splitShown" :id="`sales-split${idSuffix}`" class="sales-pos__split">
+        <div class="sales-pos__split-row">
+          <label :for="`sales-payment-amount${idSuffix}`" class="sales-pos__sr-only">Số tiền thanh toán</label>
+          <input
+            :id="`sales-payment-amount${idSuffix}`"
+            v-model.number="amount"
+            class="sales-pos__control"
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputmode="decimal"
+            aria-label="Số tiền thanh toán"
+            :placeholder="`Khách trả (${order.payMode === 'Transfer' ? 'Chuyển khoản' : 'Tiền mặt'})`"
+            :disabled="locked"
+          />
+          <button class="sales-pos__control-btn" type="button" :disabled="locked" @click="addPayment">Thêm thanh toán</button>
+        </div>
+        <ul v-if="payments.length" class="sales-pos__split-list" aria-label="Các khoản đã nhập">
+          <li v-for="(payment, index) in payments" :key="index">
+            <span>{{ methodLabel(payment.method) }}</span>
+            <strong>{{ money(payment.amount) }} đ</strong>
+            <button type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
+          </li>
+        </ul>
+        <p class="sales-pos__hint">Phần chưa thanh toán sẽ ghi công nợ cho khách hàng.</p>
+      </div>
+
+      <p v-if="notice" class="sales-pos__notice" role="status">{{ notice }}</p>
+      <p v-if="message" class="sales-pos__message" role="alert">{{ message }}</p>
+
+      <div class="sales-pos__actions">
+        <button class="sales-pos__secondary-btn" type="button" :disabled="busy || !cart.length" @click="holdOrder"><LineIcon name="clock" class="sales-pos__icon-sm" /> Giữ đơn</button>
+        <button
+          class="sales-pos__primary-btn sales-pos__complete"
+          type="button"
+          :data-shortcut="state === 'idle' ? 'F12' : undefined"
           :disabled="state === 'completing' || state === 'checking' || state === 'completed' || creatingCustomer"
           @click="complete"
-        ><svg v-if="state === 'idle'" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>{{ state === 'retryable' ? 'Thử lại đúng thao tác' : state === 'completing' || state === 'checking' ? 'Đang xác nhận…' : 'Hoàn tất bán hàng' }}</button>
+        ><LineIcon v-if="state === 'idle'" name="check" class="sales-pos__icon-sm" />{{ state === 'retryable' ? 'Thử lại đúng thao tác' : state === 'completing' || state === 'checking' ? 'Đang xác nhận…' : 'Hoàn tất bán hàng' }}</button>
       </div>
     </section>
   </div>
 </template>
 
 <style scoped>
+/* Proportions follow TemplateHTML/Sales/index.html (approved 1536×1024 visual reference). */
 .sales-pos {
+  --pos-border: #e3e9ef;
+  --pos-border-strong: #d1dce5;
+  --pos-text: #151d2b;
+  --pos-subtle: #7f8ba0;
+  --pos-primary: #0aa06a;
+  --pos-primary-strong: #078b5d;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(22rem, 23.5rem);
+  max-width: 1536px;
+  grid-template-columns: minmax(0, 1fr) 404px;
   align-items: start;
-  gap: clamp(1rem, 1.7vw, 1.5rem);
-  min-width: 0;
+  gap: 14px;
+  margin: 0 auto;
+  color: var(--pos-text);
+  font-size: 16px;
+  line-height: normal;
 }
-.sales-pos__products,
-.sales-pos__checkout { min-width: 0; }
-.sales-pos__products { display: grid; align-content: start; gap: 1.15rem; }
-.sales-pos__warning {
+.sales-pos button,
+.sales-pos summary { cursor: pointer; transition: border-color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease; }
+.sales-pos button:disabled { cursor: not-allowed; }
+.sales-pos summary { list-style: none; }
+.sales-pos summary::-webkit-details-marker { display: none; }
+/* Like the reference icons, these may shrink when a label wraps inside a narrow button. */
+.sales-pos :deep(.line-icon) { width: 20px; height: 20px; flex: 0 1 auto; }
+.sales-pos :deep(.sales-pos__icon-sm) { width: 18px; height: 18px; }
+.sales-pos__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.sales-pos__products { min-width: 0; }
+
+.sales-pos__order-rail {
   display: grid;
-  gap: 0.2rem;
-  border-left: 3px solid var(--warning);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
-  padding: 0.7rem 0.9rem;
-  color: var(--text);
-  font-size: 0.8rem;
-  line-height: 1.45;
+  grid-template-columns: repeat(3, minmax(0, 176px)) 118px minmax(188px, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
 }
-.sales-pos__warning strong { color: var(--warning); }
-.sales-pos__section-heading h2 {
-  font-size: clamp(1.15rem, 1.6vw, 1.4rem);
-  font-weight: 760;
-  letter-spacing: -0.025em;
-  line-height: 1.2;
-}
-.sales-pos__section-heading p { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.84rem; }
-.sales-pos__search { display: grid; gap: 0.45rem; }
-.sales-pos__search label {
-  color: var(--text);
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-.sales-pos__search-controls { display: flex; min-width: 0; gap: 0.5rem; }
-.sales-pos__search-input {
+.sales-pos__order-pill,
+.sales-pos__ghost-pill {
   position: relative;
   display: flex;
+  height: 56px;
   min-width: 0;
-  flex: 1;
-  align-items: center;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: 0 3px 12px rgb(14 43 33 / 5%);
-}
-.sales-pos__search-input:focus-within {
-  border-color: var(--brand-primary);
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 12%, transparent);
-}
-.sales-pos__search-input svg {
-  width: 1.3rem;
-  height: 1.3rem;
-  flex: none;
-  margin-left: 0.9rem;
-  color: var(--brand-primary-hover);
-}
-.sales-pos__search-input .input {
-  min-width: 0;
-  min-height: 3.4rem;
-  flex: 1;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding-inline: 0.75rem;
-  font-size: 0.95rem;
-}
-.sales-pos__search-input .input:focus { outline: none; }
-.sales-pos__search-input .input::placeholder { color: var(--text-subtle); }
-.sales-pos__search-controls > .btn-secondary {
-  flex: none;
-  min-height: 3.4rem;
-  border-color: var(--border);
-  padding-inline: 1rem;
-}
-.sales-pos__results-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding-top: 0.2rem;
-}
-.sales-pos__results-heading h3 { font-size: 1rem; font-weight: 770; letter-spacing: -0.015em; }
-.sales-pos__results-heading p { color: var(--text-muted); font-size: 0.76rem; text-align: right; }
-.sales-pos__empty {
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--surface) 85%, var(--surface-page));
-  padding: 2.5rem 1rem;
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  text-align: center;
-}
-.sales-pos__product-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
-  gap: 0.7rem;
-}
-.sales-pos__product-card {
-  display: flex;
-  min-width: 0;
-  min-height: 10.5rem;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  padding: 0.95rem;
-  box-shadow: 0 1px 2px rgb(14 43 33 / 4%);
-  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
-}
-.sales-pos__product-card:hover,
-.sales-pos__product-card:focus-within {
-  border-color: var(--brand-primary);
-  box-shadow: 0 5px 16px rgb(14 43 33 / 8%);
-}
-.sales-pos__product-card h4,
-.sales-pos__cart-line strong,
-.sales-pos__customer-result strong,
-.sales-pos__selected-customer strong { overflow-wrap: anywhere; }
-.sales-pos__product-card h4 {
-  color: var(--text);
-  font-size: 0.92rem;
-  font-weight: 740;
-  line-height: 1.36;
-  letter-spacing: -0.015em;
-}
-.sales-pos__meta { margin-top: 0.4rem; color: var(--text-subtle); font-size: 0.72rem; line-height: 1.35; }
-.sales-pos__product-bottom {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 0.45rem 0.3rem;
-}
-.sales-pos__product-price {
-  grid-column: 1 / -1;
-  color: var(--brand-primary-hover);
-  font-size: 1.16rem;
-  font-weight: 790;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.025em;
-  white-space: nowrap;
-}
-.sales-pos__stock {
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 0.73rem;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-.sales-pos__stock--empty { color: var(--warning); font-weight: 700; }
-.sales-pos__add {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.22rem;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 18%, var(--surface));
-  border-radius: var(--radius-sm);
-  background: var(--surface-muted);
-  padding: 0.3rem 0.55rem;
-  color: var(--brand-primary-hover);
-  font-size: 0.78rem;
-  font-weight: 770;
-  white-space: nowrap;
-}
-.sales-pos__add svg { width: 0.92rem; height: 0.92rem; }
-.sales-pos__add:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-primary) 14%, var(--surface)); }
-.sales-pos__add:disabled { cursor: not-allowed; opacity: 0.5; }
-.sales-pos__pager {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.7rem;
-  color: var(--text-muted);
-  font-size: 0.78rem;
-}
-.sales-pos__pager .btn-secondary { min-height: 2.4rem; padding-inline: 0.7rem; }
-.sales-pos__checkout {
-  position: sticky;
-  top: 1rem;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  max-height: calc(100dvh - 8.5rem);
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface-elevated);
-  box-shadow: 0 10px 30px rgb(14 43 33 / 9%), 0 1px 3px rgb(14 43 33 / 5%);
-}
-.sales-pos__checkout-header {
-  display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 1.1rem;
-}
-.sales-pos__checkout-title { display: flex; min-width: 0; align-items: center; gap: 0.6rem; }
-.sales-pos__checkout-icon {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  flex: none;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--surface-muted);
-  color: var(--brand-primary-hover);
-}
-.sales-pos__checkout-icon svg { width: 1.15rem; height: 1.15rem; }
-.sales-pos__checkout-header h2 { font-size: 1.12rem; font-weight: 790; letter-spacing: -0.025em; }
-.sales-pos__count {
-  flex: none;
-  color: var(--text-muted);
-  font-size: 0.76rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-.sales-pos__checkout-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.sales-pos__cart { padding: 1rem 1.1rem; }
-.sales-pos__cart-empty {
-  border-radius: var(--radius-md);
-  background: var(--surface-page);
-  padding: 1.1rem;
-  color: var(--text-muted);
-  font-size: 0.83rem;
-  line-height: 1.5;
-}
-.sales-pos__cart-line {
-  display: grid;
-  gap: 0.45rem;
-  border-bottom: 1px solid var(--border);
-  padding: 0.75rem 0;
-}
-.sales-pos__cart-line:first-child { padding-top: 0; }
-.sales-pos__cart-line:last-child { border-bottom: 0; padding-bottom: 0; }
-.sales-pos__line-heading,
-.sales-pos__line-bottom { display: flex; align-items: start; justify-content: space-between; gap: 0.5rem; }
-.sales-pos__line-heading > div { min-width: 0; }
-.sales-pos__line-heading strong { display: block; font-size: 0.85rem; font-weight: 740; line-height: 1.34; }
-.sales-pos__line-heading p { margin-top: 0.17rem; color: var(--text-muted); font-size: 0.72rem; }
-.sales-pos__remove {
-  display: inline-grid;
-  width: 2.75rem;
-  min-width: 2.75rem;
-  height: 2.75rem;
-  flex: none;
-  place-items: center;
-  border-radius: var(--radius-sm);
-  color: var(--text-subtle);
-}
-.sales-pos__remove svg { width: 1rem; height: 1rem; }
-.sales-pos__remove:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
-  color: var(--danger);
-}
-.sales-pos__remove:disabled { cursor: not-allowed; opacity: 0.5; }
-.sales-pos__visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-.sales-pos__line-bottom { align-items: end; }
-.sales-pos__quantity { display: grid; width: 5.4rem; gap: 0.16rem; }
-.sales-pos__quantity label,
-.sales-pos__customer-search label,
-.sales-pos__field label,
-.sales-pos__create-customer label {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 650;
-}
-.sales-pos__quantity .input { min-height: 2.1rem; padding: 0.3rem 0.5rem; font-size: 0.83rem; font-variant-numeric: tabular-nums; }
-.sales-pos__line-total {
-  padding-bottom: 0.35rem;
-  font-size: 0.9rem;
-  font-weight: 770;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.sales-pos__panel { border-top: 1px solid var(--border); padding: 0.9rem 1.1rem; }
-.sales-pos__panel-heading h3 { font-size: 0.91rem; font-weight: 770; }
-.sales-pos__panel-heading p { margin-top: 0.15rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; }
-.sales-pos__payment-fields {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.55rem;
-  margin-top: 0.75rem;
-}
-.sales-pos__field { display: grid; min-width: 0; align-content: start; gap: 0.25rem; }
-.sales-pos__field .input { min-width: 0; font-size: 0.83rem; font-variant-numeric: tabular-nums; }
-.sales-pos__payment-fields > .btn-secondary {
-  grid-column: 1 / -1;
-  min-height: 2.75rem;
-  border-color: var(--border);
-  color: var(--brand-primary-hover);
-  font-size: 0.82rem;
-}
-.sales-pos__payments { display: grid; gap: 0.35rem; margin-top: 0.8rem; }
-.sales-pos__payment-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 0.4rem;
-  border-radius: var(--radius-sm);
-  background: var(--surface-page);
-  padding: 0.25rem 0.35rem 0.25rem 0.65rem;
-  font-size: 0.79rem;
-}
-.sales-pos__payment-row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sales-pos__payment-row .sales-pos__remove { width: auto; min-width: 2.75rem; padding-inline: 0.25rem; font-size: 0.73rem; color: var(--text-muted); }
-.sales-pos__payment-row .sales-pos__remove:hover:not(:disabled) { color: var(--danger); }
-.sales-pos__selected-customer {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.1rem 0.45rem;
-  margin-top: 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--brand-primary) 16%, var(--surface));
-  border-radius: var(--radius-sm);
-  background: var(--surface-muted);
-  padding: 0.55rem 0.65rem;
-  font-size: 0.79rem;
-}
-.sales-pos__selected-customer svg { grid-row: 1 / 3; width: 0.95rem; height: 0.95rem; margin-top: 0.13rem; color: var(--brand-primary); }
-.sales-pos__selected-customer span { color: var(--text-muted); font-size: 0.72rem; }
-.sales-pos__customer-search { display: grid; gap: 0.35rem; margin-top: 0.7rem; }
-.sales-pos__customer-search .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.4rem; }
-.sales-pos__customer-search .btn-secondary { min-height: 2.65rem; padding-inline: 0.65rem; font-size: 0.78rem; }
-.sales-pos__customer-search .input { min-width: 0; font-size: 0.82rem; }
-.sales-pos__hint { margin-top: 0.65rem; color: var(--text-muted); font-size: 0.78rem; }
-.sales-pos__customer-results { display: grid; gap: 0.3rem; max-height: 11rem; overflow-y: auto; margin-top: 0.65rem; }
-.sales-pos__customer-result {
-  display: grid;
-  gap: 0.1rem;
-  min-height: 2.6rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 0.45rem 0.6rem;
-  font-size: 0.79rem;
+  border: 1.4px solid var(--pos-border-strong);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 14px;
+  box-shadow: 0 1px 0 rgb(12 26 53 / 2%);
+  color: var(--pos-text);
   text-align: left;
 }
-.sales-pos__customer-result span { color: var(--text-muted); font-size: 0.71rem; }
-.sales-pos__customer-result[aria-pressed="true"] { border-color: var(--brand-primary); background: var(--surface-muted); color: var(--brand-primary-hover); }
-.sales-pos__panel .sales-pos__pager { margin-top: 0.65rem; }
-.sales-pos__create-customer { margin-top: 0.55rem; border-top: 1px solid var(--border); }
-.sales-pos__create-customer summary { min-height: 2.4rem; padding: 0.65rem 0.1rem 0.45rem; color: var(--brand-primary-hover); font-size: 0.78rem; font-weight: 730; cursor: pointer; }
-.sales-pos__create-customer-fields { display: grid; gap: 0.35rem; padding-top: 0.3rem; }
-.sales-pos__create-customer .btn-secondary { margin-top: 0.25rem; }
-.sales-pos__checkout-footer {
+.sales-pos__order-pill.is-active {
+  border-color: rgb(10 163 107 / 70%);
+  background: linear-gradient(180deg, #f3fbf7, #eef9f4);
+  box-shadow: inset 0 0 0 1px rgb(10 163 107 / 18%);
+}
+.sales-pos__order-pill:disabled:not(.is-active) { opacity: 0.6; }
+.sales-pos__order-badge {
+  position: absolute;
+  top: -14px;
+  left: -14px;
   display: grid;
-  gap: 0.42rem;
-  border-top: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface-muted) 58%, var(--surface));
-  padding: 0.95rem 1.1rem 1.05rem;
-  box-shadow: 0 -4px 16px rgb(14 43 33 / 3%);
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: #ff2740;
+  box-shadow: 0 8px 20px rgb(255 39 64 / 25%);
+  color: #fff;
+  font-weight: 800;
 }
-.sales-pos__total-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.81rem; line-height: 1.4; }
-.sales-pos__total-row strong { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sales-pos__total-row:first-child {
-  align-items: baseline;
-  margin-bottom: 0.15rem;
-  color: var(--text);
-  font-size: 0.93rem;
-  font-weight: 760;
+.sales-pos__pill-main { display: flex; min-width: 0; align-items: center; gap: 10px; }
+.sales-pos__pill-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: #e8efff;
+  color: #4258c9;
 }
-.sales-pos__total-row:first-child strong {
-  color: var(--brand-primary-hover);
-  font-size: 1.55rem;
-  font-weight: 820;
-  letter-spacing: -0.045em;
+.sales-pos__order-pill.is-active .sales-pos__pill-icon { background: #0fa96f; color: #fff; }
+.sales-pos__pill-text { display: block; min-width: 0; }
+.sales-pos__pill-title { display: block; font-size: 14px; font-weight: 800; line-height: 1.15; }
+.sales-pos__pill-meta { display: block; margin-top: 3px; color: #66758a; font-size: 12px; white-space: nowrap; }
+.sales-pos__pill-more { color: #60718a; }
+/* The reference renders these icons inline, so they sit on a text line box. */
+.sales-pos__pill-more :deep(.line-icon),
+.sales-pos__remove-mini :deep(.line-icon) { display: inline; vertical-align: baseline; }
+.sales-pos__ghost-pill {
+  justify-content: center;
+  gap: 8px;
+  border-color: rgb(10 163 107 / 28%);
+  background: linear-gradient(180deg, #fff, #fbfffd);
+  color: #0d9f67;
+  font-weight: 800;
+  text-align: left;
 }
-.sales-pos__total-row--outstanding { color: var(--text-muted); }
-.sales-pos__customer-cue {
+.sales-pos__queue { position: relative; min-width: 0; }
+.sales-pos__queue-pill {
+  justify-content: flex-start;
+  gap: 10px;
+  border-color: rgb(51 84 209 / 20%);
+  background: #fbfcff;
+  color: #3044a4;
+  font-weight: 700;
+}
+.sales-pos__ghost-pill:hover:not(:disabled),
+.sales-pos__tool-btn:hover:not(:disabled),
+.sales-pos__pay-btn:hover:not(:disabled),
+.sales-pos__add-customer-btn:hover { border-color: rgb(10 163 107 / 48%); background-color: #f8fdfa; }
+.sales-pos__queue-item {
   display: flex;
-  min-height: 2.75rem;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 0.4rem;
-  border-left: 2px solid var(--warning);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
-  padding: 0.4rem 0.6rem;
-  color: var(--text);
-  font-size: 0.75rem;
-  font-weight: 680;
-  line-height: 1.3;
-  text-decoration: none;
+  gap: 10px;
+  border-radius: 9px;
+  padding: 9px 10px;
+  font-size: 14px;
+  text-align: left;
 }
-.sales-pos__customer-cue:hover { color: var(--brand-primary-hover); text-decoration: underline; }
-.sales-pos__preview-note { color: var(--text-subtle); font-size: 0.68rem; line-height: 1.35; }
-.sales-pos__overpaid { color: var(--danger); font-size: 0.77rem; font-weight: 700; }
-.sales-pos__complete {
-  width: 100%;
-  min-height: 3.3rem;
-  margin-top: 0.35rem;
-  box-shadow: 0 3px 9px rgb(4 120 87 / 17%);
-  font-size: 0.96rem;
-  font-weight: 780;
-}
-.sales-pos__complete svg { width: 1.05rem; height: 1.05rem; }
-@media (min-width: 1081px) and (max-width: 1279px) {
-  .sales-pos { grid-template-columns: minmax(0, 1fr) 21.5rem; }
-}
-@media (max-width: 1080px) {
-  .sales-pos { grid-template-columns: minmax(0, 1fr); }
-  .sales-pos__checkout { position: static; max-height: none; overflow: visible; }
-  .sales-pos__checkout-body { overflow: visible; }
-}
-@media (max-width: 600px) {
-  .sales-pos { gap: 1.3rem; }
-  .sales-pos__products { gap: 0.9rem; }
-  .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .sales-pos__search-controls > .btn-secondary { width: 100%; min-height: 2.75rem; }
-  .sales-pos__product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
-  .sales-pos__product-card { min-height: 10.2rem; padding: 0.75rem; }
-  .sales-pos__product-card h4 { font-size: 0.86rem; }
-  .sales-pos__product-price { font-size: 1.05rem; }
-  .sales-pos__product-bottom { grid-template-columns: minmax(0, 1fr) auto; }
-  .sales-pos__add { min-width: 2.75rem; padding-inline: 0.45rem; }
-  .sales-pos__add span { display: none; }
-  .sales-pos__add svg { width: 1.15rem; height: 1.15rem; }
-  .sales-pos__checkout-header,
-  .sales-pos__cart,
-  .sales-pos__panel,
-  .sales-pos__checkout-footer { padding-inline: 0.9rem; }
-  .sales-pos__pager { justify-content: center; }
-}
-@media (max-width: 360px) {
-  .sales-pos__product-grid { grid-template-columns: minmax(0, 1fr); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sales-pos__product-card { transition: none; }
+.sales-pos__queue-item span { color: #66758a; font-size: 12.5px; }
+.sales-pos__queue-item:hover:not(:disabled),
+.sales-pos__queue-item.is-active { background: #eff9f3; }
+.sales-pos__queue-history { border-top: 1px solid var(--pos-border); padding: 10px 10px 2px; color: #3044a4; font-size: 13.5px; font-weight: 700; text-decoration: none; }
+.sales-pos__queue-history:hover { text-decoration: underline; }
+
+.sales-pos__warning {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 14px;
+  border: 1px solid #f3ddb1;
+  border-radius: 10px;
+  background: #fff8ea;
+  padding: 9px 12px;
+  color: #9d6b06;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
-/* D-106 Sales visual reference alignment. Business behavior remains in the script above. */
-.sales-pos {
-  grid-template-columns: minmax(0, 1fr) 25.25rem;
-  gap: 0.875rem;
+.sales-pos__search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px 72px;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 16px;
 }
-.sales-pos__products { gap: 0.875rem; }
-.sales-pos__section-heading {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-.sales-pos__search { gap: 0; }
-.sales-pos__search > label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-.sales-pos__search-controls { gap: 0.75rem; }
-.sales-pos__search-input {
-  height: 3.25rem;
+.sales-pos__search-box {
+  display: flex;
+  height: 52px;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
   border: 2px solid rgb(92 117 255 / 26%);
-  border-radius: 0.625rem;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 16px;
   box-shadow: 0 6px 16px rgb(61 84 179 / 6%);
 }
-.sales-pos__search-input .input { min-height: 3rem; font-size: 0.875rem; }
-.sales-pos__search-controls > .sales-pos__search-button {
-  min-width: 9.5rem;
-  min-height: 3.25rem;
-  border-color: rgb(4 120 87 / 24%);
-  border-radius: 0.625rem;
-  color: var(--brand-primary-hover);
-  font-size: 0.84rem;
-  font-weight: 780;
-}
-.sales-pos__search-button svg { width: 1rem; height: 1rem; }
-.sales-pos__results-heading {
-  min-height: 2rem;
-  padding-top: 0;
-}
-.sales-pos__results-heading h3 { font-size: 0.95rem; font-weight: 780; }
-.sales-pos__product-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-.sales-pos__product-card {
-  min-height: 14.75rem;
-  gap: 0.75rem;
-  border-color: #e3e9ef;
-  border-radius: 0.875rem;
-  padding: 1rem;
-  box-shadow: 0 1px 0 rgb(20 38 63 / 2%);
-}
-.sales-pos__product-card:hover,
-.sales-pos__product-card:focus-within {
-  border-color: #ccd9e0;
-  box-shadow: 0 7px 18px rgb(25 48 72 / 6%);
-  transform: translateY(-1px);
-}
-.sales-pos__product-card h4 {
-  font-size: 0.97rem;
-  font-weight: 780;
-  line-height: 1.24;
-  overflow-wrap: break-word;
-  word-break: normal;
-}
-.sales-pos__meta { margin-top: 0.55rem; color: #637493; font-size: 0.77rem; }
-.sales-pos__product-bottom { gap: 0.55rem 0.4rem; }
-.sales-pos__product-price {
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 820;
-}
-.sales-pos__stock { color: #596a82; font-size: 0.77rem; }
-.sales-pos__add {
-  width: 2.375rem;
-  min-width: 2.375rem;
-  min-height: 2.375rem;
+.sales-pos__search-box:focus-within { border-color: rgb(77 103 238 / 45%); box-shadow: 0 0 0 3px rgb(77 103 238 / 7%); }
+.sales-pos__search-box input {
+  min-width: 0;
+  flex: 1;
   border: 0;
-  border-radius: 0.625rem;
-  background: #e6f7ee;
-  padding: 0;
-  color: #0aa36b;
+  outline: none;
+  background: transparent;
+  padding: 1px 2px;
+  color: var(--pos-text);
+  font-size: 14px;
 }
-.sales-pos__add span { display: none; }
-.sales-pos__add svg { width: 1.2rem; height: 1.2rem; }
-.sales-pos__checkout {
-  top: 0.75rem;
-  min-height: calc(100dvh - 5.5rem);
-  max-height: calc(100dvh - 5.5rem);
-  border-color: #e3e9ef;
-  border-radius: 1rem;
+.sales-pos__search-box input::placeholder { color: var(--pos-text); opacity: 1; }
+.sales-pos__barcode-chip {
+  display: grid;
+  width: 42px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--pos-border);
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 7px 22px rgb(16 39 68 / 6%);
+  color: #405173;
 }
-.sales-pos__checkout-header {
-  min-height: 4.125rem;
-  border-bottom-color: #ecf0f4;
-  padding: 0.8rem 1.125rem;
+.sales-pos__tool-btn {
+  display: flex;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1.4px solid rgb(10 163 107 / 24%);
+  border-radius: 10px;
+  background: #fff;
+  padding: 1px 6px;
+  color: #118458;
+  font-size: 14px;
+  font-weight: 800;
 }
-.sales-pos__checkout-title { gap: 0; }
-.sales-pos__checkout-icon { display: none; }
-.sales-pos__checkout-title > div { display: flex; align-items: center; gap: 0.5rem; }
-.sales-pos__checkout-header h2 { font-size: 1.125rem; font-weight: 850; }
-.sales-pos__status {
+.sales-pos__tool-btn--scan { flex-direction: column; gap: 5px; background: #f4fbf7; color: #16885d; font-size: 12px; }
+
+.sales-pos__categories { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.sales-pos__chip {
   display: inline-flex;
-  height: 1.5rem;
+  height: 38px;
+  align-items: center;
+  border: 1px solid var(--pos-border-strong);
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 16px;
+  color: #2d3e54;
+  font-weight: 700;
+}
+.sales-pos__chip:hover:not(.is-active) { border-color: rgb(10 163 107 / 48%); }
+.sales-pos__chip.is-active {
+  border-color: transparent;
+  background: linear-gradient(180deg, #12a86f, #09935e);
+  box-shadow: 0 10px 18px rgb(10 163 107 / 20%);
+  color: #fff;
+}
+
+.sales-pos__empty {
+  border: 1px dashed var(--pos-border-strong);
+  border-radius: 14px;
+  background: #fff;
+  padding: 40px 16px;
+  color: #4e607a;
+  font-size: 14px;
+  text-align: center;
+}
+.sales-pos__product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.sales-pos__product-card {
+  display: flex;
+  height: 236px;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--pos-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgb(20 38 63 / 2%);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+.sales-pos__product-card:hover { border-color: #ccd9e0; box-shadow: 0 7px 18px rgb(25 48 72 / 5.5%); transform: translateY(-1px); }
+.sales-pos__product-card.is-selected {
+  border: 2px solid rgb(10 163 107 / 78%);
+  background: linear-gradient(180deg, #fafdfe 0%, #f8fcfb 100%);
+  box-shadow: 0 12px 24px rgb(10 163 107 / 8%);
+}
+.sales-pos__product-image {
+  display: grid;
+  height: 104px;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8fafc, #fbfcfd);
+}
+.sales-pos__product-image img { display: block; width: auto; max-width: 100%; height: 100%; object-fit: contain; }
+.sales-pos__placeholder { width: 72px; height: 72px; }
+/* As in the reference, the image band shrinks so the text body always fits the 236px card. */
+.sales-pos__product-body { display: flex; flex: 1; flex-direction: column; gap: 5px; padding: 10px 16px 12px; }
+.sales-pos__product-name {
+  display: -webkit-box;
+  min-height: 38px;
+  overflow: hidden;
+  font-size: 15.5px;
+  font-weight: 780;
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.sales-pos__product-meta { color: #637493; font-size: 12.5px; }
+.sales-pos__product-price { font-size: 16px; font-weight: 820; }
+.sales-pos__product-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.sales-pos__product-stock { margin-top: auto; color: #596a82; font-size: 12.5px; }
+.sales-pos__stock-tag { display: inline-flex; align-items: center; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; }
+.sales-pos__stock-tag.is-warn { background: #fff6e6; color: #f7a531; }
+.sales-pos__stock-tag.is-danger { background: #ffecec; color: #eb5a49; }
+.sales-pos__add-btn {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: #e6f7ee;
+  padding: 1px 6px;
+  color: #0aa36b;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 0;
+}
+.sales-pos__add-btn:hover:not(:disabled) { background: #d9f3e6; transform: translateY(-1px); }
+.sales-pos__add-btn:disabled { opacity: 0.5; }
+.sales-pos__pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; color: #4e607a; font-size: 13px; }
+.sales-pos__pager button {
+  height: 34px;
+  border: 1px solid var(--pos-border-strong);
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 12px;
+  color: #2c3d54;
+  font-weight: 700;
+}
+.sales-pos__pager button:disabled { opacity: 0.5; }
+
+/* Natural height like the reference; the flex column uses its collapsed block margins. */
+.sales-pos__checkout {
+  position: sticky;
+  top: 70px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--pos-border);
+  border-radius: 16px;
+  background: #fff;
+  padding: 15px 18px 16px;
+  box-shadow: 0 7px 22px rgb(16 39 68 / 5%);
+}
+.sales-pos__checkout > * { flex: none; }
+.sales-pos__checkout-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.sales-pos__checkout-title { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 850; }
+.sales-pos__status-chip {
+  display: inline-flex;
+  height: 24px;
   align-items: center;
   border-radius: 999px;
   background: #edf9f3;
-  padding: 0 0.55rem;
+  padding: 0 9px;
   color: #0d8b5b;
-  font-size: 0.68rem;
+  font-size: 11px;
   font-weight: 800;
 }
-.sales-pos__count { font-size: 0.72rem; }
-.sales-pos__cart { padding: 0.85rem 1.125rem; }
-.sales-pos__cart-line { gap: 0.45rem; padding: 0.65rem 0; }
-.sales-pos__line-heading strong {
-  font-size: 0.84rem;
-  font-weight: 780;
-  line-height: 1.25;
-  overflow-wrap: break-word;
-  word-break: normal;
-}
-.sales-pos__line-heading p { font-size: 0.72rem; }
-.sales-pos__remove {
-  width: 2.25rem;
-  min-width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.625rem;
-}
-.sales-pos__quantity {
-  display: grid;
-  width: 7.25rem;
-  height: 2.125rem;
-  grid-template-columns: 1fr 1.25fr 1fr;
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-strong);
-  border-radius: 0.625rem;
-  background: #fff;
-}
-.sales-pos__quantity button {
-  display: grid;
-  min-width: 0;
-  place-items: center;
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 800;
-}
-.sales-pos__quantity button:hover:not(:disabled) { background: var(--surface-muted); }
-.sales-pos__quantity button:disabled { cursor: not-allowed; opacity: 0.5; }
-.sales-pos__quantity .input {
-  min-height: 0;
-  border-width: 0 1px;
-  border-color: var(--border);
-  border-radius: 0;
-  padding: 0.2rem;
-  font-weight: 800;
-  text-align: center;
-  -moz-appearance: textfield;
-}
-.sales-pos__quantity .input::-webkit-outer-spin-button,
-.sales-pos__quantity .input::-webkit-inner-spin-button { margin: 0; -webkit-appearance: none; }
-.sales-pos__line-total { padding-bottom: 0.35rem; font-size: 0.92rem; font-weight: 850; }
-.sales-pos__panel { padding: 0.8rem 1.125rem; }
-.sales-pos__panel-heading h3 { font-size: 0.86rem; font-weight: 780; }
-.sales-pos__panel-heading p { margin-top: 0.12rem; }
-.sales-pos__payment-fields {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-  margin-top: 0.65rem;
-}
-.sales-pos__method {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-.sales-pos__method button {
-  display: inline-flex;
-  min-height: 2.75rem;
+.sales-pos__checkout-tools { text-align: right; }
+.sales-pos__muted-row { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 10px; color: #43546c; }
+.sales-pos__danger-link { display: inline-flex; align-items: center; gap: 8px; color: #ed4343; font-weight: 800; }
+.sales-pos__danger-link:disabled { opacity: 0.55; }
+.sales-pos__field-label { display: block; margin-bottom: 7px; font-size: 13.5px; font-weight: 760; }
+.sales-pos__optional { color: var(--pos-subtle); font-weight: 500; }
+.sales-pos__field-row { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; margin-bottom: 12px; }
+.sales-pos__customer-picker,
+.sales-pos__create-customer { position: relative; min-width: 0; }
+.sales-pos__select,
+.sales-pos__note,
+.sales-pos__add-customer-btn {
+  display: flex;
+  height: 38px;
   align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--pos-border-strong);
+  border-radius: 9px;
+  background: #f9fbfc;
+  padding: 0 14px;
+  color: #25354d;
+}
+.sales-pos__select { gap: 8px; }
+.sales-pos__select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-pos__add-customer-btn {
   justify-content: center;
-  gap: 0.45rem;
-  border: 1.5px solid var(--border-strong);
-  border-radius: 0.625rem;
-  background: #fff;
-  color: #2c3d54;
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-.sales-pos__method button.is-active {
-  border-color: rgb(10 163 107 / 45%);
-  background: #eff9f3;
-  color: #0a915f;
-}
-.sales-pos__method button:disabled { cursor: not-allowed; opacity: 0.5; }
-.sales-pos__method svg { width: 1rem; height: 1rem; }
-.sales-pos__field .input { min-height: 2.75rem; border-radius: 0.625rem; }
-.sales-pos__payment-fields > .btn-secondary {
-  grid-column: auto;
-  min-height: 2.75rem;
+  gap: 8px;
   border-color: rgb(10 163 107 / 28%);
-  border-radius: 0.625rem;
+  background: #fbfffd;
   color: #0f915f;
   font-weight: 800;
 }
-.sales-pos__payment-row { border-radius: 0.625rem; }
-.sales-pos__selected-customer { border-radius: 0.625rem; }
-.sales-pos__customer-cue { border-radius: 0.625rem; }
-.sales-pos__checkout-footer {
-  gap: 0.45rem;
-  border-top-color: #ecf0f4;
+.sales-pos__note { width: 100%; margin-bottom: 12px; }
+.sales-pos__note::placeholder { color: #9aa6b8; }
+.sales-pos__dropdown {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  width: 100%;
+  min-width: 260px;
+  gap: 10px;
+  border: 1px solid var(--pos-border);
+  border-radius: 12px;
   background: #fff;
-  padding: 0.85rem 1.125rem 1rem;
-  box-shadow: 0 -4px 16px rgb(16 39 68 / 3%);
+  padding: 12px;
+  box-shadow: 0 16px 32px rgb(16 39 68 / 14%);
+  font-size: 14px;
 }
-.sales-pos__total-row { font-size: 0.8rem; }
-.sales-pos__total-row:first-child { margin: 0.2rem 0 0.35rem; font-size: 1rem; }
-.sales-pos__total-row:first-child strong {
-  color: #078b5d;
-  font-size: 1.65rem;
-  font-weight: 900;
+.sales-pos__dropdown--row { width: calc(100% + 136px); }
+.sales-pos__dropdown--end { right: 0; left: auto; width: 300px; }
+.sales-pos__dropdown label { color: #4e607a; font-size: 12.5px; font-weight: 700; }
+.sales-pos__dropdown-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.sales-pos__control {
+  width: 100%;
+  height: 38px;
+  min-width: 0;
+  border: 1px solid var(--pos-border-strong);
+  border-radius: 9px;
+  background: #f9fbfc;
+  padding: 0 12px;
+  color: #25354d;
+  font-size: 14px;
 }
-.sales-pos__complete {
-  min-height: 3.25rem;
-  border-radius: 0.625rem;
-  background: #0aa06a;
-  box-shadow: 0 12px 22px rgb(10 163 107 / 20%);
-  font-size: 0.95rem;
-  font-weight: 850;
+.sales-pos__control:focus { border-color: rgb(10 163 107 / 60%); background: #fff; }
+.sales-pos__control::placeholder { color: #9aa6b8; }
+.sales-pos__control-btn {
+  height: 38px;
+  border: 1px solid rgb(10 163 107 / 28%);
+  border-radius: 9px;
+  background: #fbfffd;
+  padding: 0 12px;
+  color: #0f915f;
+  font-size: 13.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.sales-pos__control-btn:disabled,
+.sales-pos__walk-in:disabled { opacity: 0.5; }
+.sales-pos__hint { color: #4e607a; font-size: 12.5px; line-height: 1.4; }
+.sales-pos__hint--error { color: #b42318; }
+.sales-pos__customer-results { display: grid; max-height: 220px; gap: 4px; overflow-y: auto; }
+.sales-pos__customer-result {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--pos-border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  text-align: left;
+}
+.sales-pos__customer-result span { color: #66758a; font-size: 12.5px; }
+.sales-pos__customer-result:hover:not(:disabled) { border-color: rgb(10 163 107 / 48%); }
+.sales-pos__customer-result[aria-pressed="true"] { border-color: rgb(10 163 107 / 60%); background: #eff9f3; color: #0a915f; }
+.sales-pos__dropdown .sales-pos__pager { margin-top: 0; }
+.sales-pos__walk-in { justify-self: start; color: #0f915f; font-size: 13px; font-weight: 700; }
+
+.sales-pos__order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.sales-pos__cart-empty { border-radius: 10px; background: #f8fbfa; padding: 14px 12px; color: #4e607a; font-size: 13px; line-height: 1.45; }
+.sales-pos__line-item { display: grid; flex: none; grid-template-columns: 66px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.sales-pos__line-image {
+  width: 58px;
+  height: 58px;
+  border: 1px solid var(--pos-border);
+  border-radius: 8px;
+  background: #fafcfd;
+  object-fit: cover;
+}
+.sales-pos__line-image--empty { display: grid; place-items: center; color: #93b9aa; }
+.sales-pos__line-main { min-width: 0; }
+.sales-pos__line-name { font-size: 13.5px; font-weight: 780; line-height: 1.25; overflow-wrap: anywhere; }
+.sales-pos__line-price { margin-top: 4px; color: #4d5f78; font-size: 12px; }
+.sales-pos__qty-box {
+  display: grid;
+  width: 116px;
+  height: 34px;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  overflow: hidden;
+  margin-top: 7px;
+  border: 1px solid var(--pos-border-strong);
+  border-radius: 10px;
+  background: #fff;
+}
+.sales-pos__qty-box button,
+.sales-pos__qty-box input { display: grid; height: 100%; min-width: 0; place-items: center; font-weight: 800; }
+.sales-pos__qty-box button:hover:not(:disabled) { background: #f1f5f4; }
+.sales-pos__qty-box button:disabled { opacity: 0.5; }
+.sales-pos__qty-box input {
+  width: 100%;
+  height: 21px;
+  border-inline: 1px solid var(--pos-border);
+  outline-offset: -3px;
+  background: transparent;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.sales-pos__qty-box input::-webkit-outer-spin-button,
+.sales-pos__qty-box input::-webkit-inner-spin-button { margin: 0; -webkit-appearance: none; }
+.sales-pos__line-side { display: grid; justify-items: end; }
+.sales-pos__remove-mini { display: block; margin-bottom: 4px; color: #6b7a91; }
+.sales-pos__remove-mini:hover:not(:disabled) { color: #df4040; }
+.sales-pos__line-amount { color: #1f3047; font-size: 15px; font-weight: 850; white-space: nowrap; }
+.sales-pos__line-discount {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -4px 0 0 72px;
+  border-radius: 10px;
+  background: #fff2f2;
+  padding: 8px 10px;
+  color: #d94a4a;
+  font-size: 12px;
+  font-weight: 750;
 }
 
-@media (min-width: 1081px) and (max-width: 1280px) {
-  .sales-pos { grid-template-columns: minmax(0, 1fr) 21.875rem; }
+.sales-pos__hint-card {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px dashed #d4ddea;
+  border-radius: 10px;
+  background: #fcfffd;
+  padding: 10px 12px;
+  color: #129363;
+  font-weight: 800;
+  text-align: left;
+}
+.sales-pos__hint-card:hover:not(:disabled) { border-color: rgb(10 163 107 / 48%); }
+.sales-pos__debt-note {
+  margin-bottom: 14px;
+  border: 1px solid #f3ddb1;
+  border-radius: 14px;
+  background: #fff8ea;
+  padding: 10px 12px;
+  color: #9d6b06;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.sales-pos__totals { border-top: 1px solid #ecf0f4; padding-top: 12px; }
+.sales-pos__totals-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: #344762;
+  font-size: 13px;
+}
+.sales-pos__totals-row strong { color: #1b2e48; white-space: nowrap; }
+.sales-pos__grand-total { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin: 6px 0 12px; }
+.sales-pos__grand-total h3 { font-size: 18px; font-weight: 850; }
+.sales-pos__grand-value { color: var(--pos-primary-strong); font-size: 26px; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; }
+.sales-pos__pay-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+.sales-pos__pay-title { font-size: 13.5px; font-weight: 760; }
+.sales-pos__split-toggle { color: #118458; font-size: 12.5px; font-weight: 700; }
+.sales-pos__split-toggle:hover { text-decoration: underline; }
+.sales-pos__payment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.sales-pos__pay-btn {
+  display: flex;
+  height: 44px;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1.5px solid var(--pos-border-strong);
+  border-radius: 9px;
+  background: #fff;
+  padding: 0 14px;
+  color: #2c3d54;
+  font-weight: 800;
+  text-align: left;
+}
+.sales-pos__pay-btn.is-active { border-color: rgb(10 163 107 / 45%); background: #eff9f3; color: #0a915f; }
+.sales-pos__pay-btn:disabled { opacity: 0.6; }
+.sales-pos__split { display: grid; gap: 8px; margin: -6px 0 14px; }
+.sales-pos__split-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.sales-pos__split-list { display: grid; gap: 4px; }
+.sales-pos__split-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 9px;
+  background: #f8fbfa;
+  padding: 5px 6px 5px 10px;
+  font-size: 13px;
+}
+.sales-pos__split-list button { border-radius: 7px; padding: 4px 8px; color: #6b7a91; font-size: 12.5px; font-weight: 700; }
+.sales-pos__split-list button:hover:not(:disabled) { background: #fff0f0; color: #df4040; }
+.sales-pos__notice,
+.sales-pos__message { margin: -4px 0 12px; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 650; line-height: 1.4; }
+.sales-pos__notice { border: 1px solid var(--pos-border); background: #f1f5f4; color: #4e607a; }
+.sales-pos__message { border: 1px solid #fbd0d0; background: #fff0f0; color: #b42318; }
+.sales-pos__actions { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.sales-pos__secondary-btn,
+.sales-pos__primary-btn {
+  display: flex;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1.5px solid var(--pos-border-strong);
+  border-radius: 9px;
+  background: #fff;
+  padding: 1px 6px;
+  color: #2f4158;
+  font-weight: 900;
+}
+.sales-pos__secondary-btn:hover:not(:disabled) { border-color: rgb(10 163 107 / 48%); }
+.sales-pos__secondary-btn:disabled { opacity: 0.55; }
+.sales-pos__primary-btn {
+  border: 0;
+  background: linear-gradient(180deg, #0baa6e, #068e5c);
+  box-shadow: 0 14px 24px rgb(10 163 107 / 24%);
+  color: #fff;
+  font-size: 16px;
+}
+.sales-pos__primary-btn:hover:not(:disabled) { filter: brightness(0.98); transform: translateY(-1px); }
+.sales-pos__primary-btn:disabled { opacity: 0.7; }
+/* The shortcut hint stays out of the button's accessible text. */
+.sales-pos__primary-btn[data-shortcut]::after { margin-left: auto; opacity: 0.9; content: attr(data-shortcut); }
+
+@media (max-width: 1280px) {
+  .sales-pos { grid-template-columns: minmax(0, 1fr) 350px; }
   .sales-pos__product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sales-pos__order-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* Empty slots only keep the five-column desktop rail aligned. */
+  .sales-pos__order-rail > span[aria-hidden="true"] { display: none; }
 }
 @media (max-width: 1080px) {
   .sales-pos { grid-template-columns: minmax(0, 1fr); }
-  .sales-pos__product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .sales-pos__checkout { position: static; min-height: 0; max-height: none; overflow: visible; }
-  .sales-pos__checkout-body { overflow: visible; }
+  .sales-pos__checkout { position: static; }
 }
-@media (max-width: 600px) {
-  .sales-pos { gap: 1rem; }
-  .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; }
-  .sales-pos__search-controls > .sales-pos__search-button { width: 3.25rem; min-width: 3.25rem; min-height: 3.25rem; padding: 0; }
-  .sales-pos__search-button span { display: none; }
-  .sales-pos__search-button svg { width: 1.15rem; height: 1.15rem; }
+@media (max-width: 860px) {
+  .sales-pos__search { grid-template-columns: minmax(0, 1fr); }
+  .sales-pos__categories { display: none; }
   .sales-pos__product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sales-pos__product-card { min-height: 11.5rem; }
-  .sales-pos__payment-fields { grid-template-columns: minmax(0, 1fr); }
-  .sales-pos__payment-fields > .btn-secondary { grid-column: 1; }
-  .sales-pos__method { grid-column: 1; }
+  .sales-pos__field-row,
+  .sales-pos__actions,
+  .sales-pos__payment-grid { grid-template-columns: minmax(0, 1fr); }
+  .sales-pos__order-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sales-pos__dropdown--row { width: 100%; }
 }
-@media (max-width: 360px) {
-  .sales-pos__product-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 560px) {
+  .sales-pos { gap: 12px; }
+  .sales-pos__product-grid,
+  .sales-pos__order-rail { grid-template-columns: minmax(0, 1fr); }
+  .sales-pos__checkout { padding: 16px; }
+  .sales-pos__dropdown--end { width: 100%; min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sales-pos button,
+  .sales-pos summary,
+  .sales-pos__product-card { transition: none; }
 }
 </style>

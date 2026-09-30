@@ -28,6 +28,7 @@ const definitions: readonly NavigationDefinition[] = [
   { id: 'sale-checkout', label: 'Bán hàng', to: '/sales/new', group: 'sales', roles: bothRoles },
   { id: 'sale-history', label: 'Đơn bán', to: '/sales', group: 'sales', roles: bothRoles },
   { id: 'products', label: 'Sản phẩm', to: '/products', group: 'catalog', roles: bothRoles },
+  { id: 'inventory', label: 'Tồn kho', to: '/products?view=inventory', group: 'catalog', roles: bothRoles },
   { id: 'product-import', label: 'Nhập từ CSV', to: '/import', group: 'catalog', roles: ownerOnly },
   { id: 'purchases', label: 'Nhập hàng', to: '/purchases', group: 'operations', roles: ownerOnly },
   { id: 'suppliers', label: 'Nhà cung cấp', to: '/suppliers', group: 'operations', roles: ownerOnly },
@@ -54,6 +55,10 @@ function includesRoute(path: string, base: string): boolean {
   return path === base || path.startsWith(`${base}/`)
 }
 
+function isInventoryView(path: string): boolean {
+  return new URLSearchParams(path.split('?', 2)[1]?.split('#', 1)[0] || '').get('view') === 'inventory'
+}
+
 /** Explicitly assigns detail/edit flows to their list context, without router-link-active fall-through. */
 export function isNavigationActive(item: NavigationItem, path: string): boolean {
   const pathname = cleanPath(path)
@@ -66,7 +71,9 @@ export function isNavigationActive(item: NavigationItem, path: string): boolean 
       return (includesRoute(pathname, '/sales') && !includesRoute(pathname, '/sales/new'))
         || includesRoute(pathname, '/returns')
     case 'products':
-      return includesRoute(pathname, '/products')
+      return includesRoute(pathname, '/products') && !(pathname === '/products' && isInventoryView(path))
+    case 'inventory':
+      return pathname === '/products' && isInventoryView(path)
     case 'purchases':
       return includesRoute(pathname, '/purchases')
     default:

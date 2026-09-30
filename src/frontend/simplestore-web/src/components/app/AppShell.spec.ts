@@ -3,6 +3,7 @@ import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AppShell from './AppShell.vue'
+import { salesDemoEnabled } from '../../sales/demo'
 
 const mounted: Array<{ unmount: () => void }> = []
 
@@ -15,6 +16,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  salesDemoEnabled.value = false
   mounted.forEach(wrapper => wrapper.unmount())
   mounted.length = 0
   document.body.style.overflow = ''
@@ -48,13 +50,32 @@ function activeSidebarLink(wrapper: Awaited<ReturnType<typeof mountShell>>['wrap
 }
 
 describe('AppShell', () => {
+  it('toggles browser-only sample data from the sales header', async () => {
+    const { wrapper } = await mountShell('Owner', '/sales/new')
+    const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+    expect(salesDemoEnabled.value).toBe(false)
+    expect(toggle.attributes('aria-pressed')).toBe('false')
+    await toggle.trigger('click')
+    expect(salesDemoEnabled.value).toBe(true)
+    expect(toggle.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.app-topbar').text()).toContain('Việt Anh')
+    expect(wrapper.get('.app-topbar').text()).toContain('Cửa hàng Tạp Hóa Việt Anh')
+    await toggle.trigger('click')
+    expect(salesDemoEnabled.value).toBe(false)
+    expect(wrapper.get('.app-topbar').text()).toContain('owner')
+  })
+
+  it('shows the sample-data button only on the sales workspace', async () => {
+    const { wrapper } = await mountShell('Owner', '/products')
+    expect(wrapper.find('.app-mock-toggle').exists()).toBe(false)
+  })
   it('renders supported Owner links and actual Store/account identity', async () => {
     const { wrapper } = await mountShell('Owner', '/today')
 
     expect(sidebarLinks(wrapper)).toEqual([
-      '/today', '/sales/new', '/sales', '/products', '/import', '/purchases', '/suppliers',
-      '/customers/debts', '/suppliers/debts', '/reports/end-of-day',
-      '/settings/operations', '/settings/users',
+      '/today', '/sales/new', '/purchases', '/products', '/products?view=inventory', '/customers/debts',
+      '/reports/end-of-day', '/settings/operations', '/sales', '/import',
+      '/suppliers', '/suppliers/debts', '/settings/users',
     ])
     expect(wrapper.find('.app-sidebar .app-store-name').text()).toBe('Tạp hóa Việt Anh')
     expect(wrapper.find('.app-sidebar .app-account-area').text()).toContain('owner@example.test')
@@ -68,7 +89,7 @@ describe('AppShell', () => {
   it('omits Owner-only links for Cashier', async () => {
     const { wrapper } = await mountShell('Cashier')
 
-    expect(sidebarLinks(wrapper)).toEqual(['/sales/new', '/sales', '/products', '/customers/debts'])
+    expect(sidebarLinks(wrapper)).toEqual(['/sales/new', '/products', '/products?view=inventory', '/customers/debts', '/sales'])
     expect(wrapper.find('.app-sidebar .app-account-area').text()).toContain('cashier@example.test')
     expect(wrapper.find('.app-sidebar .app-account-area').text()).toContain('Thu ngân')
   })
@@ -76,6 +97,10 @@ describe('AppShell', () => {
   it('marks nested Product, Purchase and Sale flows active in the intended context', async () => {
     const { wrapper, router } = await mountShell('Owner', '/products/sku-1/edit')
     expect(activeSidebarLink(wrapper)).toBe('/products')
+
+    await router.push('/products?view=inventory')
+    await nextTick()
+    expect(activeSidebarLink(wrapper)).toBe('/products?view=inventory')
 
     await router.push('/purchases/purchase-1/edit')
     await nextTick()
@@ -119,7 +144,7 @@ describe('AppShell', () => {
     await nextTick()
     const drawer = wrapper.find('#app-mobile-menu')
     expect(drawer.findAll('nav a').map(link => link.attributes('href'))).toEqual(
-      ['/sales/new', '/sales', '/products', '/customers/debts'],
+      ['/sales/new', '/products', '/products?view=inventory', '/customers/debts', '/sales'],
     )
 
     await drawer.find('a[href="/sales/new"]').trigger('click')

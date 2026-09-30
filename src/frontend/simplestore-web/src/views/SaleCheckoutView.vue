@@ -5,6 +5,8 @@ import { ApiError, apiRequest } from '../api/client'
 import SaleCheckoutForm from '../components/SaleCheckoutForm.vue'
 import SaleReceipt from '../components/SaleReceipt.vue'
 import type { Customer, CustomerPage, OperationStatus, ProductPage, Sale, StoreOperationalSettings } from '../api/types'
+import { salesDemoEnabled, searchDemoProducts, searchDemoCustomers } from '../sales/demo'
+import { liveOrderBook } from '../sales/orders'
 
 type Attempt = {
   operationId: string
@@ -44,7 +46,7 @@ onMounted(async () => {
 
 <template>
   <section class="sales-page">
-    <header class="sales-page__header no-print">
+    <header v-if="completed" class="sales-page__header no-print">
       <div>
         <h1>{{ completed ? 'Hoàn tất bán hàng' : 'Bán hàng' }}</h1>
         <p class="sales-page__description">{{ completed ? 'Đơn đã được lưu. Bạn có thể in hóa đơn hoặc bắt đầu đơn tiếp theo.' : 'Tìm sản phẩm và hoàn tất đơn ngay tại quầy.' }}</p>
@@ -52,12 +54,14 @@ onMounted(async () => {
       <RouterLink class="btn-secondary" to="/sales">Lịch sử bán hàng</RouterLink>
     </header>
 
-    <p v-if="error" class="error mt-5" role="alert">{{ error }}</p>
-    <p v-else-if="!settings" class="sales-page__loading no-print" role="status">Đang tải thiết lập bán hàng…</p>
+    <p v-if="error && !salesDemoEnabled" class="error mt-5" role="alert">{{ error }}</p>
+    <p v-else-if="!settings && !salesDemoEnabled" class="sales-page__loading no-print" role="status">Đang tải thiết lập bán hàng…</p>
 
     <SaleCheckoutForm
       v-if="settings && !completed"
+      v-show="!salesDemoEnabled"
       :allow-negative-stock="settings.allowNegativeStock"
+      :order-book="liveOrderBook"
       :search-products="searchProducts"
       :search-customers="searchCustomers"
       :create-customer="createCustomer"
@@ -65,6 +69,17 @@ onMounted(async () => {
       :check-operation="checkOperation"
       :load-sale="loadSale"
       @completed="completed = $event"
+    />
+    <SaleCheckoutForm
+      v-if="salesDemoEnabled && !completed"
+      preview-only
+      :allow-negative-stock="false"
+      :search-products="searchDemoProducts"
+      :search-customers="searchDemoCustomers"
+      :create-customer="async (name, phone) => ({ id: `demo-${name}`, name, phone, createdAt: '', updatedAt: '' })"
+      :complete-sale="completeSale"
+      :check-operation="checkOperation"
+      :load-sale="loadSale"
     />
 
     <div v-if="completed" class="sales-complete">
@@ -95,7 +110,6 @@ onMounted(async () => {
 
 <style scoped>
 .sales-page { min-width: 0; }
-:global(.app-shell:has(.sales-page)) { grid-template-columns: 12.875rem minmax(0, 1fr); }
 :global(.app-main:has(> .sales-page)) { padding: 0.75rem 1.125rem 0.875rem; }
 .sales-page__header {
   display: flex;

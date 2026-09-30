@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import { apiRequest } from '../api/client'
 import type { ProductPage } from '../api/types'
 import { useAuthStore } from '../stores/auth'
@@ -12,6 +12,8 @@ const page = ref(1)
 const loading = ref(false)
 const error = ref('')
 const auth = useAuthStore()
+const route = useRoute()
+const inventoryView = computed(() => route.query.view === 'inventory')
 
 async function load(requestedPage = 1) {
   loading.value = true; error.value = ''; page.value = requestedPage
@@ -30,7 +32,7 @@ const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
 <template>
   <section>
     <div class="flex flex-wrap items-end justify-between gap-4">
-      <div><h1 class="text-3xl font-black">Sản phẩm</h1><p class="mt-1 text-slate-500">Tra cứu hàng hóa và tồn tại Kho chính.</p></div>
+      <div><h1 class="text-3xl font-black">{{ inventoryView ? 'Tồn kho' : 'Sản phẩm' }}</h1><p class="mt-1 text-slate-500">Tra cứu hàng hóa và tồn tại Kho chính.</p></div>
       <div v-if="auth.session.roles.includes('Owner')" class="flex gap-2"><RouterLink class="btn-secondary" to="/import">Nhập CSV</RouterLink><RouterLink class="btn-primary" to="/products/new">Thêm sản phẩm</RouterLink></div>
     </div>
     <form class="card mt-6 grid gap-3 md:grid-cols-[1fr_180px_auto]" @submit.prevent="load(1)">
