@@ -8,7 +8,7 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
     public ApplicationDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__SimpleStore")
-            ?? "Server=(localdb)\\MSSQLLocalDB;Database=SimpleStore;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true";
+            ?? "Server=.\\SQLEXPRESS;Database=SimpleStorePilotIisTest;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true";
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlServer(

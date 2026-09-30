@@ -17,10 +17,9 @@ SimpleStore là ứng dụng hỗ trợ chủ cửa hàng tạp hóa nhỏ tại
 
 ## Chạy backend cục bộ
 
-Ứng dụng không tự chạy migration khi startup. Cấu hình connection string và development Owner bằng user-secrets, sau đó apply migration rõ ràng:
+Ứng dụng không tự chạy migration khi startup. `dotnet run` dùng connection string trong `src/backend/SimpleStore.Api/appsettings.Development.json` cho database local `SimpleStorePilotIisTest` trên `.\SQLEXPRESS`, kể cả khi user-secrets còn connection string cũ. Cấu hình tài khoản Development Owner bằng user-secrets, sau đó apply migration rõ ràng:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:SimpleStore" "Server=(localdb)\MSSQLLocalDB;Database=SimpleStore;Trusted_Connection=True;TrustServerCertificate=True" --project src/backend/SimpleStore.Api
 dotnet user-secrets set "DevelopmentOwner:Email" "owner@example.local" --project src/backend/SimpleStore.Api
 dotnet user-secrets set "DevelopmentOwner:Password" "<strong-local-password>" --project src/backend/SimpleStore.Api
 dotnet ef database update --project src/backend/SimpleStore.Infrastructure --startup-project src/backend/SimpleStore.Api

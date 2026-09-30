@@ -18,6 +18,29 @@ using Serilog.Formatting.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The local launch profile uses the Development appsettings database even when
+// a stale user-secret connection string exists. Test and deployment commands
+// run without the launch profile and keep their explicit connection override.
+if (builder.Environment.IsDevelopment()
+    && string.Equals(
+        Environment.GetEnvironmentVariable("SIMPLESTORE_USE_LOCAL_APPSETTINGS_CONNECTION"),
+        "true",
+        StringComparison.OrdinalIgnoreCase))
+{
+    var localSettings = new ConfigurationBuilder()
+        .AddJsonFile(
+            Path.Combine(builder.Environment.ContentRootPath, "appsettings.Development.json"),
+            optional: false)
+        .Build();
+    var localConnection = localSettings.GetConnectionString("SimpleStore")
+        ?? throw new InvalidOperationException(
+            "Connection string 'SimpleStore' is missing from appsettings.Development.json.");
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["ConnectionStrings:SimpleStore"] = localConnection
+    });
+}
+
 builder.Host.UseSerilog((context, _, loggerConfiguration) =>
 {
     var options = context.Configuration
