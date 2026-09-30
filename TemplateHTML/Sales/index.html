@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimpleStore — Sales Visual Reference v1.0 Candidate</title>
+  <!--
+  SimpleStore Sales Visual Reference — v1.0 Candidate / Pass 3
+  Desktop fidelity target: D-095 design-reference.png at 1536×1024.
+  Business capability is NOT defined by this file. See implementation note at bottom.
+-->
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --surface-soft: #f8fbfa;
+      --surface-mute: #f1f5f4;
+      --border: #e3e9ef;
+      --border-strong: #d1dce5;
+      --text: #151d2b;
+      --text-soft: #4e607a;
+      --text-subtle: #7f8ba0;
+      --primary: #0aa06a;
+      --primary-strong: #078b5d;
+      --primary-soft: #e8f8f1;
+      --danger: #df4040;
+      --danger-soft: #fff0f0;
+      --warning: #f7a531;
+      --warning-soft: #fff6e6;
+      --info: #3354d1;
+      --shadow: 0 7px 22px rgba(16, 39, 68, 0.05);
+      --radius-xs: 10px;
+      --radius-sm: 14px;
+      --radius-md: 18px;
+      --radius-lg: 22px;
+      --topbar-h: 58px;
+      --sidebar-w: 206px;
+      --checkout-w: 404px;
+      --content-max: 1536px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: var(--bg); }
+    body { min-height: 100vh; }
+    button, input, select { font: inherit; }
+    button, .chip, .order-pill, .ghost-pill, .pay-btn, .select, .add-customer-btn { transition: border-color .14s ease, background-color .14s ease, box-shadow .14s ease, transform .14s ease; }
+    button { cursor: pointer; }
+
+    .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 0 14px;
+      gap: 14px;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 22px;
+      font-size: 20px; font-weight: 850;
+      color: #15352f;
+    }
+
+    .brand-icon {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: linear-gradient(180deg, #0daa6e, #0a915f);
+      display: grid; place-items: center; color: white;
+      box-shadow: 0 8px 18px rgba(10, 163, 107, .25);
+    }
+
+    .nav-section-title {
+      margin: 8px 22px 0;
+      font-size: 11px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: #8b98ab;
+    }
+
+    .nav-list { display: flex; flex-direction: column; gap: 4px; padding: 0 10px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 14px;
+      height: 50px; padding: 0 16px;
+      border-radius: 14px; color: #33435a;
+      text-decoration: none; font-weight: 650;
+      position: relative;
+    }
+
+    .nav-item svg { width: 22px; height: 22px; stroke: currentColor; }
+    .nav-item.active {
+      color: #0f2a25;
+      background: linear-gradient(90deg, rgba(10,163,107,.12), rgba(10,163,107,.08));
+    }
+    .nav-item.active::before {
+      content: ""; position: absolute; left: -10px; top: 0; bottom: 0;
+      width: 4px; border-radius: 0 10px 10px 0; background: var(--primary);
+    }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 16px 12px 0; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; color: #5f6f84;
+      font-weight: 600;
+    }
+
+    .main { display: flex; flex-direction: column; min-width: 0; }
+
+    .topbar {
+      height: var(--topbar-h);
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 26px 0 34px;
+      position: sticky; top: 0; z-index: 10;
+    }
+
+    .store-switch {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 16px; font-weight: 820;
+    }
+
+    .topbar-right { display: flex; align-items: center; gap: 18px; color: #42536a; }
+    .kbd-chip, .top-icon-btn {
+      height: 36px; border: 1px solid var(--border); background: var(--surface);
+      border-radius: 10px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
+      font-weight: 700; color: #526074;
+    }
+    .top-icon-btn { width: 36px; justify-content: center; padding: 0; }
+    .user-box { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #29384d; }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 999px; background: #52b877; color: white;
+      display: grid; place-items: center; font-size: 13px; font-weight: 750;
+    }
+
+    .content-wrap { padding: 12px 18px 14px; }
+    .workspace {
+      max-width: var(--content-max);
+      margin: 0 auto;
+      display: grid; grid-template-columns: minmax(0, 1fr) var(--checkout-w);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .catalog { min-width: 0; }
+
+    .order-rail {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 176px)) 118px minmax(188px, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .order-pill, .ghost-pill {
+      height: 56px; border-radius: 10px; border: 1.4px solid var(--border-strong);
+      background: var(--surface); display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; box-shadow: 0 1px 0 rgba(12,26,53,.02);
+      position: relative;
+    }
+
+    .order-pill.active {
+      border-color: rgba(10,163,107,.7);
+      background: linear-gradient(180deg, #f3fbf7, #eef9f4);
+      box-shadow: inset 0 0 0 1px rgba(10,163,107,.18);
+    }
+
+    .order-pill-badge {
+      position: absolute; top: -14px; left: -14px; width: 30px; height: 30px; border-radius: 999px;
+      background: #ff2740; color: #fff; display: grid; place-items: center; font-weight: 800; box-shadow: 0 8px 20px rgba(255,39,64,.25);
+      border: 3px solid white;
+    }
+
+    .pill-main { display: flex; gap: 10px; align-items: center; min-width: 0; }
+    .pill-icon {
+      width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+      background: #e8efff; color: #4258c9; flex: 0 0 auto;
+    }
+    .order-pill.active .pill-icon { background: #0fa96f; color: white; }
+    .pill-title { font-weight: 800; font-size: 14px; line-height: 1.15; }
+    .pill-meta { font-size: 12px; color: #66758a; margin-top: 3px; white-space: nowrap; }
+    .pill-more { color: #60718a; }
+    .ghost-pill {
+      justify-content: center; gap: 8px; font-weight: 800; color: #0d9f67;
+      border-color: rgba(10,163,107,.28);
+      background: linear-gradient(180deg, #ffffff, #fbfffd);
+    }
+    .queue-pill {
+      color: #3044a4; border-color: rgba(51,84,209,.2); background: #fbfcff; font-weight: 700;
+      justify-content: flex-start; gap: 10px;
+    }
+
+    .search-toolbar {
+      display: grid; grid-template-columns: minmax(0, 1fr) 168px 72px;
+      gap: 12px; align-items: stretch; margin-bottom: 16px;
+    }
+
+    .search-box {
+      height: 52px; border-radius: 10px; background: var(--surface); border: 2px solid rgba(92,117,255,.26);
+      display: flex; align-items: center; gap: 14px; padding: 0 16px; box-shadow: 0 6px 16px rgba(61,84,179,.06);
+    }
+    .search-box input { border: 0; outline: none; flex: 1; background: transparent; font-size: 14px; color: var(--text); }
+    .search-box .barcode-chip {
+      width: 42px; height: 34px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--surface); display: grid; place-items: center; color: #405173;
+    }
+
+    .tool-btn {
+      height: 52px; border-radius: 10px; border: 1.4px solid rgba(10,163,107,.24); background: var(--surface);
+      display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 14px; font-weight: 800; color: #118458;
+    }
+    .tool-btn.scan {
+      gap: 5px; flex-direction: column; font-size: 12px; color: #16885d; background: #f4fbf7;
+    }
+
+    .category-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .chip {
+      height: 38px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border-strong);
+      background: #fff; color: #2d3e54; font-weight: 700; display: inline-flex; align-items: center;
+    }
+    .chip.active {
+      background: linear-gradient(180deg, #12a86f, #09935e); color: white; border-color: transparent;
+      box-shadow: 0 10px 18px rgba(10,163,107,.2);
+    }
+
+    .product-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
+    }
+
+    .product-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+      overflow: hidden; box-shadow: 0 1px 0 rgba(20,38,63,.02);
+      display: flex; flex-direction: column; height: 236px;
+    }
+    .product-card:hover { border-color: #ccd9e0; box-shadow: 0 7px 18px rgba(25, 48, 72, .055); transform: translateY(-1px); }
+    .product-card.selected {
+      border: 2px solid rgba(10,163,107,.78);
+      background: linear-gradient(180deg, #fafdfe 0%, #f8fcfb 100%);
+      box-shadow: 0 12px 24px rgba(10,163,107,.08);
+    }
+    .product-image {
+      height: 104px; background: linear-gradient(180deg, #f8fafc, #fbfcfd); display: grid; place-items: center; overflow: hidden;
+    }
+    .product-image img { max-width: 100%; height: 100%; width: auto; object-fit: contain; display: block; }
+    .product-body { display: flex; flex-direction: column; gap: 5px; padding: 10px 16px 12px; flex: 1; }
+    .product-name { font-size: 15.5px; font-weight: 780; line-height: 1.22; min-height: 38px; }
+    .product-meta { color: #637493; font-size: 12.5px; }
+    .product-price { font-size: 16px; font-weight: 820; }
+    .product-stock { font-size: 12.5px; color: #596a82; margin-top: auto; }
+    .product-stock.warn { color: #f39a1c; }
+    .product-stock.danger { color: #f55a48; }
+    .product-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+    .add-btn:hover { background: #d9f3e6; transform: translateY(-1px); }
+    .pay-btn:hover, .ghost-pill:hover, .tool-btn:hover, .add-customer-btn:hover { border-color: rgba(10,163,107,.48); background-color: #f8fdfa; }
+    .primary-btn:hover { filter: brightness(.98); transform: translateY(-1px); }
+    .search-box:focus-within { border-color: rgba(77,103,238,.45); box-shadow: 0 0 0 3px rgba(77,103,238,.07); }
+
+    .add-btn {
+      width: 38px; height: 38px; border-radius: 10px; border: 0; background: #e6f7ee; color: #0aa36b;
+      font-size: 30px; line-height: 0; display: grid; place-items: center; font-weight: 500;
+    }
+    .stock-tag {
+      display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 10px; font-size: 12px; font-weight: 800;
+    }
+    .stock-tag.warn { background: var(--warning-soft); color: var(--warning); }
+    .stock-tag.danger { background: #ffecec; color: #eb5a49; }
+
+    .checkout {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: var(--shadow); padding: 15px 18px 16px; position: sticky; top: 70px;
+    }
+    .checkout-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .checkout-title { font-size: 18px; font-weight: 850; display: flex; align-items: center; gap: 8px; }
+    .status-chip {
+      display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px;
+      background: #edf9f3; color: #0d8b5b; font-weight: 800; font-size: 11px;
+    }
+    .muted-icon-row { display: flex; gap: 12px; color: #43546c; }
+    .danger-link { color: #ed4343; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; }
+
+    .field-label { font-size: 13.5px; font-weight: 760; margin-bottom: 7px; display: block; }
+    .field-row { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; margin-bottom: 12px; }
+    .select, .input, .add-customer-btn {
+      height: 38px; border-radius: 9px; border: 1px solid var(--border-strong); background: #f9fbfc;
+      padding: 0 14px; display: flex; align-items: center; justify-content: space-between; color: #25354d;
+    }
+    .add-customer-btn {
+      font-weight: 800; color: #0f915f; background: #fbfffd; border-color: rgba(10,163,107,.28); justify-content: center; gap: 8px;
+    }
+
+    .order-items { display: flex; flex-direction: column; gap: 10px; margin: 5px 0 9px; }
+    .line-item {
+      display: grid; grid-template-columns: 66px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+    }
+    .line-item img { width: 58px; height: 58px; object-fit: cover; border: 1px solid var(--border); border-radius: 8px; background: #fafcfd; }
+    .line-main { min-width: 0; }
+    .line-name { font-size: 13.5px; font-weight: 780; line-height: 1.25; }
+    .line-price { font-size: 12px; color: #4d5f78; margin-top: 4px; }
+    .qty-box {
+      margin-top: 7px; width: 116px; height: 34px; border-radius: 10px; border: 1px solid var(--border-strong);
+      display: grid; grid-template-columns: 1fr 1fr 1fr; align-items: center; background: #fff;
+      overflow: hidden;
+    }
+    .qty-box span { display: grid; place-items: center; font-weight: 800; }
+    .qty-box span:nth-child(2) { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .line-amount { font-size: 15px; font-weight: 850; color: #1f3047; }
+    .remove-mini { color: #6b7a91; margin-bottom: 4px; text-align: right; }
+
+    .hint-card {
+      border: 1px dashed #d4ddea; border-radius: 10px; padding: 10px 12px; color: #129363; font-weight: 800;
+      display: flex; align-items: center; gap: 10px; margin: 7px 0 12px;
+      background: #fcfffd;
+    }
+    .debt-note {
+      border-radius: 14px; padding: 10px 12px; background: #fff8ea; color: #9d6b06; font-size: 13px; line-height: 1.45; margin-bottom: 14px;
+      border: 1px solid #f3ddb1;
+    }
+
+    .totals { border-top: 1px solid #ecf0f4; padding-top: 12px; margin-top: 6px; }
+    .totals-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      font-size: 13px; color: #344762; margin-bottom: 8px;
+    }
+    .totals-row strong { color: #1b2e48; }
+    .grand-total {
+      display: flex; align-items: end; justify-content: space-between; gap: 10px; margin: 14px 0 12px;
+    }
+    .grand-total h3 { margin: 0; font-size: 18px; font-weight: 850; }
+    .grand-total .value { font-size: 26px; font-weight: 900; color: var(--primary-strong); letter-spacing: -.02em; }
+
+    .pay-title { font-size: 13.5px; font-weight: 760; margin-bottom: 9px; }
+    .payment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .pay-btn {
+      height: 44px; border-radius: 9px; border: 1.5px solid var(--border-strong); background: #fff; padding: 0 14px;
+      display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 800; color: #2c3d54;
+    }
+    .pay-btn.active { background: #eff9f3; color: #0a915f; border-color: rgba(10,163,107,.45); }
+
+    .checkout-actions { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+    .secondary-btn, .primary-btn {
+      height: 52px; border-radius: 9px; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 900;
+      border: 1.5px solid var(--border-strong); background: #fff; color: #2f4158;
+    }
+    .primary-btn {
+      background: linear-gradient(180deg, #0baa6e, #068e5c); color: white; border: 0; box-shadow: 0 14px 24px rgba(10,163,107,.24);
+      font-size: 16px;
+    }
+    .f-key { margin-left: auto; opacity: .9; }
+
+    .icon { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.sm { width: 18px; height: 18px; }
+
+    @media (max-width: 1280px) {
+      :root { --checkout-w: 350px; }
+      .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .order-rail { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .order-rail .ghost-pill:last-child, .order-rail .queue-pill { grid-column: span 1; }
+    }
+
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 84px 1fr; }
+      .sidebar .brand span, .nav-item span, .nav-section-title, .sidebar-footer span:last-child { display: none; }
+      .sidebar { padding-inline: 10px; }
+      .brand { justify-content: center; padding: 0; }
+      .nav-item { justify-content: center; padding: 0; }
+      .sidebar-footer { justify-content: center; }
+      .workspace { grid-template-columns: 1fr; }
+      .checkout { position: static; }
+    }
+
+    @media (max-width: 860px) {
+      .topbar { padding: 0 14px 0 18px; gap: 10px; }
+      .topbar-right { gap: 10px; }
+      .kbd-chip, .top-icon-btn:nth-child(2), .top-icon-btn:nth-child(3), .topbar-right > div:nth-child(4) { display: none; }
+      .content-wrap { padding: 12px; }
+      .search-toolbar { grid-template-columns: 1fr; }
+      .category-row { display: none; }
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .field-row, .checkout-actions, .payment-grid { grid-template-columns: 1fr; }
+      .order-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .topbar { position: static; }
+      .store-switch { font-size: 15px; }
+      .user-box span { display: none; }
+      .workspace { gap: 12px; }
+      .product-grid { grid-template-columns: 1fr; }
+      .order-rail { grid-template-columns: 1fr; }
+      .checkout { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M7 8h10l-1 10H8L7 8Z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path><path d="M12 11v3"></path><path d="M10.5 12.5h3"></path></svg>
+        </div>
+        <span>SimpleStore</span>
+      </div>
+
+      <div class="nav-list" style="margin-top: 8px;">
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="m3 11 9-7 9 7"></path><path d="M9 21V9h6v12"></path></svg><span>Tổng quan</span></a>
+        <a class="nav-item active" href="#"><svg class="icon" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.2"></circle><circle cx="18" cy="20" r="1.2"></circle><path d="M3 4h2l2.6 10.4a1 1 0 0 0 .97.76H18a1 1 0 0 0 .98-.8L20.4 7H7.1"></path></svg><span>Bán hàng</span></a>
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M3 7h13v13H3z"></path><path d="M16 11h5v10h-5z"></path><path d="M5 5V3"></path><path d="M14 5V3"></path></svg><span>Nhập hàng</span></a>
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"></path><path d="M8 5v14"></path><path d="M12 9h5"></path><path d="M12 13h5"></path></svg><span>Sản phẩm</span></a>
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M3 7h18v10H3z"></path><path d="M7 7V5"></path><path d="M17 7V5"></path><path d="M7 12h4"></path></svg><span>Tồn kho</span></a>
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M5 18a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4"></path><circle cx="12" cy="8" r="4"></circle></svg><span>Công nợ</span></a>
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h14v14H5a2 2 0 0 1-2-2Z"></path><path d="M8 11h8"></path><path d="M8 15h5"></path></svg><span>Báo cáo</span></a>
+        <a class="nav-item" href="#"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.33 1V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-.33-1 1.65 1.65 0 0 0-1-.6 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1-.33H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1-.33 1.65 1.65 0 0 0 .6-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .33-1V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 .33 1 1.65 1.65 0 0 0 1 .6 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.24.3.44.64.6 1 .1.31.34.58.67.74.3.15.64.24 1 .26H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1 .33 1.65 1.65 0 0 0-.6 1Z"></path></svg><span>Cài đặt</span></a>
+      </div>
+
+      <div class="sidebar-footer">
+        <span style="display:flex;align-items:center;gap:10px;">
+          <svg class="icon sm" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path><path d="M9 12h12"></path></svg>
+          <span>Thu gọn</span>
+        </span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="store-switch">Cửa hàng Tạp Hóa Việt Anh <svg class="icon sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+        <div class="topbar-right">
+          <div class="kbd-chip">Ctrl + K</div>
+          <div class="top-icon-btn"><svg class="icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.1 9a3 3 0 1 1 5.8 1c0 2-3 2-3 4"></path><path d="M12 17h.01"></path></svg></div>
+          <div class="top-icon-btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M3 10h18"></path></svg></div>
+          <div style="font-weight:700;">Thứ 2, 16/12/2024&nbsp;&nbsp;14:23</div>
+          <div class="user-box"><div class="avatar">VA</div><span>Việt Anh</span><svg class="icon sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+        </div>
+      </header>
+
+      <div class="content-wrap">
+        <div class="workspace">
+          <section class="catalog">
+            <div class="order-rail">
+              <!-- VISUAL-ONLY: multi-order/held-order UI mirrors D-095 reference; not production-approved in UI-B. -->
+              <div class="order-pill active">
+                <div class="order-pill-badge">1</div>
+                <div class="pill-main"><div class="pill-icon"><svg class="icon sm" viewBox="0 0 24 24"><circle cx="8" cy="19" r="1"></circle><circle cx="17" cy="19" r="1"></circle><path d="M3 4h2l2.2 8.5a1 1 0 0 0 .97.75H18a1 1 0 0 0 .98-.8L20 7H7.1"></path></svg></div><div><div class="pill-title">Đơn 1</div><div class="pill-meta">5 SP ・ 32.000 đ</div></div></div>
+                <div class="pill-more"><svg class="icon sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></div>
+              </div>
+              <div class="order-pill"><div class="pill-main"><div class="pill-icon"><svg class="icon sm" viewBox="0 0 24 24"><path d="M5 6h14l-1 13H6L5 6Z"></path><path d="M9 6V4h6v2"></path></svg></div><div><div class="pill-title">Đơn 2</div><div class="pill-meta">3 SP ・ 48.000 đ</div></div></div><div class="pill-more">⋮</div></div>
+              <div class="order-pill"><div class="pill-main"><div class="pill-icon"><svg class="icon sm" viewBox="0 0 24 24"><path d="M4 7h16v10H4z"></path><path d="M8 4v3"></path><path d="M16 4v3"></path></svg></div><div><div class="pill-title">Đơn 3</div><div class="pill-meta">1 SP ・ 12.000 đ</div></div></div><div class="pill-more">⋮</div></div>
+              <div class="ghost-pill"><svg class="icon sm" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Đơn mới</div>
+              <div class="queue-pill order-pill"><div class="pill-icon"><svg class="icon sm" viewBox="0 0 24 24"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="9"></circle></svg></div> Danh sách đơn đang chờ (3)</div>
+            </div>
+
+            <div class="search-toolbar">
+              <div class="search-box">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                <input value="Tìm sản phẩm theo tên, mã SKU hoặc quét mã vạch..." aria-label="Tìm sản phẩm" />
+                <div class="barcode-chip">
+                  <svg class="icon sm" viewBox="0 0 24 24"><path d="M4 7v10"></path><path d="M7 7v10"></path><path d="M10 7v10"></path><path d="M14 7v10"></path><path d="M17 7v10"></path><path d="M20 7v10"></path></svg>
+                </div>
+              </div>
+              <button class="tool-btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Thêm nhanh</button>
+              <button class="tool-btn scan"><svg class="icon sm" viewBox="0 0 24 24"><path d="M7 4H5a1 1 0 0 0-1 1v2"></path><path d="M17 4h2a1 1 0 0 1 1 1v2"></path><path d="M7 20H5a1 1 0 0 1-1-1v-2"></path><path d="M17 20h2a1 1 0 0 0 1-1v-2"></path><path d="M8 12h8"></path></svg>Quét mã</button>
+            </div>
+
+            <div class="category-row">
+              <span class="chip active">Tất cả</span>
+              <span class="chip">Đồ uống</span>
+              <span class="chip">Bánh kẹo</span>
+              <span class="chip">Gia vị</span>
+              <span class="chip">Sữa và TP từ sữa</span>
+              <span class="chip">Đồ gia dụng</span>
+              <span class="chip">Khác</span>
+            </div>
+
+            <div class="product-grid">
+              <article class="product-card selected">
+                <div class="product-image"><img alt="Coca Cola" src="./assets/coke.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Coca Cola 330ml</div>
+                  <div class="product-meta">SP0001 ・ Lon</div>
+                  <div class="product-price">10.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 24 lon</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Pepsi" src="./assets/pepsi.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Pepsi 330ml</div>
+                  <div class="product-meta">SP0002 ・ Lon</div>
+                  <div class="product-price">10.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 18 lon</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Aquafina" src="./assets/aquafina.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Nước suối Aquafina 500ml</div>
+                  <div class="product-meta">SP0003 ・ Chai</div>
+                  <div class="product-price">7.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 36 chai</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="C2" src="./assets/c2.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Trà xanh C2 500ml</div>
+                  <div class="product-meta">SP0004 ・ Chai</div>
+                  <div class="product-price">10.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 20 chai</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Vinamilk" src="./assets/milk.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Sữa Vinamilk 180ml</div>
+                  <div class="product-meta">SP0005 ・ Hộp</div>
+                  <div class="product-price">8.000 đ</div>
+                  <div class="product-footer"><span class="stock-tag warn">Sắp hết hàng</span><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Oreo" src="./assets/oreo.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Bánh Oreo 133g</div>
+                  <div class="product-meta">SP0006 ・ Gói</div>
+                  <div class="product-price">22.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 15 gói</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Mì Hảo Hảo" src="./assets/haohao.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Mì Hảo Hảo 75g</div>
+                  <div class="product-meta">SP0007 ・ Gói</div>
+                  <div class="product-price">4.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 48 gói</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Dầu ăn" src="./assets/oil.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Dầu ăn Tường An 1L</div>
+                  <div class="product-meta">SP0008 ・ Chai</div>
+                  <div class="product-price">45.000 đ</div>
+                  <div class="product-footer"><span class="stock-tag danger">Rất ít hàng</span><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Nước mắm" src="./assets/fishsauce.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Nước mắm Nam Ngư 500ml</div>
+                  <div class="product-meta">SP0009 ・ Chai</div>
+                  <div class="product-price">28.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 10 chai</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Đường" src="./assets/sugar.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Đường cát trắng 1kg</div>
+                  <div class="product-meta">SP0010 ・ Gói</div>
+                  <div class="product-price">24.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 6 gói</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Hạt nêm" src="./assets/knorr.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Hạt nêm Knorr 400g</div>
+                  <div class="product-meta">SP0011 ・ Gói</div>
+                  <div class="product-price">32.000 đ</div>
+                  <div class="product-footer"><div class="product-stock">Còn 9 gói</div><button class="add-btn">+</button></div>
+                </div>
+              </article>
+
+              <article class="product-card">
+                <div class="product-image"><img alt="Giấy vệ sinh" src="./assets/tissue.png"></div>
+                <div class="product-body">
+                  <div class="product-name">Giấy vệ sinh Pulppy 10 cuộn</div>
+                  <div class="product-meta">SP0012 ・ Lốc</div>
+                  <div class="product-price">38.000 đ</div>
+                  <div class="product-footer"><span class="stock-tag danger">Rất ít hàng</span><button class="add-btn">+</button></div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <aside class="checkout">
+            <div class="checkout-top">
+              <div>
+                <div class="checkout-title">Đơn 1 <span class="status-chip">Đang bán</span></div>
+              </div>
+              <div style="text-align:right;">
+                <div class="muted-icon-row" style="justify-content:flex-end; margin-bottom:10px;"><svg class="icon sm" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></div>
+                <div class="danger-link"><svg class="icon sm" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M6 6l1 14h10l1-14"></path><path d="M10 10v6"></path><path d="M14 10v6"></path></svg> Xóa đơn</div>
+              </div>
+            </div>
+
+            <label class="field-label">Khách hàng</label>
+            <div class="field-row">
+              <div class="select">Khách lẻ <svg class="icon sm" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+              <div class="add-customer-btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Thêm khách</div>
+            </div>
+
+            <!-- VISUAL-ONLY: sale note field mirrors D-095 reference; not production-approved in UI-B. -->
+            <label class="field-label">Ghi chú đơn hàng <span style="font-weight:500;color:var(--text-subtle);">(tùy chọn)</span></label>
+            <div class="input" style="margin-bottom:12px;color:#9aa6b8;">Thêm ghi chú...</div>
+
+            <div class="order-items">
+              <div class="line-item">
+                <img alt="Coca Cola" src="./assets/coke.png">
+                <div class="line-main">
+                  <div class="line-name">Coca Cola 330ml</div>
+                  <div class="line-price">10.000 đ</div>
+                  <div class="qty-box"><span>−</span><span>2</span><span>+</span></div>
+                </div>
+                <div>
+                  <div class="remove-mini"><svg class="icon sm" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M6 6l1 14h10l1-14"></path></svg></div>
+                  <div class="line-amount">20.000 đ</div>
+                </div>
+              </div>
+              <!-- VISUAL-ONLY: item discount mirrors reference; domain/calculation not approved. -->
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 0 72px;padding:8px 10px;border-radius:10px;background:#fff2f2;color:#d94a4a;font-size:12px;font-weight:750;">
+                <span>🏷 Giảm giá</span><span>10% &nbsp; -2.000 đ ›</span>
+              </div>
+
+              <div class="line-item">
+                <img alt="Aquafina" src="./assets/aquafina.png">
+                <div class="line-main">
+                  <div class="line-name">Nước suối Aquafina 500ml</div>
+                  <div class="line-price">7.000 đ</div>
+                  <div class="qty-box"><span>−</span><span>1</span><span>+</span></div>
+                </div>
+                <div>
+                  <div class="remove-mini"><svg class="icon sm" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M6 6l1 14h10l1-14"></path></svg></div>
+                  <div class="line-amount">7.000 đ</div>
+                </div>
+              </div>
+
+              <div class="line-item">
+                <img alt="Mì Hảo Hảo" src="./assets/haohao.png">
+                <div class="line-main">
+                  <div class="line-name">Mì Hảo Hảo 75g</div>
+                  <div class="line-price">4.000 đ</div>
+                  <div class="qty-box"><span>−</span><span>3</span><span>+</span></div>
+                </div>
+                <div>
+                  <div class="remove-mini"><svg class="icon sm" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M6 6l1 14h10l1-14"></path></svg></div>
+                  <div class="line-amount">12.000 đ</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- VISUAL-ONLY: invoice discount mirrors D-095 reference; not production-approved. -->
+            <div class="hint-card"><svg class="icon sm" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg> Thêm giảm giá hóa đơn</div>
+
+            <!-- CURRENT-SCOPE CONDITIONAL STATE: when outstanding > 0, production UI must require/select a customer and may show a compact warning. Hidden here so the default visual reference matches D-095. -->
+
+            <div class="totals">
+              <div class="totals-row"><span>Tạm tính (6 sản phẩm)</span><strong>39.000 đ</strong></div>
+              <div class="totals-row"><span>Giảm giá sản phẩm</span><strong>-2.000 đ</strong></div>
+              <div class="totals-row"><span>Giảm giá hóa đơn</span><strong>0 đ ›</strong></div>
+            </div>
+
+            <div class="grand-total">
+              <h3>Tổng cộng</h3>
+              <div class="value">37.000 đ</div>
+            </div>
+
+            <div class="pay-title">Hình thức thanh toán</div>
+            <div class="payment-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+              <div class="pay-btn active"><svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"></rect><path d="M3 10h18"></path></svg> Tiền mặt</div>
+              <div class="pay-btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M4 20h16"></path><path d="M5 10h14"></path><path d="m12 3 8 5H4l8-5Z"></path></svg> Chuyển khoản</div>
+              <!-- VISUAL-ONLY: "Bán nợ" choice mirrors image, current UI-B keeps outstanding semantics instead of a payment method. -->
+              <div class="pay-btn"><svg class="icon sm" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><path d="M3 20a6 6 0 0 1 12 0"></path><path d="M17 11h4"></path><path d="M19 9v4"></path></svg> Bán nợ</div>
+            </div>
+
+            <div class="checkout-actions">
+              <!-- VISUAL-ONLY: held sale action mirrors D-095 reference; not production-approved in UI-B. -->
+              <button class="secondary-btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="9"></circle></svg> Giữ đơn</button>
+              <button class="primary-btn"><svg class="icon sm" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"></path></svg> Hoàn tất bán hàng <span class="f-key">F12</span></button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+  <!--
+    IMPLEMENTATION NOTE FOR CODEX / DEVELOPERS:
+    This file is a VISUAL REFERENCE. Elements marked VISUAL-ONLY intentionally mirror D-095 imagery
+    but are NOT permissions to implement business capability. Current UI-B authoritative scope still excludes
+    Held Sale/multiple working orders, discounts, Category master/filter, Sale note persistence and "Bán nợ" as a payment method.
+    Production implementation must preserve D-105 business/transaction contracts and port visual proportions only.
+  -->
+</body>
+</html>
