@@ -3,21 +3,33 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
 // This smoke suite uses browser-level mocked API contracts; it does not use a real API or database.
-const productName = 'Cà phê rang xay nguyên chất hương vị truyền thống đặc biệt cho gia đình Việt Nam'
-const product = {
-  id: 'product-pos-1', sku: 'CF-001', barcode: '8930000000012', name: productName,
-  unit: 'gói', salePrice: 15000, isActive: true, quantityOnHand: 12,
-}
+const products = [
+  { id: 'product-pos-1', sku: 'CF-001', barcode: '8930000000012', name: 'Cà phê rang xay nguyên chất hương vị truyền thống đặc biệt cho gia đình Việt Nam', unit: 'gói', salePrice: 15000, isActive: true, quantityOnHand: 12 },
+  { id: 'product-pos-2', sku: 'NUOC-001', barcode: '8930000000013', name: 'Nước suối Aquafina 500ml', unit: 'chai', salePrice: 7000, isActive: true, quantityOnHand: 36 },
+  { id: 'product-pos-3', sku: 'MI-001', barcode: '8930000000014', name: 'Mì Hảo Hảo tôm chua cay 75g', unit: 'gói', salePrice: 4000, isActive: true, quantityOnHand: 48 },
+  { id: 'product-pos-4', sku: 'C2-001', barcode: '8930000000015', name: 'Trà xanh C2 hương chanh 500ml', unit: 'chai', salePrice: 10000, isActive: true, quantityOnHand: 20 },
+  { id: 'product-pos-5', sku: 'SUA-001', barcode: '8930000000016', name: 'Sữa tươi Vinamilk có đường 180ml', unit: 'hộp', salePrice: 8000, isActive: true, quantityOnHand: 8 },
+  { id: 'product-pos-6', sku: 'OREO-001', barcode: '8930000000017', name: 'Bánh quy Oreo kem vani 133g', unit: 'gói', salePrice: 22000, isActive: true, quantityOnHand: 15 },
+  { id: 'product-pos-7', sku: 'DAU-001', barcode: '8930000000018', name: 'Dầu ăn Tường An Cooking Oil 1L', unit: 'chai', salePrice: 45000, isActive: true, quantityOnHand: 3 },
+  { id: 'product-pos-8', sku: 'MAM-001', barcode: '8930000000019', name: 'Nước mắm Nam Ngư 500ml', unit: 'chai', salePrice: 28000, isActive: true, quantityOnHand: 10 },
+  { id: 'product-pos-9', sku: 'DUONG-001', barcode: '8930000000020', name: 'Đường cát trắng tinh luyện 1kg', unit: 'gói', salePrice: 24000, isActive: true, quantityOnHand: 6 },
+  { id: 'product-pos-10', sku: 'KNORR-001', barcode: '8930000000021', name: 'Hạt nêm Knorr thịt thăn xương ống 400g', unit: 'gói', salePrice: 32000, isActive: true, quantityOnHand: 9 },
+  { id: 'product-pos-11', sku: 'GIAY-001', barcode: '8930000000022', name: 'Giấy vệ sinh Pulppy hai lớp 10 cuộn', unit: 'lốc', salePrice: 38000, isActive: true, quantityOnHand: 2 },
+  { id: 'product-pos-12', sku: 'PEPSI-001', barcode: '8930000000023', name: 'Nước ngọt Pepsi không calo 330ml', unit: 'lon', salePrice: 10000, isActive: true, quantityOnHand: 18 },
+]
+const product = products[0]
+const productName = product.name
+const customer = { id: 'customer-1', name: 'Nguyễn Thị Minh Anh', phone: '0909123456', createdAt: '', updatedAt: '' }
 
 function fulfillJson(route: Route, body: unknown, status = 200) {
   return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 }
 
-async function captureVisual(page: Page, name: string) {
+async function captureVisual(page: Page, name: string, fullPage = false) {
   const directory = process.env.UI_B_CAPTURE_DIR
   if (!directory) return
   await mkdir(directory, { recursive: true })
-  await page.screenshot({ path: join(directory, name), fullPage: true })
+  await page.screenshot({ path: join(directory, name), fullPage })
 }
 
 async function mockCashierCheckout(page: Page) {
@@ -38,31 +50,44 @@ async function mockCashierCheckout(page: Page) {
     const query = new URL(route.request().url()).searchParams
     searches.push(query)
     const search = query.get('search')?.toLocaleLowerCase('vi-VN') ?? ''
-    const matches = !search || product.name.toLocaleLowerCase('vi-VN').includes(search)
-      || product.sku.toLowerCase().includes(search) || product.barcode.includes(search)
+    const matches = products.filter(item => !search || item.name.toLocaleLowerCase('vi-VN').includes(search)
+      || item.sku.toLowerCase().includes(search) || item.barcode.includes(search))
     return fulfillJson(route, {
-      items: matches ? [product] : [], page: Number(query.get('page') ?? 1),
-      pageSize: 20, totalCount: matches ? 1 : 0, totalPages: matches ? 1 : 0,
+      items: matches, page: Number(query.get('page') ?? 1),
+      pageSize: 20, totalCount: matches.length, totalPages: matches.length ? 1 : 0,
     })
   })
+  await page.route('**/api/customers?**', route => fulfillJson(route, {
+    items: [customer], page: 1, pageSize: 20, totalCount: 1, totalPages: 1,
+  }))
   await page.route('**/api/sales/complete', route => {
-    const attempt = route.request().postDataJSON()
+    const attempt = route.request().postDataJSON() as {
+      customerId: string | null
+      lines: Array<{ productId: string; quantity: number }>
+      payments: Array<{ amount: number; method: 'Cash' | 'Transfer' }>
+    }
     attempts.push(attempt)
+    const lines = attempt.lines.map((line, index) => {
+      const item = products.find(candidate => candidate.id === line.productId)!
+      return {
+        id: `line-${index + 1}`, productId: item.id, productName: item.name,
+        productSku: item.sku, productUnit: item.unit, quantity: line.quantity,
+        unitSalePrice: item.salePrice, lineAmount: item.salePrice * line.quantity, unitCostAtSale: item.salePrice * 0.65,
+        costReliability: 'Reliable',
+      }
+    })
+    const totalAmount = lines.reduce((sum, line) => sum + line.lineAmount, 0)
+    const paidAmount = attempt.payments.reduce((sum, payment) => sum + payment.amount, 0)
     return fulfillJson(route, {
       id: 'sale-pos-1', status: 'Completed', storeName: 'Tạp hóa Việt Anh',
-      warehouseId: 'warehouse-1', customer: null, cashierDisplayName: 'cashier@example.test',
-      lines: [{
-        id: 'line-1', productId: product.id, productName: product.name,
-        productSku: product.sku, productUnit: product.unit, quantity: 2,
-        unitSalePrice: product.salePrice, lineAmount: 30000, unitCostAtSale: 10000,
-        costReliability: 'Reliable',
-      }],
-      payments: [{ id: 'payment-1', amount: 30000, method: 'Cash', occurredAt: '2026-09-30T10:00:00Z' }],
-      totalAmount: 30000, paidAmount: 30000, outstandingAmount: 0,
+      warehouseId: 'warehouse-1', customer: attempt.customerId ? customer : null, cashierDisplayName: 'cashier@example.test',
+      lines,
+      payments: attempt.payments.map((payment, index) => ({ id: `payment-${index + 1}`, ...payment, occurredAt: '2026-09-30T10:00:00Z' })),
+      totalAmount, paidAmount, outstandingAmount: totalAmount - paidAmount,
       createdAt: '2026-09-30T10:00:00Z', completedAt: '2026-09-30T10:00:00Z',
-      wasAlreadyCompleted: false, originalTotalAmount: 30000, totalReturnedAmount: 0,
-      netSaleAmount: 30000, originalCollectedAmount: 30000, totalRefundedAmount: 0,
-      netCollectedAmount: 30000, isVoided: false, void: null, returns: [],
+      wasAlreadyCompleted: false, originalTotalAmount: totalAmount, totalReturnedAmount: 0,
+      netSaleAmount: totalAmount, originalCollectedAmount: paidAmount, totalRefundedAmount: 0,
+      netCollectedAmount: paidAmount, isVoided: false, void: null, returns: [],
     })
   })
   return { searches, attempts }
@@ -70,12 +95,15 @@ async function mockCashierCheckout(page: Page) {
 
 test('Cashier scans, edits and completes one sale, then starts a new one', async ({ page }) => {
   const { searches, attempts } = await mockCashierCheckout(page)
+  await page.setViewportSize({ width: 1536, height: 1024 })
   await page.goto('/products')
   await expect(page.locator('.app-sidebar')).toContainText('cashier@example.test')
   await page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
     .getByRole('link', { name: 'Bán hàng' }).click()
   await expect(page).toHaveURL(/\/sales\/new$/)
   await expect(page.getByRole('heading', { name: 'Bán hàng', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Thêm sản phẩm ${products[11].name}` })).toBeVisible()
+  await captureVisual(page, 'sales-desktop-products-1536x1024.png')
   const desktopPanels = await page.evaluate(() => {
     const productArea = document.querySelector('.sales-pos__products')?.getBoundingClientRect()
     const checkout = document.querySelector('.sales-pos__checkout')?.getBoundingClientRect()
@@ -95,22 +123,33 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).fill(product.barcode)
   await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).press('Enter')
   await expect(page.getByRole('button', { name: `Thêm sản phẩm ${productName}` })).toBeVisible()
-  await captureVisual(page, 'sales-desktop-product.png')
   expect(searches.some(query => query.get('search') === product.barcode && query.get('isActive') === 'true'
     && query.get('page') === '1' && query.get('pageSize') === '20')).toBe(true)
 
   await page.getByRole('button', { name: `Thêm sản phẩm ${productName}` }).click()
   await page.getByRole('spinbutton', { name: `Số lượng ${productName}` }).fill('2')
+  await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).fill('')
+  await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).press('Enter')
+  await page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` }).click()
+  await page.getByRole('button', { name: `Thêm sản phẩm ${products[2].name}` }).click()
+  await captureVisual(page, 'sales-desktop-cart-1536x1024.png')
   await page.getByRole('spinbutton', { name: 'Số tiền thanh toán' }).fill('30000')
   await page.getByRole('button', { name: 'Thêm thanh toán' }).click()
   await expect(page.getByText('30.000 ₫').first()).toBeVisible()
+  await page.getByRole('textbox', { name: 'Tìm khách hàng' }).fill('0909')
+  await page.getByRole('button', { name: 'Tìm khách hàng' }).click()
+  await page.getByRole('button', { name: `Chọn khách hàng ${customer.name}` }).click()
+  await captureVisual(page, 'sales-desktop-payment-customer-1536x1024.png')
+  await page.getByRole('button', { name: 'Chuyển khoản', exact: true }).click()
+  await page.getByRole('spinbutton', { name: 'Số tiền thanh toán' }).fill('11000')
+  await page.getByRole('button', { name: 'Thêm thanh toán' }).click()
   await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
 
   await expect(page.getByRole('heading', { name: 'Đơn bán đã hoàn tất' })).toBeVisible()
   const receipt = page.getByRole('region', { name: 'Hóa đơn bán hàng' })
   await expect(receipt).toContainText('sale-pos-1')
   await expect(receipt).toContainText(productName)
-  await expect(receipt).toContainText('30.000 ₫')
+  await expect(receipt).toContainText('41.000 ₫')
   await expect(receipt.getByRole('button', { name: 'In hóa đơn' })).toBeVisible()
   await page.evaluate(() => window.scrollTo(0, 0))
   const shellPosition = await page.evaluate(() => ({
@@ -124,12 +163,16 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   if (process.env.UI_B_CAPTURE_DIR) {
     await page.screenshot({ path: join(process.env.UI_B_CAPTURE_DIR, 'sales-completed-viewport.png') })
   }
-  await captureVisual(page, 'sales-completed.png')
+  await captureVisual(page, 'sales-completed-1536x1024.png')
   expect(attempts).toHaveLength(1)
   expect(attempts[0]).toMatchObject({
-    customerId: null,
-    lines: [{ productId: product.id, quantity: 2 }],
-    payments: [{ method: 'Cash', amount: 30000 }],
+    customerId: customer.id,
+    lines: [
+      { productId: product.id, quantity: 2 },
+      { productId: products[1].id, quantity: 1 },
+      { productId: products[2].id, quantity: 1 },
+    ],
+    payments: [{ method: 'Cash', amount: 30000 }, { method: 'Transfer', amount: 11000 }],
   })
   expect((attempts[0] as { operationId: string }).operationId).toBeTruthy()
 
@@ -144,7 +187,7 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   const printWidth = await page.locator('.app-main').evaluate(element => element.getBoundingClientRect().width)
   expect(printWidth).toBeGreaterThan(250)
   expect(printWidth).toBeLessThan(300)
-  const productWrap = await receipt.locator('.receipt-product').evaluate(element => ({
+  const productWrap = await receipt.locator('.receipt-product').first().evaluate(element => ({
     wordBreak: getComputedStyle(element).wordBreak,
     hyphens: getComputedStyle(element).hyphens,
     width: element.getBoundingClientRect().width,
@@ -192,7 +235,12 @@ test('Sales workspace remains usable without horizontal clipping on tablet and m
       expect(mobilePanels).not.toBeNull()
       expect(mobilePanels!.checkoutTop).toBeGreaterThanOrEqual(mobilePanels!.productBottom - 2)
     }
-    await captureVisual(page, `sales-${viewport.width === 820 ? 'tablet' : 'mobile'}.png`)
+    await page.locator('.sales-pos__checkout').evaluate(element => {
+      element.scrollIntoView({ block: 'start' })
+      const mobileHeader = document.querySelector('.app-mobile-header')?.getBoundingClientRect().height ?? 0
+      window.scrollBy(0, -(mobileHeader + 8))
+    })
+    await captureVisual(page, `sales-${viewport.width === 820 ? 'tablet-820x900' : 'mobile-390x844'}.png`)
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
     expect(scrollWidth).toBeLessThanOrEqual(viewport.width)
   }

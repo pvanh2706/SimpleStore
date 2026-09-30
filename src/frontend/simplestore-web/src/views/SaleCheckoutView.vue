@@ -57,7 +57,6 @@ onMounted(async () => {
 
     <SaleCheckoutForm
       v-if="settings && !completed"
-      class="mt-5"
       :allow-negative-stock="settings.allowNegativeStock"
       :search-products="searchProducts"
       :search-customers="searchCustomers"
@@ -68,7 +67,7 @@ onMounted(async () => {
       @completed="completed = $event"
     />
 
-    <div v-if="completed" class="sales-complete mt-5">
+    <div v-if="completed" class="sales-complete">
       <section class="sales-complete__summary no-print" aria-live="polite">
         <div class="sales-complete__heading">
           <span class="sales-complete__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
@@ -96,25 +95,28 @@ onMounted(async () => {
 
 <style scoped>
 .sales-page { min-width: 0; }
+:global(.app-shell:has(.sales-page)) { grid-template-columns: 12.875rem minmax(0, 1fr); }
+:global(.app-main:has(> .sales-page)) { padding: 0.75rem 1.125rem 0.875rem; }
 .sales-page__header {
   display: flex;
   flex-wrap: wrap;
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  padding-bottom: 0.2rem;
+  min-height: 3.25rem;
+  padding-bottom: 0.65rem;
 }
 .sales-page__header h1 {
   color: var(--text);
-  font-size: clamp(1.7rem, 2.3vw, 2.1rem);
+  font-size: clamp(1.35rem, 1.8vw, 1.65rem);
   font-weight: 810;
   letter-spacing: -0.04em;
   line-height: 1.15;
 }
-.sales-page__description { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.86rem; }
+.sales-page__description { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.8rem; }
 .sales-page__header .btn-secondary { border-color: var(--border); font-size: 0.82rem; }
 .sales-page__loading { margin-top: 1.5rem; color: var(--text-muted); }
-.sales-complete { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr); align-items: start; gap: 1.25rem; }
+.sales-complete { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr); align-items: start; gap: 0.875rem; padding-top: 0.25rem; }
 .sales-complete__summary {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -166,6 +168,7 @@ onMounted(async () => {
   .sales-complete :deep(.sales-complete__receipt) { width: 100%; max-width: none; margin: 0; box-shadow: 0 5px 22px rgb(14 43 33 / 6%); }
 }
 @media (max-width: 900px) {
+  :global(.app-main:has(> .sales-page)) { padding: 0.75rem; }
   .sales-complete { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {

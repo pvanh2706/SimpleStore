@@ -137,6 +137,16 @@ describe('SaleCheckoutForm', () => {
     expect((wrapper.vm as unknown as { cart: unknown[] }).cart).toHaveLength(0)
   })
 
+  it('adjusts quantity through the visual stepper without changing cart semantics', async () => {
+    const wrapper = mountForm()
+    await addProduct(wrapper)
+
+    await wrapper.get('[aria-label="Tăng số lượng Coffee"]').trigger('click')
+    expect((wrapper.vm as unknown as { total: number }).total).toBe(24000)
+    await wrapper.get('[aria-label="Giảm số lượng Coffee"]').trigger('click')
+    expect((wrapper.vm as unknown as { total: number }).total).toBe(12000)
+  })
+
   it('requires a customer for credit and allows searching and selecting one', async () => {
     const customer = { id: 'customer-1', name: 'An', phone: '0909', createdAt: '', updatedAt: '' }
     const searchCustomers = vi.fn().mockResolvedValue({ ...customerPage, items: [customer], totalCount: 1, totalPages: 1 })
@@ -200,7 +210,6 @@ describe('SaleCheckoutForm', () => {
     const wrapper = mountForm({ completeSale })
     await addProduct(wrapper)
     const amount = wrapper.get('[aria-label="Số tiền thanh toán"]')
-    const method = wrapper.get('[aria-label="Phương thức thanh toán"]')
     const addPayment = () => wrapper.findAll('button').find(button => button.text() === 'Thêm thanh toán')!
 
     await amount.setValue('0')
@@ -212,7 +221,7 @@ describe('SaleCheckoutForm', () => {
 
     await amount.setValue('5000')
     await addPayment().trigger('click')
-    await method.setValue('Transfer')
+    await wrapper.findAll('button').find(button => button.text() === 'Chuyển khoản')!.trigger('click')
     await amount.setValue('7000')
     await addPayment().trigger('click')
     const vm = wrapper.vm as unknown as { payments: Array<{ amount: number; method: string }>; paid: number; outstanding: number }
