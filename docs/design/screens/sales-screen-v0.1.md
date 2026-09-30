@@ -1,6 +1,6 @@
 # Sales screen v0.1
 
-**Status:** Approved screen concept and visual reference — D-095. **Implementation:** NOT STARTED.
+**Status:** Approved screen concept — D-095. The D-106 [Sales HTML Visual Reference v1.0](../approved/sales-html-reference-v1.0/index.html) is the visual source of truth for UI-B production alignment; D-105 remains the capability boundary. **Production alignment:** NOT YET APPROVED / PENDING PRODUCT OWNER REVIEW.
 
 ![Approved Sales visual reference](../references/sales-screen-v0.1.png)
 
@@ -38,4 +38,4 @@ Before completion, **Hoàn tất bán hàng** is the primary action; **Giữ đ�
 
 Do not present **In hóa đơn** as an equivalent primary action before completion. After successful completion, show a completion state with **In hóa đơn**, **In lại hóa đơn** where appropriate, and **Đơn bán mới**. Printing is independent from transaction completion: print success, failure or cancellation must never decide whether a Sale is completed. A stored completed Sale can be reprinted.
 
-The [approved image](../references/sales-screen-v0.1.png) defines visual intent. Its sample prices, products, stock counts, discounts and labels are illustrative, not live data or domain rules. Written Product Owner-approved behavior prevails on conflict. The current Vue Sales UI predates this design direction.
+The [D-106 approved HTML prototype](../approved/sales-html-reference-v1.0/index.html) defines UI-B visual implementation; this [original D-095 image](../references/sales-screen-v0.1.png) remains design inspiration. Sample prices, products, stock counts, discounts and labels are illustrative, not live data or domain rules. Written Product Owner-approved behavior prevails on conflict. Prototype features marked `VISUAL-ONLY` do not expand the D-105 capability boundary, and D-106 does not approve the current Vue Sales UI.
