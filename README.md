@@ -67,4 +67,5 @@ Mỗi script tạo database LocalDB và Owner tạm, apply migration, chạy bac
 - `PROJECT_STATE.md`: trạng thái hiện tại.
 - `DECISIONS.md`: quyết định sản phẩm APPROVED.
 - `OPEN_QUESTIONS.md`: câu hỏi cần làm rõ.
+- [`docs/operations/build-windows-iis.md`](docs/operations/build-windows-iis.md): build release để triển khai IIS, build riêng frontend và build riêng backend.
 - `docs/`: tài liệu Product/BA, UX và kiến trúc.
