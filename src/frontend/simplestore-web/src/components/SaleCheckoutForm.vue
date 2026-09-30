@@ -256,34 +256,36 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 
       <div class="sales-pos__section-heading">
         <div>
-          <p class="sales-pos__eyebrow">SẢN PHẨM</p>
-          <h2 id="sales-products-heading">Tìm và thêm sản phẩm</h2>
-          <p>Tìm theo tên, SKU hoặc quét barcode để thêm vào đơn hiện tại.</p>
+          <h2 id="sales-products-heading">Chọn sản phẩm</h2>
+          <p>Tìm theo tên, SKU hoặc quét mã vạch.</p>
         </div>
       </div>
 
       <form class="sales-pos__search" role="search" @submit.prevent="findProducts(1)">
         <label for="sales-product-search">Tìm hoặc quét sản phẩm</label>
         <div class="sales-pos__search-controls">
-          <input
-            id="sales-product-search"
-            v-model="productSearch"
-            class="input"
-            type="text"
-            autocomplete="off"
-            aria-label="Tìm hoặc quét sản phẩm"
-            placeholder="Tên, SKU hoặc barcode"
-            :disabled="locked"
-          />
+          <div class="sales-pos__search-input">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+            <input
+              id="sales-product-search"
+              v-model="productSearch"
+              class="input"
+              type="text"
+              autocomplete="off"
+              aria-label="Tìm hoặc quét sản phẩm"
+              placeholder="Tên sản phẩm, SKU hoặc mã vạch..."
+              :disabled="locked"
+            />
+          </div>
           <button class="btn-secondary" type="submit" :disabled="locked">Tìm sản phẩm</button>
         </div>
       </form>
 
       <div class="sales-pos__results-heading">
         <div>
-          <h3>Kết quả sản phẩm</h3>
-          <p v-if="products" role="status">{{ products.totalCount }} sản phẩm · Trang {{ productPage }}/{{ products.totalPages || 1 }}</p>
+          <h3>Sản phẩm</h3>
         </div>
+        <p v-if="products" role="status">{{ products.totalCount }} kết quả · Trang {{ productPage }}/{{ products.totalPages || 1 }}</p>
       </div>
 
       <p v-if="productLoading" class="sales-pos__empty" role="status">Đang tìm sản phẩm…</p>
@@ -298,14 +300,14 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           </div>
           <div class="sales-pos__product-bottom">
             <strong class="sales-pos__product-price">{{ money(product.salePrice) }} ₫</strong>
-            <span class="sales-pos__stock">Tồn {{ money(product.quantityOnHand) }} {{ product.unit }}</span>
+            <span class="sales-pos__stock" :class="{ 'sales-pos__stock--empty': product.quantityOnHand <= 0 }">Tồn {{ money(product.quantityOnHand) }} {{ product.unit }}</span>
             <button
               class="sales-pos__add"
               type="button"
               :disabled="locked"
               :aria-label="'Thêm sản phẩm ' + product.name"
               @click="addProduct(product)"
-            >Thêm</button>
+            ><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Thêm</span></button>
           </div>
         </article>
       </div>
@@ -318,9 +320,9 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 
     <section class="sales-pos__checkout" aria-labelledby="sales-checkout-heading">
       <div class="sales-pos__checkout-header">
-        <div>
-          <p class="sales-pos__eyebrow">ĐƠN HIỆN TẠI</p>
-          <h2 id="sales-checkout-heading">Giỏ hàng</h2>
+        <div class="sales-pos__checkout-title">
+          <span class="sales-pos__checkout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.1 10h11.7L21 7H6"/><circle cx="9" cy="19" r="1"/><circle cx="18" cy="19" r="1"/></svg></span>
+          <h2 id="sales-checkout-heading">Đơn hiện tại</h2>
         </div>
         <span class="sales-pos__count">{{ cart.length }} sản phẩm</span>
       </div>
@@ -340,7 +342,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
                 :disabled="locked"
                 :aria-label="'Xóa ' + line.product.name"
                 @click="removeProduct(line.product.id)"
-              >Xóa</button>
+              ><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5h6v2m3 0-.7 12H6.7L6 7M10 11v5m4-5v5"/></svg><span class="sales-pos__visually-hidden">Xóa</span></button>
             </div>
             <div class="sales-pos__line-bottom">
               <div class="sales-pos__quantity">
@@ -362,12 +364,40 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           </div>
         </section>
 
+        <section class="sales-pos__panel" aria-labelledby="sales-payment-heading">
+          <div class="sales-pos__panel-heading">
+            <h3 id="sales-payment-heading">Thanh toán</h3>
+            <p>Tiền mặt hoặc chuyển khoản · Có thể thêm nhiều lần.</p>
+          </div>
+          <div class="sales-pos__payment-fields">
+            <div class="sales-pos__field">
+              <label for="sales-payment-method">Phương thức thanh toán</label>
+              <select id="sales-payment-method" v-model="method" class="input" aria-label="Phương thức thanh toán" :disabled="locked">
+                <option value="Cash">Tiền mặt</option>
+                <option value="Transfer">Chuyển khoản</option>
+              </select>
+            </div>
+            <div class="sales-pos__field">
+              <label for="sales-payment-amount">Số tiền thanh toán</label>
+              <input id="sales-payment-amount" v-model.number="amount" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" aria-label="Số tiền thanh toán" :disabled="locked" />
+            </div>
+            <button class="btn-secondary" type="button" :disabled="locked" @click="addPayment">Thêm thanh toán</button>
+          </div>
+          <div v-if="payments.length" class="sales-pos__payments" aria-label="Các khoản đã nhập">
+            <div v-for="(payment, index) in payments" :key="index" class="sales-pos__payment-row">
+              <span>{{ payment.method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản' }}</span>
+              <strong>{{ money(payment.amount) }} ₫</strong>
+              <button class="sales-pos__remove" type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
+            </div>
+          </div>
+        </section>
         <section v-if="outstanding > 0" class="sales-pos__panel" aria-labelledby="sales-customer-heading">
           <div class="sales-pos__panel-heading">
-            <h3 id="sales-customer-heading">Khách hàng công nợ</h3>
-            <p>Đơn chưa thanh toán đủ cần có khách hàng.</p>
+            <h3 id="sales-customer-heading">Khách hàng</h3>
+            <p>Chọn khách hàng cho phần còn nợ.</p>
           </div>
           <div v-if="customer" class="sales-pos__selected-customer">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>
             <strong>{{ customer.name }}</strong>
             <span>{{ customer.phone || 'Không có số điện thoại' }}</span>
           </div>
@@ -422,39 +452,13 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           </details>
         </section>
 
-        <section class="sales-pos__panel" aria-labelledby="sales-payment-heading">
-          <div class="sales-pos__panel-heading">
-            <h3 id="sales-payment-heading">Thanh toán</h3>
-            <p>Có thể thêm nhiều khoản tiền mặt hoặc chuyển khoản.</p>
-          </div>
-          <div class="sales-pos__payment-fields">
-            <div class="sales-pos__field">
-              <label for="sales-payment-method">Phương thức thanh toán</label>
-              <select id="sales-payment-method" v-model="method" class="input" aria-label="Phương thức thanh toán" :disabled="locked">
-                <option value="Cash">Tiền mặt</option>
-                <option value="Transfer">Chuyển khoản</option>
-              </select>
-            </div>
-            <div class="sales-pos__field">
-              <label for="sales-payment-amount">Số tiền thanh toán</label>
-              <input id="sales-payment-amount" v-model.number="amount" class="input" type="number" min="0.01" step="0.01" inputmode="decimal" aria-label="Số tiền thanh toán" :disabled="locked" />
-            </div>
-            <button class="btn-secondary" type="button" :disabled="locked" @click="addPayment">Thêm thanh toán</button>
-          </div>
-          <div v-if="payments.length" class="sales-pos__payments" aria-label="Các khoản đã nhập">
-            <div v-for="(payment, index) in payments" :key="index" class="sales-pos__payment-row">
-              <span>{{ payment.method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản' }}</span>
-              <strong>{{ money(payment.amount) }} ₫</strong>
-              <button class="sales-pos__remove" type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
-            </div>
-          </div>
-        </section>
       </div>
 
       <div class="sales-pos__checkout-footer">
-        <div class="sales-pos__total-row"><span>Tổng đơn (xem trước)</span><strong>{{ money(total) }} ₫</strong></div>
+        <div class="sales-pos__total-row"><span>Tổng đơn</span><strong>{{ money(total) }} ₫</strong></div>
         <div class="sales-pos__total-row"><span>Đã thanh toán</span><strong>{{ money(paid) }} ₫</strong></div>
         <div class="sales-pos__total-row sales-pos__total-row--outstanding"><span>Còn nợ</span><strong>{{ money(outstanding) }} ₫</strong></div>
+        <a v-if="outstanding > 0 && !customer" class="sales-pos__customer-cue" href="#sales-customer-heading">Cần chọn khách hàng cho phần còn nợ <span aria-hidden="true">↓</span></a>
         <p v-if="paid > total" class="sales-pos__overpaid">Đã thanh toán vượt tổng đơn. Xóa khoản thanh toán hoặc điều chỉnh số lượng.</p>
         <p class="sales-pos__preview-note">Giá và tổng chính thức được xác nhận khi hoàn tất.</p>
         <p v-if="message" class="error" role="alert">{{ message }}</p>
@@ -463,7 +467,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           type="button"
           :disabled="state === 'completing' || state === 'checking' || state === 'completed' || creatingCustomer"
           @click="complete"
-        >{{ state === 'retryable' ? 'Thử lại đúng thao tác' : state === 'completing' || state === 'checking' ? 'Đang xác nhận…' : 'Hoàn tất bán hàng' }}</button>
+        ><svg v-if="state === 'idle'" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg>{{ state === 'retryable' ? 'Thử lại đúng thao tác' : state === 'completing' || state === 'checking' ? 'Đang xác nhận…' : 'Hoàn tất bán hàng' }}</button>
       </div>
     </section>
   </div>
@@ -472,123 +476,197 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 <style scoped>
 .sales-pos {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(21rem, 24rem);
+  grid-template-columns: minmax(0, 1fr) minmax(22rem, 23.5rem);
   align-items: start;
-  gap: clamp(1rem, 1.6vw, 1.5rem);
+  gap: clamp(1rem, 1.7vw, 1.5rem);
   min-width: 0;
 }
 .sales-pos__products,
 .sales-pos__checkout { min-width: 0; }
-.sales-pos__products { display: grid; align-content: start; gap: 1.1rem; }
+.sales-pos__products { display: grid; align-content: start; gap: 1.15rem; }
 .sales-pos__warning {
   display: grid;
-  gap: 0.3rem;
-  border: 1px solid #f8d9a4;
-  border-radius: var(--radius-lg);
-  background: #fff8e8;
-  padding: 0.8rem 1rem;
-  color: #7a4108;
-  font-size: 0.875rem;
+  gap: 0.2rem;
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  font-size: 0.8rem;
   line-height: 1.45;
 }
-.sales-pos__section-heading h2,
-.sales-pos__checkout-header h2 {
-  font-size: clamp(1.3rem, 1.7vw, 1.65rem);
-  font-weight: 800;
+.sales-pos__warning strong { color: var(--warning); }
+.sales-pos__section-heading h2 {
+  font-size: clamp(1.15rem, 1.6vw, 1.4rem);
+  font-weight: 760;
   letter-spacing: -0.025em;
   line-height: 1.2;
 }
-.sales-pos__section-heading p:last-child { margin-top: 0.3rem; color: var(--text-muted); font-size: 0.875rem; }
-.sales-pos__eyebrow {
-  margin-bottom: 0.3rem;
-  color: var(--brand-primary-hover);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-}
-.sales-pos__search {
-  display: grid;
-  gap: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  padding: 1rem;
-}
-.sales-pos__search label,
-.sales-pos__customer-search label,
-.sales-pos__field label,
-.sales-pos__create-customer label,
-.sales-pos__quantity label {
-  color: var(--text-muted);
-  font-size: 0.78rem;
+.sales-pos__section-heading p { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.84rem; }
+.sales-pos__search { display: grid; gap: 0.45rem; }
+.sales-pos__search label {
+  color: var(--text);
+  font-size: 0.82rem;
   font-weight: 700;
 }
-.sales-pos__search-controls { display: flex; gap: 0.5rem; min-width: 0; }
-.sales-pos__search-controls .input { min-width: 0; flex: 1; }
-.sales-pos__search-controls button { flex: none; }
-.sales-pos__results-heading { display: flex; align-items: end; justify-content: space-between; }
-.sales-pos__results-heading h3 { font-size: 1rem; font-weight: 750; }
-.sales-pos__results-heading p { margin-top: 0.15rem; color: var(--text-muted); font-size: 0.78rem; }
+.sales-pos__search-controls { display: flex; min-width: 0; gap: 0.5rem; }
+.sales-pos__search-input {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 3px 12px rgb(14 43 33 / 5%);
+}
+.sales-pos__search-input:focus-within {
+  border-color: var(--brand-primary);
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-primary) 12%, transparent);
+}
+.sales-pos__search-input svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  flex: none;
+  margin-left: 0.9rem;
+  color: var(--brand-primary-hover);
+}
+.sales-pos__search-input .input {
+  min-width: 0;
+  min-height: 3.4rem;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 0.75rem;
+  font-size: 0.95rem;
+}
+.sales-pos__search-input .input:focus { outline: none; }
+.sales-pos__search-input .input::placeholder { color: var(--text-subtle); }
+.sales-pos__search-controls > .btn-secondary {
+  flex: none;
+  min-height: 3.4rem;
+  border-color: var(--border);
+  padding-inline: 1rem;
+}
+.sales-pos__results-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.2rem;
+}
+.sales-pos__results-heading h3 { font-size: 1rem; font-weight: 770; letter-spacing: -0.015em; }
+.sales-pos__results-heading p { color: var(--text-muted); font-size: 0.76rem; text-align: right; }
 .sales-pos__empty {
   border: 1px dashed var(--border-strong);
   border-radius: var(--radius-lg);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 85%, var(--surface-page));
   padding: 2.5rem 1rem;
   color: var(--text-muted);
+  font-size: 0.88rem;
   text-align: center;
 }
 .sales-pos__product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
+  gap: 0.7rem;
 }
 .sales-pos__product-card {
   display: flex;
   min-width: 0;
-  min-height: 10rem;
+  min-height: 10.5rem;
   flex-direction: column;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.9rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  padding: 1rem;
-  box-shadow: 0 1px 3px rgb(14 43 33 / 4%);
+  padding: 0.95rem;
+  box-shadow: 0 1px 2px rgb(14 43 33 / 4%);
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+.sales-pos__product-card:hover,
+.sales-pos__product-card:focus-within {
+  border-color: var(--brand-primary);
+  box-shadow: 0 5px 16px rgb(14 43 33 / 8%);
 }
 .sales-pos__product-card h4,
 .sales-pos__cart-line strong,
 .sales-pos__customer-result strong,
 .sales-pos__selected-customer strong { overflow-wrap: anywhere; }
-.sales-pos__product-card h4 { font-size: 0.95rem; font-weight: 750; line-height: 1.35; }
-.sales-pos__meta { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.75rem; }
-.sales-pos__product-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 0.35rem; }
-.sales-pos__product-price { grid-column: 1 / -1; color: var(--brand-primary-hover); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-.sales-pos__stock { min-width: 0; color: var(--text-muted); font-size: 0.75rem; overflow-wrap: anywhere; }
-.sales-pos__add {
-  min-height: 2.75rem;
-  border: 1px solid #b9ddcd;
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-  padding: 0.5rem 0.85rem;
-  color: var(--brand-primary-hover);
-  font-size: 0.85rem;
-  font-weight: 750;
+.sales-pos__product-card h4 {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 740;
+  line-height: 1.36;
+  letter-spacing: -0.015em;
 }
-.sales-pos__add:hover:not(:disabled) { background: #dcefe6; }
+.sales-pos__meta { margin-top: 0.4rem; color: var(--text-subtle); font-size: 0.72rem; line-height: 1.35; }
+.sales-pos__product-bottom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.45rem 0.3rem;
+}
+.sales-pos__product-price {
+  grid-column: 1 / -1;
+  color: var(--brand-primary-hover);
+  font-size: 1.16rem;
+  font-weight: 790;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+.sales-pos__stock {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.sales-pos__stock--empty { color: var(--warning); font-weight: 700; }
+.sales-pos__add {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 18%, var(--surface));
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  padding: 0.3rem 0.55rem;
+  color: var(--brand-primary-hover);
+  font-size: 0.78rem;
+  font-weight: 770;
+  white-space: nowrap;
+}
+.sales-pos__add svg { width: 0.92rem; height: 0.92rem; }
+.sales-pos__add:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-primary) 14%, var(--surface)); }
 .sales-pos__add:disabled { cursor: not-allowed; opacity: 0.5; }
-.sales-pos__pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.65rem; color: var(--text-muted); font-size: 0.8rem; }
-.sales-pos__pager .btn-secondary { min-height: 2.5rem; padding-inline: 0.7rem; }
+.sales-pos__pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.sales-pos__pager .btn-secondary { min-height: 2.4rem; padding-inline: 0.7rem; }
 .sales-pos__checkout {
   position: sticky;
   top: 1rem;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(100dvh - 8.5rem);
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-elevated);
+  background: var(--surface-elevated);
+  box-shadow: 0 10px 30px rgb(14 43 33 / 9%), 0 1px 3px rgb(14 43 33 / 5%);
 }
 .sales-pos__checkout-header {
   display: flex;
@@ -598,80 +676,213 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   border-bottom: 1px solid var(--border);
   padding: 1rem 1.1rem;
 }
+.sales-pos__checkout-title { display: flex; min-width: 0; align-items: center; gap: 0.6rem; }
+.sales-pos__checkout-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--brand-primary-hover);
+}
+.sales-pos__checkout-icon svg { width: 1.15rem; height: 1.15rem; }
+.sales-pos__checkout-header h2 { font-size: 1.12rem; font-weight: 790; letter-spacing: -0.025em; }
 .sales-pos__count {
   flex: none;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  padding: 0.35rem 0.65rem;
-  color: var(--brand-primary-hover);
-  font-size: 0.72rem;
-  font-weight: 750;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 650;
+  white-space: nowrap;
 }
 .sales-pos__checkout-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.sales-pos__cart,
-.sales-pos__panel { padding: 1rem 1.1rem; }
-.sales-pos__panel { border-top: 1px solid var(--border); }
-.sales-pos__cart-empty { border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: 1rem; color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
-.sales-pos__cart-line { display: grid; gap: 0.7rem; border-bottom: 1px solid var(--border); padding: 0.9rem 0; }
+.sales-pos__cart { padding: 1rem 1.1rem; }
+.sales-pos__cart-empty {
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  padding: 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+.sales-pos__cart-line {
+  display: grid;
+  gap: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+}
 .sales-pos__cart-line:first-child { padding-top: 0; }
 .sales-pos__cart-line:last-child { border-bottom: 0; padding-bottom: 0; }
 .sales-pos__line-heading,
-.sales-pos__line-bottom { display: flex; align-items: start; justify-content: space-between; gap: 0.75rem; }
+.sales-pos__line-bottom { display: flex; align-items: start; justify-content: space-between; gap: 0.5rem; }
 .sales-pos__line-heading > div { min-width: 0; }
-.sales-pos__line-heading strong { display: block; font-size: 0.875rem; line-height: 1.35; }
-.sales-pos__line-heading p { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.75rem; }
+.sales-pos__line-heading strong { display: block; font-size: 0.85rem; font-weight: 740; line-height: 1.34; }
+.sales-pos__line-heading p { margin-top: 0.17rem; color: var(--text-muted); font-size: 0.72rem; }
 .sales-pos__remove {
-  flex: none;
+  display: inline-grid;
+  width: 2.75rem;
   min-width: 2.75rem;
-  min-height: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
   border-radius: var(--radius-sm);
-  color: var(--danger);
-  font-size: 0.8rem;
-  font-weight: 700;
+  color: var(--text-subtle);
 }
-.sales-pos__remove:hover:not(:disabled) { background: #fef3f2; }
+.sales-pos__remove svg { width: 1rem; height: 1rem; }
+.sales-pos__remove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  color: var(--danger);
+}
 .sales-pos__remove:disabled { cursor: not-allowed; opacity: 0.5; }
+.sales-pos__visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
 .sales-pos__line-bottom { align-items: end; }
-.sales-pos__quantity { display: grid; width: 6.5rem; gap: 0.2rem; }
-.sales-pos__quantity .input { min-height: 2.5rem; padding-block: 0.4rem; }
-.sales-pos__line-total { padding-bottom: 0.6rem; font-size: 0.9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sales-pos__panel-heading h3 { font-size: 0.95rem; font-weight: 800; }
-.sales-pos__panel-heading p { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.75rem; line-height: 1.4; }
-.sales-pos__selected-customer { display: grid; gap: 0.2rem; margin-top: 0.8rem; border-radius: var(--radius-md); background: var(--surface-muted); padding: 0.7rem; font-size: 0.82rem; }
-.sales-pos__selected-customer span { color: var(--text-muted); }
-.sales-pos__customer-search { display: grid; gap: 0.45rem; margin-top: 0.9rem; }
-.sales-pos__customer-search .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-.sales-pos__hint { margin-top: 0.7rem; color: var(--text-muted); font-size: 0.8rem; }
-.sales-pos__customer-results { display: grid; margin-top: 0.7rem; }
-.sales-pos__customer-result { display: grid; gap: 0.2rem; min-height: 2.75rem; border-top: 1px solid var(--border); padding: 0.55rem 0.3rem; text-align: left; }
-.sales-pos__customer-result span { color: var(--text-muted); font-size: 0.75rem; }
-.sales-pos__customer-result[aria-pressed="true"] { background: var(--surface-muted); color: var(--brand-primary-hover); }
-.sales-pos__panel .sales-pos__pager { margin-top: 0.7rem; }
-.sales-pos__create-customer { margin-top: 0.9rem; border-top: 1px solid var(--border); }
-.sales-pos__create-customer summary { min-height: 2.75rem; padding: 0.75rem 0.3rem; color: var(--brand-primary-hover); font-size: 0.82rem; font-weight: 750; cursor: pointer; }
-.sales-pos__create-customer-fields { display: grid; gap: 0.45rem; padding-top: 0.3rem; }
-.sales-pos__create-customer .btn-secondary { margin-top: 0.25rem; }
-.sales-pos__payment-fields { display: grid; gap: 0.65rem; margin-top: 0.85rem; }
-.sales-pos__field { display: grid; gap: 0.25rem; }
-.sales-pos__payments { margin-top: 0.85rem; }
-.sales-pos__payment-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.5rem; border-top: 1px solid var(--border); font-size: 0.8rem; }
+.sales-pos__quantity { display: grid; width: 5.4rem; gap: 0.16rem; }
+.sales-pos__quantity label,
+.sales-pos__customer-search label,
+.sales-pos__field label,
+.sales-pos__create-customer label {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.sales-pos__quantity .input { min-height: 2.1rem; padding: 0.3rem 0.5rem; font-size: 0.83rem; font-variant-numeric: tabular-nums; }
+.sales-pos__line-total {
+  padding-bottom: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 770;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sales-pos__panel { border-top: 1px solid var(--border); padding: 0.9rem 1.1rem; }
+.sales-pos__panel-heading h3 { font-size: 0.91rem; font-weight: 770; }
+.sales-pos__panel-heading p { margin-top: 0.15rem; color: var(--text-muted); font-size: 0.72rem; line-height: 1.35; }
+.sales-pos__payment-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+.sales-pos__field { display: grid; min-width: 0; align-content: start; gap: 0.25rem; }
+.sales-pos__field .input { min-width: 0; font-size: 0.83rem; font-variant-numeric: tabular-nums; }
+.sales-pos__payment-fields > .btn-secondary {
+  grid-column: 1 / -1;
+  min-height: 2.75rem;
+  border-color: var(--border);
+  color: var(--brand-primary-hover);
+  font-size: 0.82rem;
+}
+.sales-pos__payments { display: grid; gap: 0.35rem; margin-top: 0.8rem; }
+.sales-pos__payment-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-page);
+  padding: 0.25rem 0.35rem 0.25rem 0.65rem;
+  font-size: 0.79rem;
+}
 .sales-pos__payment-row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sales-pos__payment-row .sales-pos__remove { width: auto; min-width: 2.75rem; padding-inline: 0.25rem; font-size: 0.73rem; color: var(--text-muted); }
+.sales-pos__payment-row .sales-pos__remove:hover:not(:disabled) { color: var(--danger); }
+.sales-pos__selected-customer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.1rem 0.45rem;
+  margin-top: 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--brand-primary) 16%, var(--surface));
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  padding: 0.55rem 0.65rem;
+  font-size: 0.79rem;
+}
+.sales-pos__selected-customer svg { grid-row: 1 / 3; width: 0.95rem; height: 0.95rem; margin-top: 0.13rem; color: var(--brand-primary); }
+.sales-pos__selected-customer span { color: var(--text-muted); font-size: 0.72rem; }
+.sales-pos__customer-search { display: grid; gap: 0.35rem; margin-top: 0.7rem; }
+.sales-pos__customer-search .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.4rem; }
+.sales-pos__customer-search .btn-secondary { min-height: 2.65rem; padding-inline: 0.65rem; font-size: 0.78rem; }
+.sales-pos__customer-search .input { min-width: 0; font-size: 0.82rem; }
+.sales-pos__hint { margin-top: 0.65rem; color: var(--text-muted); font-size: 0.78rem; }
+.sales-pos__customer-results { display: grid; gap: 0.3rem; max-height: 11rem; overflow-y: auto; margin-top: 0.65rem; }
+.sales-pos__customer-result {
+  display: grid;
+  gap: 0.1rem;
+  min-height: 2.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.6rem;
+  font-size: 0.79rem;
+  text-align: left;
+}
+.sales-pos__customer-result span { color: var(--text-muted); font-size: 0.71rem; }
+.sales-pos__customer-result[aria-pressed="true"] { border-color: var(--brand-primary); background: var(--surface-muted); color: var(--brand-primary-hover); }
+.sales-pos__panel .sales-pos__pager { margin-top: 0.65rem; }
+.sales-pos__create-customer { margin-top: 0.55rem; border-top: 1px solid var(--border); }
+.sales-pos__create-customer summary { min-height: 2.4rem; padding: 0.65rem 0.1rem 0.45rem; color: var(--brand-primary-hover); font-size: 0.78rem; font-weight: 730; cursor: pointer; }
+.sales-pos__create-customer-fields { display: grid; gap: 0.35rem; padding-top: 0.3rem; }
+.sales-pos__create-customer .btn-secondary { margin-top: 0.25rem; }
 .sales-pos__checkout-footer {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.42rem;
   border-top: 1px solid var(--border);
-  background: var(--surface);
-  padding: 1rem 1.1rem;
+  background: color-mix(in srgb, var(--surface-muted) 58%, var(--surface));
+  padding: 0.95rem 1.1rem 1.05rem;
+  box-shadow: 0 -4px 16px rgb(14 43 33 / 3%);
 }
-.sales-pos__total-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.84rem; }
-.sales-pos__total-row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.sales-pos__total-row--outstanding { color: var(--brand-primary-hover); font-weight: 750; }
-.sales-pos__preview-note { color: var(--text-subtle); font-size: 0.7rem; line-height: 1.35; }
-.sales-pos__overpaid { color: var(--danger); font-size: 0.78rem; font-weight: 700; }
-.sales-pos__complete { width: 100%; margin-top: 0.25rem; }
+.sales-pos__total-row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.81rem; line-height: 1.4; }
+.sales-pos__total-row strong { font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sales-pos__total-row:first-child {
+  align-items: baseline;
+  margin-bottom: 0.15rem;
+  color: var(--text);
+  font-size: 0.93rem;
+  font-weight: 760;
+}
+.sales-pos__total-row:first-child strong {
+  color: var(--brand-primary-hover);
+  font-size: 1.55rem;
+  font-weight: 820;
+  letter-spacing: -0.045em;
+}
+.sales-pos__total-row--outstanding { color: var(--text-muted); }
+.sales-pos__customer-cue {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  border-left: 2px solid var(--warning);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+  padding: 0.4rem 0.6rem;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 680;
+  line-height: 1.3;
+  text-decoration: none;
+}
+.sales-pos__customer-cue:hover { color: var(--brand-primary-hover); text-decoration: underline; }
+.sales-pos__preview-note { color: var(--text-subtle); font-size: 0.68rem; line-height: 1.35; }
+.sales-pos__overpaid { color: var(--danger); font-size: 0.77rem; font-weight: 700; }
+.sales-pos__complete {
+  width: 100%;
+  min-height: 3.3rem;
+  margin-top: 0.35rem;
+  box-shadow: 0 3px 9px rgb(4 120 87 / 17%);
+  font-size: 0.96rem;
+  font-weight: 780;
+}
+.sales-pos__complete svg { width: 1.05rem; height: 1.05rem; }
 @media (min-width: 1081px) and (max-width: 1279px) {
-  .sales-pos { grid-template-columns: minmax(0, 1fr) 21rem; }
-  .sales-pos__product-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr)); }
+  .sales-pos { grid-template-columns: minmax(0, 1fr) 21.5rem; }
 }
 @media (max-width: 1080px) {
   .sales-pos { grid-template-columns: minmax(0, 1fr); }
@@ -679,13 +890,28 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   .sales-pos__checkout-body { overflow: visible; }
 }
 @media (max-width: 600px) {
-  .sales-pos__search-controls,
-  .sales-pos__customer-search .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .sales-pos__search-controls button { width: 100%; }
+  .sales-pos { gap: 1.3rem; }
+  .sales-pos__products { gap: 0.9rem; }
+  .sales-pos__search-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .sales-pos__search-controls > .btn-secondary { width: 100%; min-height: 2.75rem; }
+  .sales-pos__product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .sales-pos__product-card { min-height: 10.2rem; padding: 0.75rem; }
+  .sales-pos__product-card h4 { font-size: 0.86rem; }
+  .sales-pos__product-price { font-size: 1.05rem; }
+  .sales-pos__product-bottom { grid-template-columns: minmax(0, 1fr) auto; }
+  .sales-pos__add { min-width: 2.75rem; padding-inline: 0.45rem; }
+  .sales-pos__add span { display: none; }
+  .sales-pos__add svg { width: 1.15rem; height: 1.15rem; }
   .sales-pos__checkout-header,
   .sales-pos__cart,
   .sales-pos__panel,
   .sales-pos__checkout-footer { padding-inline: 0.9rem; }
   .sales-pos__pager { justify-content: center; }
+}
+@media (max-width: 360px) {
+  .sales-pos__product-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sales-pos__product-card { transition: none; }
 }
 </style>

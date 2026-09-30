@@ -46,9 +46,8 @@ onMounted(async () => {
   <section class="sales-page">
     <header class="sales-page__header no-print">
       <div>
-        <p class="sales-page__eyebrow">QUẦY BÁN HÀNG</p>
         <h1>{{ completed ? 'Hoàn tất bán hàng' : 'Bán hàng' }}</h1>
-        <p class="sales-page__description">{{ completed ? 'Giao dịch đã được lưu. Bạn có thể in hóa đơn hoặc bắt đầu đơn tiếp theo.' : 'Tìm sản phẩm, kiểm tra giỏ hàng và hoàn tất giao dịch tại quầy.' }}</p>
+        <p class="sales-page__description">{{ completed ? 'Đơn đã được lưu. Bạn có thể in hóa đơn hoặc bắt đầu đơn tiếp theo.' : 'Tìm sản phẩm và hoàn tất đơn ngay tại quầy.' }}</p>
       </div>
       <RouterLink class="btn-secondary" to="/sales">Lịch sử bán hàng</RouterLink>
     </header>
@@ -72,17 +71,17 @@ onMounted(async () => {
     <div v-if="completed" class="sales-complete mt-5">
       <section class="sales-complete__summary no-print" aria-live="polite">
         <div class="sales-complete__heading">
-          <span class="sales-complete__icon" aria-hidden="true">✓</span>
+          <span class="sales-complete__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
           <div>
-            <p class="sales-page__eyebrow">GIAO DỊCH THÀNH CÔNG</p>
+            <p class="sales-complete__state">Giao dịch thành công</p>
             <h2>Đơn bán đã hoàn tất</h2>
-            <p>Việc in hóa đơn không thay đổi trạng thái giao dịch.</p>
+            <p>Đơn đã được ghi nhận. Việc in hóa đơn không thay đổi trạng thái giao dịch.</p>
           </div>
         </div>
         <dl class="sales-complete__facts">
-          <div><dt>Mã đơn</dt><dd class="sales-complete__id">{{ completed.id }}</dd></div>
-          <div><dt>Thời gian</dt><dd>{{ new Date(completed.completedAt).toLocaleString('vi-VN') }}</dd></div>
-          <div><dt>Tổng cộng</dt><dd>{{ money(completed.totalAmount) }} ₫</dd></div>
+          <div class="sales-complete__detail"><dt>Mã đơn</dt><dd class="sales-complete__id">{{ completed.id }}</dd></div>
+          <div class="sales-complete__detail"><dt>Thời gian</dt><dd>{{ new Date(completed.completedAt).toLocaleString('vi-VN') }}</dd></div>
+          <div class="sales-complete__total"><dt>Tổng đơn</dt><dd>{{ money(completed.totalAmount) }} ₫</dd></div>
           <div><dt>Đã thu</dt><dd>{{ money(completed.paidAmount) }} ₫</dd></div>
           <div><dt>Còn nợ</dt><dd>{{ money(completed.outstandingAmount) }} ₫</dd></div>
         </dl>
@@ -90,7 +89,7 @@ onMounted(async () => {
           <button class="btn-secondary" type="button" @click="completed = null">Đơn bán mới</button>
         </div>
       </section>
-      <SaleReceipt class="mt-5" :sale="completed" />
+      <SaleReceipt class="sales-complete__receipt" :sale="completed" />
     </div>
   </section>
 </template>
@@ -103,58 +102,77 @@ onMounted(async () => {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
+  padding-bottom: 0.2rem;
 }
 .sales-page__header h1 {
   color: var(--text);
-  font-size: clamp(1.75rem, 2.5vw, 2.25rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.7rem, 2.3vw, 2.1rem);
+  font-weight: 810;
+  letter-spacing: -0.04em;
   line-height: 1.15;
 }
-.sales-page__eyebrow {
-  color: var(--brand-primary-hover);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-.sales-page__description { margin-top: 0.4rem; color: var(--text-muted); font-size: 0.9rem; }
+.sales-page__description { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.86rem; }
+.sales-page__header .btn-secondary { border-color: var(--border); font-size: 0.82rem; }
 .sales-page__loading { margin-top: 1.5rem; color: var(--text-muted); }
+.sales-complete { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr); align-items: start; gap: 1.25rem; }
 .sales-complete__summary {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 1px 3px rgb(14 43 33 / 5%);
-  padding: clamp(1rem, 2vw, 1.5rem);
+  box-shadow: 0 5px 22px rgb(14 43 33 / 6%);
+  padding: clamp(1.15rem, 2vw, 1.6rem);
 }
-.sales-complete__heading { display: flex; align-items: start; gap: 0.875rem; }
-.sales-complete__heading h2 { font-size: 1.35rem; font-weight: 800; }
-.sales-complete__heading p:last-child { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.9rem; }
+.sales-complete__heading { display: flex; align-items: start; gap: 0.9rem; }
+.sales-complete__heading h2 { margin-top: 0.2rem; font-size: 1.35rem; font-weight: 790; letter-spacing: -0.025em; line-height: 1.25; }
+.sales-complete__heading p:last-child { margin-top: 0.4rem; color: var(--text-muted); font-size: 0.84rem; line-height: 1.45; }
+.sales-complete__state { color: var(--positive); font-size: 0.78rem; font-weight: 760; }
 .sales-complete__icon {
   display: grid;
   flex: none;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.65rem;
+  height: 2.65rem;
   place-items: center;
   border-radius: 50%;
   background: var(--surface-muted);
   color: var(--positive);
-  font-size: 1.5rem;
-  font-weight: 800;
 }
+.sales-complete__icon svg { width: 1.3rem; height: 1.3rem; }
 .sales-complete__facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: 0.875rem;
-  margin-top: 1.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+  margin-top: 1.5rem;
   border-top: 1px solid var(--border);
-  padding-top: 1.25rem;
+  padding-top: 1.1rem;
 }
-.sales-complete__facts dt { color: var(--text-muted); font-size: 0.75rem; font-weight: 650; }
-.sales-complete__facts dd { margin-top: 0.2rem; font-size: 1rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.sales-complete__facts dt { color: var(--text-muted); font-size: 0.73rem; font-weight: 650; }
+.sales-complete__facts dd { margin-top: 0.2rem; font-size: 0.94rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.sales-complete__detail { min-width: 0; }
+.sales-complete__total {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.95rem;
+}
+.sales-complete__total dt { color: var(--text); font-size: 0.88rem; font-weight: 750; }
+.sales-complete__total dd { color: var(--brand-primary-hover); font-size: 1.55rem; font-weight: 820; letter-spacing: -0.04em; white-space: nowrap; }
 .sales-complete__id { overflow-wrap: anywhere; }
-.sales-complete__next { display: flex; justify-content: flex-end; margin-top: 1.25rem; }
+.sales-complete__next { margin-top: 1.4rem; }
+.sales-complete__next .btn-secondary { width: 100%; border-color: var(--border-strong); }
+@media screen {
+  .sales-complete :deep(.sales-complete__receipt) { width: 100%; max-width: none; margin: 0; box-shadow: 0 5px 22px rgb(14 43 33 / 6%); }
+}
+@media (max-width: 900px) {
+  .sales-complete { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 560px) {
   .sales-page__header .btn-secondary { width: 100%; }
   .sales-complete__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media print {
+  .sales-complete { display: block; }
 }
 </style>
