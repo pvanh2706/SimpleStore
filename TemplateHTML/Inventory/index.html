@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SimpleStore — Inventory Management Interactive HTML Reference v1.0</title>
+<style>
+
+:root{--bg:#f4f8fb;--surface:#fff;--surface-soft:#f8fbfd;--border:#dfe7ee;--border-strong:#cdd9e4;--text:#172033;--muted:#66758d;--subtle:#8a96a8;--primary:#0a9c67;--primary-dark:#087b55;--primary-soft:#eaf8f2;--warning:#d97706;--warning-soft:#fff4dc;--danger:#d93f45;--danger-soft:#fff0f1;--info:#365ccf;--shadow:0 10px 30px rgba(31,48,71,.08);--sidebar:158px;--topbar:44px;--radius:10px;--radius-lg:14px}
+*{box-sizing:border-box}html,body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text);background:var(--bg)}body{min-height:100vh}button,input,select,textarea{font:inherit}button{cursor:pointer}[hidden]{display:none!important}
+.app{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);min-height:100vh}.sidebar{background:rgba(255,255,255,.97);border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:100vh;position:sticky;top:0}.brand{height:48px;display:flex;align-items:center;gap:9px;padding:0 20px;color:#0f493b;font-size:16px;font-weight:850}.brand-mark{width:23px;height:23px;border-radius:5px;background:linear-gradient(180deg,#11aa72,#07895d);display:grid;place-items:center;color:#fff}.store-mini{font-size:10px;color:var(--muted);margin:-7px 20px 10px}.nav{padding:5px 8px 10px;display:flex;flex-direction:column;gap:2px}.nav-item{height:40px;border-radius:8px;display:flex;align-items:center;gap:11px;padding:0 12px;color:#3e4d64;font-size:13px;font-weight:600;text-decoration:none;position:relative}.nav-item.active{background:#eaf6f1;color:#0b5e47;font-weight:800}.nav-item.active:before{content:"";position:absolute;left:-8px;top:0;bottom:0;width:4px;background:var(--primary)}.sidebar-foot{margin-top:auto;border-top:1px solid var(--border);padding:12px 14px 18px;display:flex;align-items:center;gap:10px;color:#4e5f76;font-size:13px}
+.main{min-width:0}.topbar{height:var(--topbar);background:rgba(255,255,255,.96);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px 0 18px;position:sticky;top:0;z-index:20}.store-switch{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800}.user{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700}.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:#17a974;color:#fff;font-size:12px}
+.page{padding:12px 12px 18px}.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:12px 12px 10px;min-height:calc(100vh - 72px)}.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:2px 2px 12px}.page-title h1{font-size:22px;margin:0 0 3px;letter-spacing:-.02em}.page-title p{margin:0;color:var(--muted);font-size:12px}.primary{height:38px;border:0;border-radius:8px;background:linear-gradient(180deg,#10a971,#078d5d);color:white;font-weight:800;padding:0 18px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 16px rgba(10,156,103,.16)}.primary:hover{background:var(--primary-dark)}.toolbar{display:grid;grid-template-columns:minmax(340px,1fr) 96px;gap:10px;align-items:center}.search{height:36px;border:1.5px solid #b8cef8;border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 10px;background:#fff}.search input{border:0;outline:0;flex:1;color:#44536a;font-size:12px}.scan{width:28px;height:24px;border-radius:6px;border:1px solid var(--border);display:grid;place-items:center;color:#53617b;background:#f8fbff}.filter-btn{height:36px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:#263852;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px}.chips{display:flex;gap:8px;flex-wrap:wrap;padding:12px 0}.chip{height:30px;padding:0 12px;border:1px solid var(--border);border-radius:999px;background:#fff;color:#32435e;font-size:11px;font-weight:700}.chip.active{background:linear-gradient(180deg,#14aa72,#078d5e);color:#fff;border-color:transparent}
+.table-wrap{border:1px solid var(--border);border-radius:9px;overflow:visible;background:#fff;position:relative}.table{width:100%;border-collapse:collapse;table-layout:fixed}.table th{height:34px;background:#f7fafc;color:#56657b;font-size:10.5px;text-align:left;font-weight:750;border-bottom:1px solid var(--border);padding:0 9px}.table td{height:53px;border-bottom:1px solid #edf1f4;padding:0 9px;font-size:11px;color:#2b3a51;vertical-align:middle}.table tr:last-child td{border-bottom:0}.table tbody tr:hover{background:#fafdff}.table tbody tr.selected{background:#f2fbf7}.check{width:14px;height:14px;border:1px solid #aebdca;border-radius:3px;background:#fff;display:inline-block}.product-cell{display:flex;align-items:center;gap:9px;min-width:0}.thumb{width:28px;height:36px;object-fit:contain;flex:0 0 auto}.pname{font-size:11px;font-weight:800;color:#172238;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pname button{all:unset;cursor:pointer}.pname button:hover{color:var(--primary-dark);text-decoration:underline}.unit{font-size:10px;color:#617089;margin-top:1px}.sku,.cat,.date{color:#52627a}.price{font-weight:800;color:#162138}.stock{font-weight:800;text-align:center}.status{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:7px;font-size:10px;font-weight:800;white-space:nowrap}.status.ok{background:#e9f8f2;color:#087e57}.status.low{background:#fff0d7;color:#c76e06}.status.off{background:#f1f3f6;color:#7a8696}.dot{width:6px;height:6px;border-radius:50%;background:currentColor}.more{width:28px;height:28px;border:1px solid var(--border);border-radius:7px;background:#fff;font-weight:900;color:#44536b}.footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 4px 2px;color:#5d6b80;font-size:11px}.pager{display:flex;align-items:center;gap:5px}.page-btn{min-width:30px;height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;color:#42516a;font-size:11px}.page-btn.active{background:#e9f8f2;color:#07875b;border-color:#d5eee4;font-weight:800}.per-page{height:30px;border:1px solid var(--border);border-radius:7px;background:#fff;padding:0 10px;color:#35455f;font-size:11px}
+/* action menu */.action-menu{position:fixed;width:184px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 36px rgba(23,32,51,.14);padding:6px;z-index:80}.action-menu button{width:100%;height:34px;border:0;background:transparent;border-radius:7px;text-align:left;padding:0 10px;color:#2d3c54;font-size:12px;display:flex;align-items:center;gap:8px}.action-menu button:hover{background:#f4f8fa}.action-menu .danger{color:#d33d45}
+/* drawers */.drawer{position:fixed;right:0;top:var(--topbar);bottom:0;width:300px;background:#fff;border-left:1px solid var(--border);box-shadow:-12px 0 30px rgba(31,48,71,.09);z-index:60;display:flex;flex-direction:column}.drawer.wide{width:420px}.drawer-header{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border)}.drawer-header h2{margin:0;font-size:18px;letter-spacing:-.02em}.icon-btn{width:32px;height:32px;border:0;background:transparent;border-radius:8px;font-size:22px;color:#536178}.icon-btn:hover{background:#f4f6f8}.drawer-body{padding:14px 16px 20px;overflow:auto;flex:1}.drawer-footer{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--border);background:#fff}.drawer-footer button{height:38px;flex:1;border-radius:8px;font-weight:800}.btn-secondary{border:1px solid var(--border-strong);background:#fff;color:#2d3c54}.btn-danger{border:1px solid #f5b4b7;background:#fff;color:var(--danger)}
+.section{padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid #edf1f4}.section:last-child{border-bottom:0}.section h3{margin:0 0 12px;font-size:13px}.field{display:grid;gap:6px;margin-bottom:12px}.field label{font-size:11px;color:#3e4e66;font-weight:700}.required{color:#d63e45}.input,.select,.textarea{width:100%;border:1px solid var(--border-strong);border-radius:7px;background:#fff;color:#31415a;font-size:11px;padding:0 9px}.input,.select{height:34px}.textarea{min-height:72px;padding-top:8px;resize:vertical}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.check-row,.radio-row{display:flex;align-items:center;gap:8px;font-size:11px;color:#3f4f66;margin:8px 0}.check-box{width:15px;height:15px;border:1px solid #9db0c0;border-radius:3px;display:grid;place-items:center;font-size:10px;color:#fff;background:#fff}.check-box.on{background:var(--primary);border-color:var(--primary)}.radio{width:14px;height:14px;border:4px solid var(--primary);border-radius:50%}.hint{font-size:10px;color:#738197;line-height:1.45}.price-wrap{position:relative}.price-wrap .input{padding-right:24px}.suffix{position:absolute;right:10px;top:8px;font-size:11px;color:#52627a}
+/* detail */.detail-product{display:flex;gap:12px;align-items:center;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border)}.detail-product img{width:46px;height:56px;object-fit:contain}.detail-product h3{margin:0 0 3px;font-size:15px}.detail-product p{margin:0;color:var(--muted);font-size:11px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{border:1px solid var(--border);border-radius:9px;padding:10px;background:#fbfdfe}.stat span{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}.stat strong{font-size:14px}.detail-actions{display:grid;gap:8px;margin-top:14px}.detail-actions button{height:38px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;text-align:left;padding:0 11px;font-weight:700;color:#304057}
+/* modal */.modal-backdrop{position:fixed;inset:0;background:rgba(32,45,61,.18);z-index:90;display:grid;place-items:center;padding:24px}.modal{width:min(92vw,420px);max-height:88vh;background:#fff;border:1px solid var(--border);border-radius:13px;box-shadow:0 24px 60px rgba(25,40,60,.22);display:flex;flex-direction:column;overflow:hidden}.modal.wide{width:min(94vw,720px)}.modal.xwide{width:min(96vw,920px)}.modal-header{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border)}.modal-header h2{margin:0;font-size:18px}.modal-body{padding:14px 16px;overflow:auto}.modal-footer{padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}.modal-footer button{min-width:92px;height:38px;border-radius:8px;font-weight:800}.notice{border:1px solid #cbe1ff;background:#f4f8ff;color:#36537d;border-radius:8px;padding:9px 10px;font-size:11px;line-height:1.45}.notice.green{border-color:#cfeadd;background:#f3fbf7;color:#2a6c54}.notice.red{border-color:#ffd2d5;background:#fff5f5;color:#a94448}
+.stepper{display:grid;grid-template-columns:120px 1fr;gap:18px}.steps{display:flex;flex-direction:column;gap:16px}.step{display:flex;align-items:center;gap:9px;color:#7b889a;font-size:11px;font-weight:700}.step .n{width:22px;height:22px;border-radius:50%;background:#aeb8c8;color:#fff;display:grid;place-items:center;font-size:10px}.step.active{color:#087e57}.step.active .n{background:var(--primary)}.step.done .n{background:#78bf9f}.history-table{width:100%;border-collapse:collapse;font-size:10px}.history-table th{text-align:left;background:#f7fafc;color:#59677c;padding:8px;border-bottom:1px solid var(--border)}.history-table td{padding:8px;border-bottom:1px solid #edf1f4;color:#35455b}.plus{color:#0a9c67;font-weight:800}.minus{color:#d93f45;font-weight:800}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#173c31;color:#fff;border-radius:9px;padding:10px 14px;font-size:12px;font-weight:700;box-shadow:var(--shadow);z-index:120}
+@media(max-width:900px){:root{--sidebar:86px}.brand span,.store-mini,.nav-item span,.sidebar-foot span{display:none}.brand{justify-content:center;padding:0}.nav-item{justify-content:center;padding:0}.sidebar-foot{justify-content:center}.table th:nth-child(4),.table td:nth-child(4),.table th:nth-child(8),.table td:nth-child(8){display:none}.drawer.wide{width:min(92vw,420px)}}
+@media(max-width:700px){.app{grid-template-columns:1fr}.sidebar{display:none}.page{padding:8px}.toolbar{grid-template-columns:1fr}.chips{overflow:auto;flex-wrap:nowrap}.table-wrap{overflow:auto}.table{min-width:850px}.drawer,.drawer.wide{width:100%;top:0}.modal-backdrop{padding:8px}.stepper{grid-template-columns:1fr}.steps{flex-direction:row;overflow:auto}}
+
+
+/* Inventory-specific additions */
+.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.summary-card{border:1px solid var(--border);border-radius:10px;background:#fff;padding:12px 14px;min-height:82px}
+.summary-card span{display:block;font-size:10px;color:var(--muted);margin-bottom:7px}
+.summary-card strong{font-size:24px;line-height:1;font-weight:850}
+.summary-card small{display:block;color:var(--subtle);font-size:10px;margin-top:5px}
+.summary-card.danger strong{color:#e03d3d}.summary-card.warning strong{color:#e07900}
+.summary-card.negative strong{color:#df2d2d}
+.page-actions{display:flex;gap:8px}
+.outline-action{height:38px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;color:#314159;font-weight:750;padding:0 14px;display:flex;align-items:center;gap:8px}
+.inventory-toolbar{display:grid;grid-template-columns:minmax(360px,1fr) 98px;gap:10px}
+.inventory-table .table th:nth-child(2){width:27%}
+.inventory-table .table th:nth-child(3){width:12%}
+.inventory-table .table th:nth-child(4){width:8%}
+.inventory-table .table th:nth-child(5){width:12%}
+.inventory-table .table th:nth-child(6){width:12%}
+.inventory-table .table th:nth-child(7){width:13%}
+.inventory-table .table th:nth-child(8){width:13%}
+.inventory-table .table th:nth-child(9){width:7%}
+.inv-value.negative,.stock.negative{color:#d93036}
+.stock.zero{color:#e84141}.stock.low{color:#d97706}
+.status.out{background:#ffe8e9;color:#d83f45}.status.negative{background:#fff0dd;color:#c76500}
+.filter-section{padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid #edf1f4}
+.filter-section:last-child{border-bottom:0}
+.range2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tabs{display:flex;gap:18px;border-bottom:1px solid var(--border);margin:0 -16px 14px;padding:0 16px}
+.tab{height:36px;border:0;background:transparent;color:#5d6c82;font-size:11px;font-weight:700;border-bottom:2px solid transparent}
+.tab.active{color:#087b55;border-bottom-color:#0a9c67}
+.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.info-card{border:1px solid var(--border);border-radius:9px;background:#fbfdfe;padding:12px}
+.info-card span{display:block;color:#68768b;font-size:10px;margin-bottom:6px}.info-card strong{font-size:18px}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid #eef2f5;font-size:11px}.kv:last-child{border-bottom:0}.kv span{color:#627087}.kv strong{font-weight:700}
+.notice-ok{border:1px solid #d9eee5;background:#f4fbf8;border-radius:9px;padding:12px;color:#17815d;font-size:11px;line-height:1.45}
+.mini-table{width:100%;border-collapse:collapse}.mini-table th,.mini-table td{border-bottom:1px solid #edf1f4;padding:8px 6px;font-size:10.5px;text-align:left}.mini-table th{color:#607088;background:#f8fafc}.mini-table td.num{text-align:right;font-weight:700}
+.wizard-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.wizard-title{font-size:18px;font-weight:850}
+.steps{display:flex;align-items:center;gap:8px;margin:0 0 14px}.step{display:flex;align-items:center;gap:6px;color:#9aa5b5;font-size:10px;font-weight:700}.step:after{content:"";width:32px;height:1px;background:#d8e0e7}.step:last-child:after{display:none}.step-num{width:20px;height:20px;border-radius:50%;background:#cfd7e2;color:#fff;display:grid;place-items:center}.step.active{color:#0a8b60}.step.active .step-num,.step.done .step-num{background:#0a9c67}.step.done{color:#6b7b8d}
+.selection-table{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.selection-row{display:grid;grid-template-columns:34px minmax(0,1fr) 88px 70px;align-items:center;gap:8px;padding:8px;border-bottom:1px solid #edf1f4;font-size:11px}.selection-row:last-child{border-bottom:0}.selection-row.selected{background:#eef9f4}
+.count-grid{display:grid;grid-template-columns:minmax(0,1fr) 100px 100px 90px;align-items:center;gap:8px}.count-head{font-size:10px;color:#66758b;font-weight:750;background:#f8fafc;padding:8px}.count-row{padding:7px;border-bottom:1px solid #eef2f4;font-size:11px}.count-row input{width:100%;height:30px;border:1px solid var(--border-strong);border-radius:6px;padding:0 7px}.diff-pos{color:#0b9a63;font-weight:800}.diff-neg{color:#e24343;font-weight:800}
+.stocktake-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.stocktake-kpis .summary-card{min-height:auto;padding:10px}.stocktake-kpis strong{font-size:20px}
+.warning-box{border:1px solid #f2d29d;background:#fff7e7;border-radius:8px;padding:10px 11px;color:#9b6605;font-size:10.5px;line-height:1.45}
+.history-filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.demo-strip{position:fixed;right:16px;bottom:16px;z-index:120;display:flex;gap:6px;background:#fff;border:1px solid var(--border);box-shadow:var(--shadow);border-radius:10px;padding:6px}
+.demo-strip button{height:30px;border:1px solid var(--border);background:#fff;border-radius:7px;font-size:10px;color:#45536a}
+.empty-state{padding:90px 20px;text-align:center;color:#617088}.empty-state .big{font-size:38px;margin-bottom:8px}.empty-state h3{margin:0 0 5px;color:#26364d}
+@media(max-width:1050px){.summary-grid{grid-template-columns:repeat(2,1fr)}.detail-grid{grid-template-columns:1fr}.drawer.wide{width:min(440px,100vw)}}
+
+
+/* FIX: Inventory wizard step header must always be horizontal on desktop/tablet. */
+.modal .steps {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  width: 100%;
+  margin: 0 0 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.modal .steps .step {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  color: #9aa5b5;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.modal .steps .step::after {
+  content: "";
+  display: block;
+  flex: 1 1 auto;
+  min-width: 20px;
+  height: 1px;
+  margin: 0 8px;
+  background: #d8e0e7;
+}
+
+.modal .steps .step:last-child {
+  flex: 0 0 auto;
+}
+
+.modal .steps .step:last-child::after {
+  display: none;
+}
+
+.modal .steps .step-num {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #cfd7e2;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.modal .steps .step.active {
+  color: #0a8b60;
+}
+
+.modal .steps .step.active .step-num,
+.modal .steps .step.done .step-num {
+  background: #0a9c67;
+}
+
+.modal .steps .step.done {
+  color: #6b7b8d;
+}
+
+@media (max-width: 700px) {
+  .modal .steps {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .modal .steps .step {
+    flex: 0 0 auto;
+  }
+
+  .modal .steps .step::after {
+    width: 28px;
+    flex: 0 0 28px;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">▣</div>SimpleStore</div>
+    <div class="store-mini">Cửa hàng Tạp Hóa Việt Anh</div>
+    <nav class="nav">
+      <a class="nav-item" href="#">⌂ <span>Tổng quan</span></a>
+      <a class="nav-item" href="#">🛒 <span>Bán hàng</span></a>
+      <a class="nav-item" href="#">▣ <span>Nhập hàng</span></a>
+      <a class="nav-item" href="#">▤ <span>Sản phẩm</span></a>
+      <a class="nav-item active" href="#">♧ <span>Tồn kho</span></a>
+      <a class="nav-item" href="#">♙ <span>Công nợ</span></a>
+      <a class="nav-item" href="#">▥ <span>Báo cáo</span></a>
+      <a class="nav-item" href="#">⚙ <span>Cài đặt</span></a>
+    </nav>
+    <div class="sidebar-foot">« <span>Thu gọn</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="store-switch">Cửa hàng Tạp Hóa Việt Anh⌄</div>
+      <div class="user"><div class="avatar">VA</div>Việt Anh⌄</div>
+    </header>
+
+    <div class="page">
+      <section class="panel" id="mainPanel">
+        <div class="page-head">
+          <div class="page-title"><h1>Tồn kho</h1><p>Quản lý tồn kho, kiểm kho, điều chỉnh và lịch sử biến động</p></div>
+          <div class="page-actions">
+            <button class="outline-action" id="openStocktake">▣ Kiểm kho</button>
+            <button class="outline-action" id="openAdjustGlobal">♧ Điều chỉnh tồn kho</button>
+            <button class="primary" id="openAdjust">＋ Điều chỉnh tồn kho</button>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-card"><span>Tổng số sản phẩm</span><strong>156</strong><small>Sản phẩm đang sử dụng</small></div>
+          <div class="summary-card danger"><span>Hết hàng</span><strong>8</strong><small>Sản phẩm</small></div>
+          <div class="summary-card warning"><span>Tồn kho thấp</span><strong>12</strong><small>Sản phẩm</small></div>
+          <div class="summary-card negative"><span>Tồn kho âm</span><strong>3</strong><small>Sản phẩm</small></div>
+        </div>
+
+        <div class="inventory-toolbar">
+          <div class="search"><span>⌕</span><input id="searchInput" placeholder="Tìm theo tên sản phẩm, mã SKU, mã vạch..."><span class="scan">▥</span></div>
+          <button class="filter-btn" id="openFilter">▽ Bộ lọc</button>
+        </div>
+        <div class="chips" id="chips">
+          <button class="chip active" data-filter="all">Tất cả (156)</button>
+          <button class="chip" data-filter="out">Hết hàng (8)</button>
+          <button class="chip" data-filter="low">Tồn kho thấp (12)</button>
+          <button class="chip" data-filter="negative">Tồn kho âm (3)</button>
+          <button class="chip" data-filter="soon">Sắp hết hàng (5)</button>
+          <button class="chip" data-filter="other">Khác (128)</button>
+        </div>
+
+        <div class="table-wrap inventory-table">
+          <table class="table">
+            <thead><tr>
+              <th style="width:34px"><span class="check"></span></th><th>Sản phẩm ↕</th><th>Mã SKU</th><th>Đơn vị</th>
+              <th>Tồn kho hiện tại ↕</th><th>Giá vốn TB</th><th>Giá trị tồn kho</th><th>Trạng thái</th><th>Cập nhật</th><th></th>
+            </tr></thead>
+            <tbody id="inventoryRows"></tbody>
+          </table>
+        </div>
+        <div class="footer"><span id="resultCount">Hiển thị 1 – 7 / 156 sản phẩm</span><div class="pager"><button class="page-btn">‹</button><button class="page-btn active">1</button><button class="page-btn">2</button><button class="page-btn">3</button><button class="page-btn">4</button><button class="page-btn">5</button><button class="page-btn">…</button><button class="page-btn">16</button><button class="page-btn">›</button><select class="per-page"><option>10 / trang</option></select></div></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Filter drawer -->
+<aside class="drawer" id="filterDrawer" hidden>
+  <div class="drawer-header"><h2>Bộ lọc tồn kho</h2><button class="icon-btn" data-close>×</button></div>
+  <div class="drawer-body">
+    <div class="filter-section"><h3>Tình trạng tồn kho</h3>
+      <div class="check-row"><span class="check-box on">✓</span>Tất cả</div>
+      <div class="check-row"><span class="check-box"></span>Bình thường</div>
+      <div class="check-row"><span class="check-box"></span>Hết hàng (tồn = 0)</div>
+      <div class="check-row"><span class="check-box"></span>Tồn kho thấp</div>
+      <div class="check-row"><span class="check-box"></span>Tồn kho âm (tồn &lt; 0)</div>
+      <div class="check-row"><span class="check-box"></span>Sắp hết hàng</div>
+    </div>
+    <div class="filter-section"><h3>Danh mục sản phẩm</h3><select class="select"><option>Tất cả danh mục</option><option>Đồ uống</option><option>Bánh kẹo</option><option>Gia vị</option></select></div>
+    <div class="filter-section"><h3>Đơn vị tính</h3><select class="select"><option>Tất cả đơn vị</option><option>Lon</option><option>Chai</option><option>Gói</option></select></div>
+    <div class="filter-section"><h3>Khoảng tồn kho</h3><div class="range2"><input class="input" placeholder="Số lượng"><input class="input" placeholder="Số lượng"></div></div>
+    <div class="filter-section"><h3>Giá trị tồn kho</h3><div class="range2"><input class="input" placeholder="Số tiền"><input class="input" placeholder="Số tiền"></div></div>
+    <div class="filter-section"><h3>Trạng thái sản phẩm</h3><select class="select"><option>Tất cả</option><option>Đang bán</option><option>Ngừng bán</option></select></div>
+  </div>
+  <div class="drawer-footer"><button class="btn-danger" id="clearFilter">Xóa bộ lọc</button><button class="primary" style="justify-content:center" id="applyFilter">Áp dụng</button></div>
+</aside>
+
+<!-- Detail drawer -->
+<aside class="drawer wide" id="detailDrawer" hidden>
+  <div class="drawer-header"><div style="display:flex;align-items:center;gap:10px"><img id="detailImg" style="width:40px;height:46px;object-fit:contain"><div><h2 id="detailName" style="font-size:15px"></h2><div class="hint"><span id="detailSku"></span> ・ <span id="detailUnit"></span></div></div></div><button class="icon-btn" data-close>×</button></div>
+  <div class="drawer-body">
+    <div style="display:flex;gap:8px;margin-bottom:10px"><span class="status ok"><span class="dot"></span>Đang bán</span><button class="filter-btn" id="detailAdjust">♧ Điều chỉnh tồn kho</button><button class="filter-btn" id="detailStocktake">▣ Kiểm kho</button></div>
+    <div class="tabs"><button class="tab active" data-detail-tab="overview">Tổng quan</button><button class="tab" data-detail-tab="history">Lịch sử biến động</button><button class="tab" data-detail-tab="attention">Cần chú ý (C14)</button></div>
+    <div id="detailOverview">
+      <div class="detail-grid">
+        <div class="info-card"><span>Tồn kho hiện tại</span><strong id="detailStock"></strong><div class="hint">Giá trị tồn kho <b id="detailValue"></b></div></div>
+        <div class="info-card"><span>Giá vốn trung bình</span><strong id="detailAvg"></strong><div class="hint">Giá bán tham chiếu 10.000 đ</div></div>
+        <div class="info-card"><span>Trạng thái</span><span class="status ok"><span class="dot"></span>Bình thường</span><div class="hint" style="margin-top:12px">Cập nhật cuối<br><b id="detailUpdated"></b></div></div>
+      </div>
+      <div class="grid2">
+        <div class="info-card"><h3 style="margin:0 0 8px">Thông tin sản phẩm</h3><div class="kv"><span>Tên sản phẩm</span><strong id="infoName"></strong></div><div class="kv"><span>Mã SKU</span><strong id="infoSku"></strong></div><div class="kv"><span>Mã vạch</span><strong id="infoBarcode"></strong></div><div class="kv"><span>Đơn vị tính</span><strong id="infoUnit"></strong></div><div class="kv"><span>Danh mục</span><strong id="infoCat"></strong></div></div>
+        <div class="info-card"><h3 style="margin:0 0 8px">Cần chú ý (C14)</h3><div class="notice-ok">✓ Không có cảnh báo<br><span class="hint">Sản phẩm này đang ở trạng thái bình thường.</span></div></div>
+      </div>
+    </div>
+    <div id="detailHistoryTab" hidden>
+      <table class="mini-table"><thead><tr><th>Ngày</th><th>Loại giao dịch</th><th>Số lượng</th><th>Tồn sau GD</th></tr></thead><tbody><tr><td>16/12/2024</td><td>Bán hàng</td><td class="diff-neg">-3</td><td>24</td></tr><tr><td>15/12/2024</td><td>Nhập hàng</td><td class="diff-pos">+20</td><td>27</td></tr><tr><td>12/12/2024</td><td>Điều chỉnh</td><td class="diff-neg">-2</td><td>12</td></tr></tbody></table>
+    </div>
+    <div id="detailAttentionTab" hidden><div class="notice-ok">✓ Không có cảnh báo C14 cho sản phẩm đang chọn.</div></div>
+  </div>
+</aside>
+
+<!-- Adjust inventory modal -->
+<div class="modal-backdrop" id="adjustModal" hidden>
+  <div class="modal" style="width:min(720px,94vw)">
+    <div class="modal-header"><h2>Điều chỉnh tồn kho</h2><button class="icon-btn" data-close>×</button></div>
+    <div class="modal-body">
+      <div class="steps"><div class="step active" id="adjNav1"><span class="step-num">1</span>Chọn sản phẩm</div><div class="step" id="adjNav2"><span class="step-num">2</span>Nhập thông tin</div><div class="step" id="adjNav3"><span class="step-num">3</span>Xác nhận</div></div>
+      <div id="adjStep1">
+        <div class="search" style="margin-bottom:10px"><span>⌕</span><input placeholder="Tìm sản phẩm (tên, mã SKU, mã vạch)..."></div>
+        <div class="selection-table" id="adjustSelectList"></div>
+      </div>
+      <div id="adjStep2" hidden>
+        <div class="detail-product"><img id="adjustImg"><div><h3 id="adjustName"></h3><p id="adjustMeta"></p></div></div>
+        <div class="grid2"><div class="field"><label>Số lượng điều chỉnh *</label><input class="input" id="adjustQty" type="number" value="0"></div><div class="field"><label>Lý do điều chỉnh *</label><select class="select"><option>Hàng hỏng</option><option>Mất mát</option><option>Cân chỉnh sổ sách</option><option>Khác</option></select></div></div>
+        <div class="hint">↑ Số dương: tăng tồn kho &nbsp;&nbsp; ↓ Số âm: giảm tồn kho</div>
+        <div class="field" style="margin-top:10px"><label>Ghi chú</label><textarea class="textarea" placeholder="Nhập ghi chú..."></textarea></div>
+      </div>
+      <div id="adjStep3" hidden><div class="info-card"><h3>Xác nhận điều chỉnh</h3><div class="kv"><span>Sản phẩm</span><strong id="adjConfirmName"></strong></div><div class="kv"><span>Tồn hiện tại</span><strong id="adjCurrent"></strong></div><div class="kv"><span>Điều chỉnh</span><strong id="adjDelta"></strong></div><div class="kv"><span>Tồn sau điều chỉnh</span><strong id="adjAfter"></strong></div></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" id="adjPrev">Quay lại</button><button class="primary" id="adjNext">Tiếp theo →</button></div>
+  </div>
+</div>
+
+<!-- Stocktake modal -->
+<div class="modal-backdrop" id="stocktakeModal" hidden>
+  <div class="modal" style="width:min(820px,95vw)">
+    <div class="modal-header"><h2>Kiểm kho</h2><button class="icon-btn" data-close>×</button></div>
+    <div class="modal-body">
+      <div class="steps"><div class="step active" id="stNav1"><span class="step-num">1</span>Chuẩn bị</div><div class="step" id="stNav2"><span class="step-num">2</span>Nhập số đếm</div><div class="step" id="stNav3"><span class="step-num">3</span>Xem chênh lệch</div><div class="step" id="stNav4"><span class="step-num">4</span>Xác nhận</div></div>
+      <div id="stStep1"><div class="field"><label>Tên đợt kiểm kho *</label><input class="input" value="Kiểm kho cuối tháng 12/2024"></div><div class="grid2"><div class="field"><label>Ngày kiểm kho *</label><input class="input" value="16/12/2024"></div><div class="field"><label>Ghi chú</label><textarea class="textarea" placeholder="Nhập ghi chú (nếu có)..."></textarea></div></div><div class="section"><h3>Phạm vi kiểm kho</h3><div class="radio-row"><span class="radio"></span>Tất cả sản phẩm</div><div class="radio-row"><span style="width:14px;height:14px;border:1px solid #9db0c0;border-radius:50%"></span>Chỉ một số sản phẩm</div></div><div class="notice-ok">ℹ Hệ thống sẽ lấy số liệu tồn kho hiện tại tại thời điểm bắt đầu kiểm kho để so sánh với số đếm.</div></div>
+      <div id="stStep2" hidden><div class="search" style="margin-bottom:10px"><span>⌕</span><input placeholder="Tìm sản phẩm (tên, mã SKU, mã vạch)..."></div><div class="count-grid"><div class="count-head">Sản phẩm</div><div class="count-head">Tồn hiện tại</div><div class="count-head">Số đếm *</div><div class="count-head">Chênh lệch</div><div id="countRows" style="display:contents"></div></div></div>
+      <div id="stStep3" hidden><div class="stocktake-kpis"><div class="summary-card"><span>Tổng sản phẩm kiểm kho</span><strong>156</strong></div><div class="summary-card"><span>Khớp</span><strong style="color:#0a9c67">140</strong></div><div class="summary-card warning"><span>Chênh lệch</span><strong>16</strong></div></div><table class="mini-table"><thead><tr><th>Sản phẩm</th><th>Tồn hiện tại</th><th>Số đếm</th><th>Chênh lệch</th></tr></thead><tbody id="differenceRows"></tbody></table><div class="warning-box" style="margin-top:10px">⚠ Sau khi xác nhận, hệ thống sẽ tạo các bút toán điều chỉnh tồn kho. Vui lòng kiểm tra kỹ trước khi thực hiện.</div></div>
+      <div id="stStep4" hidden><div class="info-card"><h3>Xác nhận kiểm kho</h3><p style="font-size:12px;line-height:1.6">Bạn sắp xác nhận kết quả kiểm kho. Các sản phẩm có chênh lệch sẽ được cập nhật theo số đếm thực tế.</p><div class="notice-ok">✓ 140 sản phẩm khớp &nbsp;&nbsp; • &nbsp;&nbsp; 16 sản phẩm có chênh lệch</div></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" id="stPrev">Quay lại</button><button class="primary" id="stNext">Tiếp theo →</button></div>
+  </div>
+</div>
+
+<!-- History modal -->
+<div class="modal-backdrop" id="historyModal" hidden>
+  <div class="modal" style="width:min(820px,95vw)">
+    <div class="modal-header"><div style="display:flex;align-items:center;gap:10px"><img id="historyImg" style="width:34px;height:42px;object-fit:contain"><div><h2 style="font-size:17px;margin:0">Lịch sử biến động tồn kho</h2><div class="hint" id="historyMeta"></div></div></div><button class="icon-btn" data-close>×</button></div>
+    <div class="modal-body"><div class="history-filters"><input class="input" value="01/12/2024"><input class="input" value="16/12/2024"><select class="select"><option>Tất cả</option><option>Bán hàng</option><option>Nhập hàng</option><option>Điều chỉnh</option><option>Kiểm kho</option></select></div><table class="mini-table"><thead><tr><th>Ngày</th><th>Loại giao dịch</th><th>Số lượng</th><th>Đơn giá vốn</th><th>Tồn sau GD</th><th>Người tạo</th></tr></thead><tbody><tr><td>16/12/2024 10:23</td><td>Bán hàng</td><td class="diff-neg">-3</td><td>5.000 đ</td><td>24</td><td>Thu ngân</td></tr><tr><td>15/12/2024 14:10</td><td>Nhập hàng</td><td class="diff-pos">+20</td><td>5.200 đ</td><td>27</td><td>Việt Anh</td></tr><tr><td>14/12/2024 09:15</td><td>Bán hàng</td><td class="diff-neg">-5</td><td>5.000 đ</td><td>7</td><td>Thu ngân</td></tr><tr><td>12/12/2024 16:40</td><td>Điều chỉnh</td><td class="diff-neg">-2</td><td>5.000 đ</td><td>12</td><td>Việt Anh</td></tr><tr><td>10/12/2024 08:30</td><td>Kiểm kho</td><td class="diff-pos">+1</td><td>5.000 đ</td><td>14</td><td>Việt Anh</td></tr></tbody></table></div>
+    <div class="modal-footer"><button class="btn-secondary" data-close>Đóng</button></div>
+  </div>
+</div>
+
+<div id="toast" hidden style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#172033;color:#fff;padding:9px 14px;border-radius:8px;z-index:200;font-size:11px;box-shadow:var(--shadow)"></div>
+
+<script>
+const products=[{"id": 1, "name": "Coca Cola 330ml", "sku": "SP0001", "unit": "Lon", "stock": 24, "avg": 5000, "value": 120000, "status": "ok", "updated": "16/12/2024 10:23", "img": "data:image/png;base64,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", "barcode": "8935049500017", "cat": "Đồ uống"}, {"id": 2, "name": "Pepsi 330ml", "sku": "SP0002", "unit": "Lon", "stock": 0, "avg": 5200, "value": 0, "status": "out", "updated": "15/12/2024 14:10", "img": "data:image/png;base64,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", "barcode": "8935049500018", "cat": "Đồ uống"}, {"id": 3, "name": "Nước suối Aquafina 500ml", "sku": "SP0003", "unit": "Chai", "stock": 36, "avg": 3000, "value": 108000, "status": "ok", "updated": "14/12/2024 09:18", "img": "data:image/png;base64,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", "barcode": "8935049500019", "cat": "Đồ uống"}, {"id": 4, "name": "Trà xanh C2 500ml", "sku": "SP0004", "unit": "Chai", "stock": -3, "avg": 4500, "value": -13500, "status": "negative", "updated": "13/12/2024 11:05", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACMAAAAjCAYAAAAe2bNZAAAJXElEQVR4nG2YWYwcVxWGv3Orqrune6ZnH4+XsR3bsR0ntjGxHZRICYlIBESBIEGCBEK8IJYXEALxBgEeEEJIgSdARASUCB4ISxYlIovsSI4JJsROPLEdguMZz+LxzPT09L5U3cNDVXVX2ylNVdetvn3Pf8/5zzl/jQRBoCQO6VxAFRQFBdDwQThAsThigQaCgAbhd2JR6UekD1UFESRaVCNLCuF3nSO8dwEknB1OFnomCYIKiBJdQoAOSmvpT9jZR6HdR7PiYxXqNcuVtRG23vkI43vuQK0Fkched3ERQdHoiaCquHKN8dB89wcAogpGUBxQRVCCVoXqm98jP16j3fRYO9ekVjJ4Qx6rMzMUWk/ysd13YFUwVrrrJ1wfWtLOvel4XkOUCezdsUg0lnAvIgR+iVqhDJvy6JZBKk2PlttHpeVRKPnMX17EBhZVxaqi0UniFI1WDRGGYeohyrVBkugbVVQDREMDxnVpiwuFCuLnyA+labkOqwst6n6bdG4IIYj4JJ2AhDGPIxfyURBEJALTCUsvqJhiGrlPUFCLVcVx86RGD7L40knabZcL//NIjbsEToZiEHDk4P4wLDZAjAE1kVdD6mmCBiohOVx6SHONd1RRtSg2JBkGjMERwNax4lJLZXE23UjaDbA0WL68SrrPIZtdIrBtHONgbQCiCAYwUdRNZE+jP0WsVU1ikERGqVpQG35iwITYi4snmX7684w5BXbecxhndBJtFfHXFlh4Y4ZWI6Bcs/i5/dx076MMbLgFa03oITGIxKAkue9eMNIJSTzWhLMMALPnn+fyy59j9w6H4T1b0PQw0i5B8ypBaZ3aqsXHoVX1qdXarJXS7HnwRfo33IpVFxGDMRIB6Y2EiR9JkiRE7O+ACIHMvH+ck399iKMfzTG6x0OlgqWIrS3QvLJEa71BZc1SWlIqFYOTBYcmrzz1FUqVCoiDVUE1LoDa4aqIRFauOWzMlYSXGn6bX/zmW9h+H9EKy2+v01pdwDRncPsbBEbwPcHmIBiwVFMB61ao9cPxs//l2OsvRpsMUGxife1UZren6AqdGhD7hWhCzbY5V1xhOBdw4oxP+XLAvQcm8CZGWV2o8+ZyhdV1n0uXWtQcYbncRsVSbME7SzA89y73dzYZ5qaJjErEYzdG1iVTXAR6e0Mu1cfQrnEKziJXPKU95hBM7ueflx1+9MszXJxVNO9QWBa8fB8t8di8M0AGqiykArQ/HdZWkXh/JC0oiquqYZ+4rjH1kstD8Jw+1htKezRLMW34+TMLvLO8hbnMTQzemmdom8fGtQqVapnVS/NUVgp4E9BuQjYz/kGM6Cl8btxBry91PVHCAG4mT1GFldE0T73e5DN3fZ1vf+qT/OPieYbGHLJum9dOTXPDpo3cvX2Cx5/5GX977RhtHway+U6SaNx0e03FvSnuHbbbQ5JwomGtpcyWhBdOl3Er4zx4+LP89LEneOTBr/Hk35/ib2+8xe+//yRPPf4X9mfzDHkttK1gYCBr6EHTYzfkqEtMD+jcaFxfFCw26h2GejvNckGp1AN+8PA3qNTXeO63f8Ds3cbUnq1Mje9g7Ut3Mjg/Q6Nxhtl3L5DJCtW00JdJhSVEJO4713Om4604gzpCStBIv1i1GIGJkY3UT1tGhlx2b7mB2aU51DRJDRtO/PllgtJL/O5X36F89jhPPPsY88Ui+ZxQcAUv1YeIRGfMSukAkTC7tIMyxigKYhWx2iMB7jl8N+mMYdu2NBuHmuzaNMANu0aYcGsc2XcjBw/uIBUo6zWfJ55+l/zWFOk0OK4h5aYwxsGIwUQtoQsuKSHi4hO7LdIasZNsBHAkO47xlbFsi5eO/4T9u7/Mj7/7VfxMhs1jWQqNNdr+Vd65vExmPEXWLZOxkHIMxk1jRFAJuSNxJetkc0fPSNdyfI0eKV2SGSeFL4b8KCxMTzP96g95470+2u4Y9YpQKrTYenQLtcV5xifabJtQqlUh7RmMF5oykdyMI9FRk0IkIaIa063E2gUStktUwbaVUsVSWhcOZJUHbktR/aPlzEWLE4wwMmAYkUEO7KiwfXSJ9GpAzYdZT/BMr/GehhzVORM5oaPoYsZLAp7EHrM+jUBZa2Vo+JBz6+wbttx/x3a0XOL2Tx9i5bJP82qdu/alOdCn3JZXxt2AlDhce3Q2HxU9k2gCXUIhofiRrg6OVV7gC+WmS9EKF077XDzT4JbJTWxwM5w/sczcLFycy/HeeQdZhylPGUsrnpu+HgSxsg4fGpIg4tMYTHSKMZ10dFwBcWhKiotll4XUCEUvxWypxgNf+DhXZ1bZ+5G9TG7dyQvHoJUR+vsg57l4CYV7XXOOHGBIgiAEghEwvaCMCOIacB18k+at9wPmnRQ6nuO556dZWK1ydaXAkbsOM7VnH2evZplfBdqQCQxeLAISL4I9WioZpqT/pGeK4GAwGKxxwHFw0i4TUw6DU4b0VJbBbSOcOv0WW/ZsYDif58SrFzAETOxMMT4lDHlu+NoSJ8U177BxDkeSQiBRfLrOBINgRDASCnG3z6W8WmTrgKVvpcrF/1xlbGeepeVllhZmOPP2v2mmrnD37XW2TzbxjNJfr+K3gkgqdT2TtBPaCn1HEm6nBkQXkZBdKccl4zkMZFvcd1+Omz80SpDNUWyusfnoKBuO9HNy+hV2HVzn4S8KIxNg0pByFOuXekSb9gCKZWcSxDUtvRPRuDDhMJCDvWNKtlnj9PkqNfUoNNoUKmsMboF2YwlbXiaoVzn3NjzzHJw9Y1maX6TbsbXnNj56ZecHuC7hIxyr3OS1eWhji8z5gOXzBTZIH059haW5MrbtMC7KiN/i9RerzJ5TFlddCo0sC4uXUEJ9HRc5SaRU2LUlCUGTg96XKMAtr3CvrfHhupLqh+0HWhRvDCg3WqxvaKHG4rnKYNqyMqf054S9Q/Dsv2pUC5WO+/U6SiiigqsJo53O0EXT45+V906xs2Vx1gSTchlyDcNpBRo4k2GWNNqGIHCYHFFk2AcbMDcjjA0PJ/JTEplL543S7f4TJBLm9PaNJKx2uYRbg0bZ4G52sephG4ojikqAVfDFAQTPsXiqtOrKeH6Im3cfDeVrnLmJxeOIuBBr4K766szTbvBEhEOHH+LYq7/m1LRPfhZSaQtB+Bu/bQgUai1QH4KmYBuGlRXD5Ce+yd5Dh7BqI54kCdH1/v8BnqvZ2l2W4sMAAAAASUVORK5CYII=", "barcode": "8935049500020", "cat": "Đồ uống"}, {"id": 5, "name": "Sữa Vinamilk 180ml", "sku": "SP0005", "unit": "Hộp", "stock": 12, "avg": 6000, "value": 72000, "status": "ok", "updated": "12/12/2024 14:20", "img": "data:image/png;base64,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", "barcode": "8935049500021", "cat": "Sữa và TP từ sữa"}, {"id": 6, "name": "Bánh Oreo 133g", "sku": "SP0006", "unit": "Gói", "stock": 5, "avg": 16000, "value": 80000, "status": "low", "updated": "12/12/2024 09:18", "img": "data:image/png;base64,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", "barcode": "8935049500022", "cat": "Bánh kẹo"}, {"id": 7, "name": "Mì Hảo Hảo 75g", "sku": "SP0007", "unit": "Gói", "stock": 48, "avg": 2500, "value": 120000, "status": "ok", "updated": "11/12/2024 10:55", "img": "data:image/png;base64,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", "barcode": "8935049500023", "cat": "Gia vị"}];
+let selected=products[0], invFilter='all', adjStep=1, stStep=1;
+const fmt=n=>new Intl.NumberFormat('vi-VN').format(Number(n)||0)+' đ';
+const qs=id=>document.getElementById(id);
+function show(id){qs(id).hidden=false} function hide(id){qs(id).hidden=true}
+function toast(t){const el=qs('toast');el.textContent=t;el.hidden=false;clearTimeout(window.__tt);window.__tt=setTimeout(()=>el.hidden=true,1600)}
+function statusLabel(p){return p.status==='out'?'Hết hàng':p.status==='negative'?'Tồn kho âm':p.status==='low'?'Tồn kho thấp':'Bình thường'}
+function renderRows(){
+ const q=qs('searchInput').value.toLowerCase().trim();
+ const rows=products.filter(p=>!q||[p.name,p.sku,p.barcode].join(' ').toLowerCase().includes(q)).filter(p=>invFilter==='all'||p.status===invFilter||(invFilter==='other'&&p.status==='ok')||(invFilter==='soon'&&p.stock>0&&p.stock<=8));
+ qs('inventoryRows').innerHTML=rows.map(p=>`<tr><td><span class="check"></span></td><td><div class="product-cell"><img class="thumb" src="${p.img}"><div><div class="pname"><button onclick="openDetail(${p.id})">${p.name}</button></div><div class="unit">${p.unit}</div></div></div></td><td class="sku">${p.sku}</td><td>${p.unit}</td><td class="stock ${p.stock===0?'zero':p.stock<0?'negative':p.stock<=8?'low':''}">${p.stock}</td><td class="price">${fmt(p.avg)}</td><td class="inv-value ${p.value<0?'negative':''}">${fmt(p.value)}</td><td><span class="status ${p.status}"><span class="dot"></span>${statusLabel(p)}</span></td><td class="date">${p.updated}</td><td><button class="more" onclick="openDetail(${p.id})">•••</button></td></tr>`).join('');
+ qs('resultCount').textContent=`Hiển thị 1 – ${rows.length} / 156 sản phẩm`;
+}
+function pick(id){selected=products.find(p=>p.id===id)||products[0]}
+function openDetail(id){
+ pick(id); qs('detailImg').src=selected.img; qs('detailName').textContent=selected.name; qs('detailSku').textContent=selected.sku; qs('detailUnit').textContent=selected.unit;
+ qs('detailStock').textContent=selected.stock+' '+selected.unit; qs('detailValue').textContent=fmt(selected.value); qs('detailAvg').textContent=fmt(selected.avg)+' / '+selected.unit;
+ qs('detailUpdated').textContent=selected.updated; qs('infoName').textContent=selected.name; qs('infoSku').textContent=selected.sku; qs('infoBarcode').textContent=selected.barcode; qs('infoUnit').textContent=selected.unit; qs('infoCat').textContent=selected.cat;
+ switchDetailTab('overview'); show('detailDrawer');
+}
+function switchDetailTab(tab){
+ document.querySelectorAll('[data-detail-tab]').forEach(b=>b.classList.toggle('active',b.dataset.detailTab===tab));
+ qs('detailOverview').hidden=tab!=='overview'; qs('detailHistoryTab').hidden=tab!=='history'; qs('detailAttentionTab').hidden=tab!=='attention';
+}
+function buildAdjustList(){
+ qs('adjustSelectList').innerHTML=products.slice(0,5).map(p=>`<div class="selection-row ${p.id===selected.id?'selected':''}"><span class="check-box ${p.id===selected.id?'on':''}">${p.id===selected.id?'✓':''}</span><div class="product-cell"><img class="thumb" src="${p.img}"><div><div class="pname">${p.name}</div><div class="unit">${p.sku}</div></div></div><div>${p.unit}</div><strong>${p.stock}</strong></div>`).join('');
+}
+function openAdjust(){
+ hide('detailDrawer'); adjStep=1; buildAdjustList(); qs('adjustImg').src=selected.img; qs('adjustName').textContent=selected.name; qs('adjustMeta').textContent=selected.sku+' ・ '+selected.unit; qs('adjustQty').value=0; renderAdj(); show('adjustModal')
+}
+function renderAdj(){
+ [1,2,3].forEach(i=>{qs('adjStep'+i).hidden=i!==adjStep; const nav=qs('adjNav'+i); nav.className='step '+(i===adjStep?'active':i<adjStep?'done':'')});
+ qs('adjPrev').style.visibility=adjStep===1?'hidden':'visible'; qs('adjNext').textContent=adjStep===3?'Xác nhận':'Tiếp theo →';
+ if(adjStep===3){const d=+qs('adjustQty').value||0;qs('adjConfirmName').textContent=selected.name;qs('adjCurrent').textContent=selected.stock;qs('adjDelta').textContent=(d>0?'+':'')+d;qs('adjAfter').textContent=selected.stock+d}
+}
+function buildCountRows(){
+ const counted=[24,2,35,0,10]; qs('countRows').innerHTML=products.slice(0,5).map((p,i)=>{const d=counted[i]-p.stock;return `<div class="count-row product-cell"><img class="thumb" src="${p.img}"><div><div class="pname">${p.name}</div><div class="unit">${p.sku}</div></div></div><div class="count-row">${p.stock}</div><div class="count-row"><input data-count="${p.id}" value="${counted[i]}"></div><div class="count-row ${d>=0?'diff-pos':'diff-neg'}">${d>0?'+':''}${d}</div>`}).join('');
+ qs('differenceRows').innerHTML=products.slice(1,6).map((p,i)=>{const vals=[2,35,0,10,50];const d=vals[i]-p.stock;return `<tr><td>${p.name}</td><td>${p.stock}</td><td>${vals[i]}</td><td class="${d>=0?'diff-pos':'diff-neg'}">${d>0?'+':''}${d}</td></tr>`}).join('');
+}
+function openStocktake(){
+ hide('detailDrawer'); stStep=1; buildCountRows(); renderStocktake(); show('stocktakeModal')
+}
+function renderStocktake(){
+ [1,2,3,4].forEach(i=>{qs('stStep'+i).hidden=i!==stStep;const n=qs('stNav'+i);n.className='step '+(i===stStep?'active':i<stStep?'done':'')});
+ qs('stPrev').style.visibility=stStep===1?'hidden':'visible'; qs('stNext').textContent=stStep===4?'Xác nhận':'Tiếp theo →';
+}
+function openHistory(){
+ hide('detailDrawer'); qs('historyImg').src=selected.img; qs('historyMeta').textContent=selected.name+' · '+selected.sku+' · '+selected.unit; show('historyModal')
+}
+qs('openFilter').onclick=()=>show('filterDrawer'); qs('openAdjust').onclick=openAdjust; qs('openAdjustGlobal').onclick=openAdjust; qs('openStocktake').onclick=openStocktake;
+qs('detailAdjust').onclick=openAdjust; qs('detailStocktake').onclick=openStocktake;
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{const p=b.closest('.drawer,.modal-backdrop'); if(p)p.hidden=true});
+document.querySelectorAll('[data-detail-tab]').forEach(b=>b.onclick=()=>switchDetailTab(b.dataset.detailTab));
+qs('applyFilter').onclick=()=>{hide('filterDrawer');toast('Đã áp dụng bộ lọc')}; qs('clearFilter').onclick=()=>toast('Đã xóa bộ lọc');
+qs('searchInput').oninput=renderRows; document.querySelectorAll('#chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');invFilter=c.dataset.filter;renderRows()});
+qs('adjNext').onclick=()=>{if(adjStep<3){adjStep++;renderAdj()}else{const d=+qs('adjustQty').value||0;selected.stock+=d;selected.value=selected.stock*selected.avg;selected.status=selected.stock<0?'negative':selected.stock===0?'out':selected.stock<=8?'low':'ok';hide('adjustModal');renderRows();toast('Đã điều chỉnh tồn kho trong prototype')}};
+qs('adjPrev').onclick=()=>{adjStep=Math.max(1,adjStep-1);renderAdj()};
+qs('stNext').onclick=()=>{if(stStep<4){stStep++;renderStocktake()}else{hide('stocktakeModal');toast('Đã xác nhận kiểm kho trong prototype')}}; qs('stPrev').onclick=()=>{stStep=Math.max(1,stStep-1);renderStocktake()};
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.drawer,.modal-backdrop').forEach(x=>x.hidden=true)})
+renderRows();
+</script>
+</body></html>
