@@ -398,6 +398,34 @@
   .app-mock-toggle .line-icon { width: 18px; height: 18px; }
   .app-mock-toggle:hover { background: #f8fdfa; }
   .app-mock-toggle[aria-pressed="true"] { border-style: solid; background: #0aa06a; color: #fff; }
+  .app-shell--compact:not(.app-shell--collapsed) { grid-template-columns: 158px minmax(0, 1fr); }
+  .app-shell--compact { --app-sidebar-width: 158px; --app-topbar-height: 44px; background: #f4f8fb; }
+  .app-shell--compact.app-shell--collapsed { --app-sidebar-width: 84px; }
+  .app-shell--compact .app-sidebar { gap: 8px; padding: 12px 0 14px; font-size: 13px; }
+  .app-shell--compact .app-brand { flex-wrap: wrap; gap: 2px 6px; padding: 0 8px 0 20px; }
+  .app-shell--compact .app-brand-icon { width: 23px; height: 23px; border-radius: 5px; }
+  .app-shell--compact .app-brand-icon .line-icon { width: 16px; height: 16px; }
+  .app-shell--compact .app-brand-name { font-size: 16px; }
+  .app-shell--compact .app-brand .app-store-name { display: block; width: 100%; max-height: 28px; overflow: hidden; color: #66758d; font-size: 10px; line-height: 1.25; }
+  .app-shell--compact .app-sidebar-body { padding-top: 6px; }
+  .app-shell--compact .app-nav-sales { gap: 2px; padding: 0 8px; }
+  .app-shell--compact .app-nav-sales .app-nav-link { height: 40px; gap: 11px; border-radius: 8px; padding: 0 12px; font-size: 13px; }
+  .app-shell--compact .app-nav-sales .app-nav-link .line-icon { width: 16px; height: 16px; }
+  .app-shell--compact .app-nav-sales .app-nav-link.is-active::before { left: -8px; border-radius: 0; }
+  .app-shell--compact .app-sidebar-collapse { padding: 12px 14px 0; font-size: 13px; }
+  .app-shell--compact .app-topbar { height: 44px; padding: 0 22px 0 18px; font-size: 13px; }
+  .app-shell--compact .app-topbar-actions { gap: 10px; }
+  .app-shell--compact .app-top-icon,
+  .app-shell--compact .app-topbar-date { display: none; }
+  .app-shell--compact .app-topbar-avatar { width: 28px; height: 28px; background: #17a974; font-size: 12px; }
+  .app-shell--compact .app-mock-toggle { height: 30px; font-size: 11px; }
+  .app-shell--compact .app-main { padding: 12px; }
+  /* Today reference: 64px topbar and 15px content gutters. */
+  .app-shell--today { --app-topbar-height: 64px; }
+  .app-shell--today .app-topbar { height: 64px; padding: 0 25px; }
+  .app-shell--today .app-main { padding: 15px 15px 25px; }
+  /* Settings draws its own full-bleed page background (the appearance preview can be dark). */
+  .app-shell--settings .app-main { padding: 0; }
   /* Sample-data mode reproduces the reference, which has no extra navigation group. */
   .app-shell--demo .app-nav-extra { display: none; }
   .app-topbar-date { font-weight: 700; }
@@ -481,6 +509,8 @@
 }
 
 @media (min-width: 901px) and (max-width: 1080px) {
+  .app-shell--compact .app-nav-sales .app-nav-link span { display: inline; }
+  .app-shell--compact .app-sidebar-collapse { display: flex; }
   .app-shell { grid-template-columns: 84px minmax(0, 1fr); }
   .app-sidebar { padding-inline: 10px; }
   .app-brand { justify-content: center; padding: 0; }
@@ -494,6 +524,9 @@
 
 @media (max-width: 900px) {
   .app-shell { display: block; }
+  .app-shell--compact,
+  .app-shell--compact.app-shell--collapsed,
+  .app-shell--today { --app-sidebar-width: 0px; --app-topbar-height: 0px; }
   .app-sidebar { display: none; }
   .app-topbar { display: none; }
 

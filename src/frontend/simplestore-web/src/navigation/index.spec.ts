@@ -9,7 +9,7 @@ describe('navigation presentation', () => {
   it('shows all supported Owner destinations, including CSV import and both Settings routes', () => {
     expect(visibleNavigation(['Owner']).map(item => item.to)).toEqual([
       '/today', '/sales/new', '/sales', '/products', '/products?view=inventory', '/import', '/purchases', '/suppliers',
-      '/customers/debts', '/suppliers/debts', '/reports/end-of-day',
+      '/customers/debts', '/suppliers/debts', '/reports/end-of-day', '/day-close',
       '/settings/operations', '/settings/users',
     ])
   })
@@ -53,8 +53,10 @@ describe('navigation presentation', () => {
     expect(activeIds('/settings/operations')).toEqual(['operational-settings'])
     expect(activeIds('/settings/users')).toEqual(['user-settings'])
     expect(activeIds('/suppliers')).toEqual(['suppliers'])
-    expect(activeIds('/suppliers/debts')).toEqual(['supplier-debts'])
+    expect(activeIds('/suppliers/debts')).toEqual(['customer-debts', 'supplier-debts'])
     expect(activeIds('/import')).toEqual(['product-import'])
+    expect(activeIds('/day-close')).toEqual(['day-close'])
+    expect(activeIds('/reports/end-of-day')).toEqual(['end-of-day'])
     expect(activeIds('/products-other')).toEqual([])
     expect(activeIds('/purchases-other')).toEqual([])
   })

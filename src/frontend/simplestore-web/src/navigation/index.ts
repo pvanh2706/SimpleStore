@@ -35,6 +35,7 @@ const definitions: readonly NavigationDefinition[] = [
   { id: 'customer-debts', label: 'Công nợ khách', to: '/customers/debts', group: 'operations', roles: bothRoles },
   { id: 'supplier-debts', label: 'Công nợ NCC', to: '/suppliers/debts', group: 'operations', roles: ownerOnly },
   { id: 'end-of-day', label: 'Cuối ngày', to: '/reports/end-of-day', group: 'reports', roles: ownerOnly },
+  { id: 'day-close', label: 'Đóng ngày', to: '/day-close', group: 'reports', roles: ownerOnly },
   { id: 'operational-settings', label: 'Thiết lập', to: '/settings/operations', group: 'settings', roles: ownerOnly },
   { id: 'user-settings', label: 'Nhân viên', to: '/settings/users', group: 'settings', roles: ownerOnly },
 ]
@@ -76,6 +77,9 @@ export function isNavigationActive(item: NavigationItem, path: string): boolean 
       return pathname === '/products' && isInventoryView(path)
     case 'purchases':
       return includesRoute(pathname, '/purchases')
+    case 'customer-debts':
+      // The unified Công nợ workspace switches to Supplier mode on its own route.
+      return pathname === '/customers/debts' || pathname === '/suppliers/debts'
     default:
       return pathname === item.to
   }

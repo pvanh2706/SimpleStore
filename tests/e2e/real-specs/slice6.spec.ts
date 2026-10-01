@@ -57,12 +57,9 @@ async function login(page: Page) {
   }
 }
 
+/** Today KPI cards and new-debt lines open their explanation drawer when clicked. */
 async function openMetricExplanation(page: Page, metricLabel: string) {
-  await page.getByText(metricLabel, { exact: true })
-    .first()
-    .locator('..')
-    .getByRole('button', { name: 'Vì sao?' })
-    .click()
+  await page.getByText(metricLabel, { exact: true }).first().click()
   await expect(page.getByText(/^Dữ liệu nguồn ·/)).toBeVisible()
 }
 
@@ -73,15 +70,15 @@ test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
     await login(page)
 
     await page.goto('/today')
-    await expect(page.getByRole('heading', { name: 'Hôm nay cửa hàng thế nào?' })).toBeVisible()
-    await expect(page.getByText('Doanh thu hôm nay', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Tổng quan hôm nay' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Doanh thu/ })).toBeVisible()
     await expect(page.locator('input[type="date"]')).toHaveCount(0)
     await expect(page.getByText(/Chưa đủ 7 ngày lịch sử/)).toBeVisible()
     await expect.poll(() => snapshot().todayOpened).toBe(1)
 
     runFixture('seed')
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'Hôm nay cửa hàng thế nào?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Tổng quan hôm nay' })).toBeVisible()
     const attention = page.getByRole('heading', { name: 'Cần chú ý' }).locator('..').locator('..')
     await attention.scrollIntoViewIfNeeded()
     await expect(page.getByTestId('attention-preview-item')).toHaveCount(3)
@@ -95,8 +92,7 @@ test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
     }
     await expect.poll(() => snapshot()).toMatchObject({ todayOpened: 2, signalShown: 3 })
 
-    await page.getByText('Doanh thu hôm nay', { exact: true }).locator('..').getByRole('button', { name: 'Vì sao?' }).click()
-    await expect(page.getByText(/^Dữ liệu nguồn ·/)).toBeVisible()
+    await openMetricExplanation(page, 'Doanh thu')
     await page.getByRole('button', { name: 'Đóng' }).click()
     await expect.poll(() => snapshot()).toMatchObject({ todayOpened: 2, signalShown: 3 })
 
@@ -147,7 +143,7 @@ test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
     const seeded = runFixture('seed-today-semantics') as TodaySemanticsSeedResult
 
     await page.goto('/today')
-    await expect(page.getByRole('heading', { name: 'Hôm nay cửa hàng thế nào?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Tổng quan hôm nay' })).toBeVisible()
 
     const customerDebtCard = page.getByText('Công nợ khách mới phát sinh', { exact: true })
       .first()
@@ -155,7 +151,7 @@ test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
     const supplierDebtCard = page.getByText('Công nợ nhà cung cấp mới phát sinh', { exact: true })
       .first()
       .locator('..')
-    const saleCountCard = page.getByText('Số đơn bán', { exact: true })
+    const saleCountCard = page.getByText('Số hóa đơn', { exact: true })
       .first()
       .locator('..')
     await expect(customerDebtCard).toContainText('700.000 ₫')
@@ -172,7 +168,7 @@ test.describe.serial('Slice 6B real C14 attention and measurement flow', () => {
     await expect(page.getByText(seeded.customerDebtPaymentId)).toHaveCount(0)
     await page.getByRole('button', { name: 'Đóng' }).click()
 
-    await openMetricExplanation(page, 'Số đơn bán')
+    await openMetricExplanation(page, 'Số hóa đơn')
     await expect(page.getByText('Dữ liệu nguồn · 3 mục')).toBeVisible()
     const partialReturnCount = page.locator('li').filter({ hasText: seeded.customerSaleId })
     const fullReturnCount = page.locator('li').filter({ hasText: seeded.fullReturnSaleId })

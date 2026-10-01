@@ -4,6 +4,13 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AppShell from './AppShell.vue'
 import { salesDemoEnabled } from '../../sales/demo'
+import { productDemoEnabled } from '../../products/demo'
+import { purchaseDemoEnabled } from '../../purchases/demo'
+import { inventoryDemoEnabled } from '../../inventory/demo'
+import { debtDemoEnabled } from '../../debts/demo'
+import { dayCloseDemoEnabled } from '../../dayclose/demo'
+import { todayDemoDate, todayDemoEnabled, todayLiveDate } from '../../today/demo'
+import { settingsDemoEnabled } from '../../settings/demo'
 
 const mounted: Array<{ unmount: () => void }> = []
 
@@ -17,6 +24,15 @@ beforeEach(() => {
 
 afterEach(() => {
   salesDemoEnabled.value = false
+  productDemoEnabled.value = false
+  purchaseDemoEnabled.value = false
+  inventoryDemoEnabled.value = false
+  debtDemoEnabled.value = false
+  dayCloseDemoEnabled.value = false
+  todayDemoEnabled.value = false
+  todayDemoDate.value = '2024-12-16'
+  todayLiveDate.value = ''
+  settingsDemoEnabled.value = false
   mounted.forEach(wrapper => wrapper.unmount())
   mounted.length = 0
   document.body.style.overflow = ''
@@ -65,8 +81,105 @@ describe('AppShell', () => {
     expect(wrapper.get('.app-topbar').text()).toContain('owner')
   })
 
-  it('shows the sample-data button only on the sales workspace', async () => {
+  it('toggles browser-only sample products on the product list', async () => {
     const { wrapper } = await mountShell('Owner', '/products')
+    const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+    expect(toggle.attributes('aria-pressed')).toBe('false')
+    await toggle.trigger('click')
+    expect(productDemoEnabled.value).toBe(true)
+    expect(toggle.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.app-topbar').text()).toContain('Cửa hàng Tạp Hóa Việt Anh')
+    await toggle.trigger('click')
+    expect(productDemoEnabled.value).toBe(false)
+  })
+
+  it('toggles browser-only sample purchases on the purchase list', async () => {
+    const { wrapper } = await mountShell('Owner', '/purchases')
+    const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+    expect(wrapper.get('.app-shell').classes()).toContain('app-shell--compact')
+    await toggle.trigger('click')
+    expect(purchaseDemoEnabled.value).toBe(true)
+    expect(productDemoEnabled.value).toBe(false)
+    expect(wrapper.get('.app-topbar').text()).toContain('Việt Anh')
+    await toggle.trigger('click')
+    expect(purchaseDemoEnabled.value).toBe(false)
+  })
+
+  it('toggles browser-only sample inventory without touching the product list sample', async () => {
+    const { wrapper } = await mountShell('Owner', '/products?view=inventory')
+    const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+    expect(wrapper.findAll('.app-topbar button.app-mock-toggle')).toHaveLength(1)
+    expect(wrapper.get('.app-shell').classes()).toContain('app-shell--compact')
+    await toggle.trigger('click')
+    expect(inventoryDemoEnabled.value).toBe(true)
+    expect(productDemoEnabled.value).toBe(false)
+    expect(wrapper.get('.app-topbar').text()).toContain('Cửa hàng Tạp Hóa Việt Anh')
+    await toggle.trigger('click')
+    expect(inventoryDemoEnabled.value).toBe(false)
+  })
+
+  it('toggles browser-only sample debts in both debt modes', async () => {
+    for (const path of ['/customers/debts', '/suppliers/debts']) {
+      const { wrapper } = await mountShell('Owner', path)
+      const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+      expect(wrapper.get('.app-shell').classes()).toContain('app-shell--compact')
+      expect(activeSidebarLink(wrapper)).toBe('/customers/debts')
+      await toggle.trigger('click')
+      expect(debtDemoEnabled.value).toBe(true)
+      expect(wrapper.get('.app-topbar').text()).toContain('Việt Anh')
+      await toggle.trigger('click')
+      expect(debtDemoEnabled.value).toBe(false)
+    }
+  })
+
+  it('toggles the browser-only day-close preview from the Đóng ngày menu', async () => {
+    const { wrapper } = await mountShell('Owner', '/day-close')
+    expect(activeSidebarLink(wrapper)).toBe('/day-close')
+    expect(wrapper.get('.app-sidebar-body a[href="/day-close"]').text()).toBe('Đóng ngày')
+    expect(wrapper.get('.app-shell').classes()).toContain('app-shell--compact')
+    const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+    await toggle.trigger('click')
+    expect(dayCloseDemoEnabled.value).toBe(true)
+    expect(wrapper.get('.app-topbar').text()).toContain('Cửa hàng Tạp Hóa Việt Anh')
+    await toggle.trigger('click')
+    expect(dayCloseDemoEnabled.value).toBe(false)
+  })
+
+  it('shows the Today date control and its browser-only preview toggle', async () => {
+    todayLiveDate.value = '2026-09-23'
+    const { wrapper } = await mountShell('Owner', '/today')
+    const control = () => wrapper.get('.app-topbar .today-date-control')
+    expect(wrapper.get('.app-shell').classes()).toContain('app-shell--today')
+    expect(wrapper.find('.app-topbar-date').exists()).toBe(false)
+    expect(control().text()).toBe('Hôm nay, 23/09/2026')
+    expect(control().get('[aria-label="Ngày sau"]').attributes('disabled')).toBeDefined()
+    expect(control().find('input[type="date"]').exists()).toBe(false)
+
+    await wrapper.get('.app-topbar button.app-mock-toggle').trigger('click')
+    expect(todayDemoEnabled.value).toBe(true)
+    expect(wrapper.get('.app-topbar').text()).toContain('Cửa hàng Tạp Hóa Việt Anh')
+    expect(control().text()).toBe('Hôm nay, 16/12/2024')
+    await control().get('[aria-label="Ngày sau"]').trigger('click')
+    expect(todayDemoDate.value).toBe('2024-12-17')
+    expect(control().text()).toBe('17/12/2024')
+    await control().get('[aria-label="Ngày trước"]').trigger('click')
+    expect(control().text()).toBe('Hôm nay, 16/12/2024')
+  })
+
+  it('toggles the browser-only Settings preview from the Cài đặt menu', async () => {
+    const { wrapper } = await mountShell('Owner', '/settings/operations?section=operations')
+    expect(activeSidebarLink(wrapper)).toBe('/settings/operations')
+    expect(wrapper.get('.app-shell').classes()).toContain('app-shell--settings')
+    const toggle = wrapper.get('.app-topbar button.app-mock-toggle')
+    await toggle.trigger('click')
+    expect(settingsDemoEnabled.value).toBe(true)
+    expect(wrapper.get('.app-topbar').text()).toContain('Cửa hàng Tạp Hóa Việt Anh')
+    await toggle.trigger('click')
+    expect(settingsDemoEnabled.value).toBe(false)
+  })
+
+  it('keeps the sample-data button off purchase detail pages', async () => {
+    const { wrapper } = await mountShell('Owner', '/purchases/purchase-1')
     expect(wrapper.find('.app-mock-toggle').exists()).toBe(false)
   })
   it('renders supported Owner links and actual Store/account identity', async () => {
@@ -74,7 +187,7 @@ describe('AppShell', () => {
 
     expect(sidebarLinks(wrapper)).toEqual([
       '/today', '/sales/new', '/purchases', '/products', '/products?view=inventory', '/customers/debts',
-      '/reports/end-of-day', '/settings/operations', '/sales', '/import',
+      '/reports/end-of-day', '/day-close', '/settings/operations', '/sales', '/import',
       '/suppliers', '/suppliers/debts', '/settings/users',
     ])
     expect(wrapper.find('.app-sidebar .app-store-name').text()).toBe('Tạp hóa Việt Anh')

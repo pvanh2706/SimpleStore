@@ -20,6 +20,7 @@ const primary: ReadonlyArray<{ id: string; label?: string; icon: IconName }> = [
   { id: 'inventory', icon: 'inventory' },
   { id: 'customer-debts', label: 'Công nợ', icon: 'customer' },
   { id: 'end-of-day', label: 'Báo cáo', icon: 'report' },
+  { id: 'day-close', icon: 'calendarCheck' },
   { id: 'operational-settings', label: 'Cài đặt', icon: 'settings' },
 ]
 const primaryItems = computed(() => primary.flatMap(entry => {
