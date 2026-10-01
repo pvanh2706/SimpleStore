@@ -35,4 +35,4 @@ The prototype deliberately retains visual elements that are outside the producti
 - displayed shortcuts such as `F12` where production behavior is not implemented and tested;
 - any other Sales capability excluded by D-105.
 
-These elements are visual guidance only. A production port must reuse only capabilities authorized by D-105 unless a later Product Owner decision explicitly expands scope. Current OperationId, exact retry/recovery, Customer debt, Cash/Transfer, pricing, stock, authorization and 80 mm receipt contracts remain unchanged.
+These elements are visual guidance only. A production port must reuse only capabilities authorized by D-105 unless a later Product Owner decision explicitly expands scope. [D-107](../../../../DECISIONS.md#d-107--sales-production-polish-scope-v01) confirms they may appear only in the browser-only Demo / Visual Reference mode, never in live production Sales; see [Sales Production Polish v0.1](../../../architecture/sales-production-polish-v0.1.md). Current OperationId, exact retry/recovery, Customer debt, Cash/Transfer, pricing, stock, authorization and 80 mm receipt contracts remain unchanged.

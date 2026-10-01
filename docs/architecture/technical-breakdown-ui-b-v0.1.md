@@ -4,6 +4,8 @@
 
 **Technical Breakdown:** `APPROVED FOR IMPLEMENTATION — D-105`. **UI-B implementation:** `NOT STARTED`.
 
+**Later status note (D-107, 2026-10-02):** UI-B has since been implemented against the D-106 visual reference; production capability cleanup/polish is scoped by [Sales Production Polish v0.1](sales-production-polish-v0.1.md) under [D-107](../../DECISIONS.md#d-107--sales-production-polish-scope-v01), with Pass 1 `APPROVED FOR IMPLEMENTATION / NOT STARTED`. This breakdown remains the authoritative UI-B capability boundary.
+
 Product Owner approved this breakdown on 2026-09-30 at reviewed HEAD `669cca8e2bd3f5e83a8cbcd1368d7455a2c58f9f`. This commit records documentation/governance only. UI-A remains `APPROVED / COMPLETED — D-104`; the UI Redesign Program remains `NOT COMPLETED`. Later UI-B implementation needs its own review and explicit Product Owner implementation approval.
 
 Authority: D-095 [Design System v0.1](../design/simple-store-design-system-v0.1.md) and [Sales screen v0.1](../design/screens/sales-screen-v0.1.md), D-103 [staged UI Redesign Program](../design/ui-redesign-program-v0.1.md), D-104 [UI-A implementation approval](../../DECISIONS.md#d-104--ui-a-design-foundation--application-shell-implementation-approval), and all earlier approved Sale/Return/Void/Payment/Debt/Inventory/Auth semantics. Written Product Owner-approved behavior and current backend contracts prevail over mockups. Images express visual intent and do not authorize unsupported capabilities. D-095–D-104 semantics and boundaries remain unchanged.
