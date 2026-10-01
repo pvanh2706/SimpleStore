@@ -4,7 +4,9 @@
 
 **Scope:** `APPROVED — D-107`, 2026-10-02, at repository baseline `a89d693c8b6441eab2d380e5c643f2f3de6a33e5`. **Sales Polish Pass 1:** `APPROVED FOR IMPLEMENTATION / NOT STARTED`. **Pass 2 and Pass 3:** planned, `NOT STARTED`.
 
-This document records documentation/governance only. It changes no Vue, backend, domain, database, API, auth, migration or test code, and it claims no implementation, validation or visual approval.
+**Current status (D-108, 2026-10-02):** Pass 1 `APPROVED / COMPLETED — D-108` at implementation head `1af1fc781ef4cebf3e861c9eb211343e726e68f7`; Pass 2 `APPROVED FOR IMPLEMENTATION / NOT STARTED`; Pass 3 `NOT STARTED`. The status line above records the D-107 approval-time state; see [Implementation status](#implementation-status).
+
+The D-107 scope approval is documentation/governance only. It changes no Vue, backend, domain, database, API, auth, migration or test code, and it claims no implementation, validation or visual approval; implementation approvals are recorded separately (Pass 1: D-108).
 
 Authority, in order:
 
@@ -105,11 +107,11 @@ The frontend thresholds `<= 2 → Rất ít hàng` and `<= 5 → Sắp hết hà
 
 ## Implementation sequence
 
-| Pass | Scope | Status |
-| --- | --- | --- |
-| **Pass 1** | B — Product browser, C — Cart, D — Customer, E — Payment. Make live mode production-supported only, keeping D-106 fidelity through Demo mode. | `APPROVED FOR IMPLEMENTATION / NOT STARTED` |
-| **Pass 2** | A — Shell/layout refinement; F — Complete/recovery/completion/receipt refinement, without changing semantics. | Planned, `NOT STARTED` |
-| **Pass 3** | G — Demo/live isolation hardening; regression cleanup; responsive/accessibility; visual-fidelity verification. | Planned, `NOT STARTED` |
+| Pass | Scope | Status at D-107 approval | Current status |
+| --- | --- | --- | --- |
+| **Pass 1** | B — Product browser, C — Cart, D — Customer, E — Payment. Make live mode production-supported only, keeping D-106 fidelity through Demo mode. | `APPROVED FOR IMPLEMENTATION / NOT STARTED` | `APPROVED / COMPLETED — D-108` |
+| **Pass 2** | A — Shell/layout refinement; F — Complete/recovery/completion/receipt refinement, without changing semantics. | Planned, `NOT STARTED` | `APPROVED FOR IMPLEMENTATION / NOT STARTED` |
+| **Pass 3** | G — Demo/live isolation hardening; regression cleanup; responsive/accessibility; visual-fidelity verification. | Planned, `NOT STARTED` | `NOT STARTED` |
 
 Each pass needs its own implementation review before Sales Production Polish is considered complete. UI-B is not final production-approved or completed until a later Product Owner approval.
 
@@ -130,10 +132,17 @@ Each pass is reviewed with evidence appropriate to its scope:
 
 D-107 does not authorize: backend, API, domain, database or migration changes; a Category master; Product image domain/storage; Held Sale backend; multiple production working orders; Sale note persistence; discount domain/calculation; a new Debt payment method; new stock thresholds; new C14 semantics; Return/Void redesign; or polish of unrelated screens. A genuine dependency on any of these stops that portion for a separate Product Owner decision.
 
-## Implementation note
+## Implementation status
 
-Pass 1 was implemented at `25de2b6c2866c8478f59da0aaae3e2f72d6ed952`. After Product Owner review, a hardening fix made full debt an explicit live action, `Ghi nợ toàn bộ`, outside the payment-method grid: opening `Nhập số tiền` without an amount is no longer a debt and cannot be completed, and a deliberate full debt sends `payments: []`. The fix also resets the RAM-only live working order when the authenticated session ends or changes user, and updated the real Slice 3/Slice 5 E2E. Pass 1 remains `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; the status lines at the top record the D-107 approval-time state.
+**Pass 1 — `APPROVED / COMPLETED — D-108`** (Product Owner, 2026-10-02).
+
+- **Implementation baseline:** `25de2b6c2866c8478f59da0aaae3e2f72d6ed952` — live Sales reduced to production-supported B–E capability; Demo / Visual Reference mode keeps D-106 fidelity.
+- **Hardening baseline (approved implementation head):** `1af1fc781ef4cebf3e861c9eb211343e726e68f7` — after Product Owner review: full debt is the explicit live action `Ghi nợ toàn bộ`, outside the payment-method grid, requiring a Customer and sending `payments: []`; payment intent (`full-payment`, `explicit-payments`, `full-debt`) is separated from the `Nhập số tiền` UI state, so opening `Nhập số tiền` without an amount is not a debt and cannot be completed; the RAM-only live working order survives same-session route changes and is reset when the authenticated session ends or the identity changes; real Slice 3 follows the UI-B search/checkout and real Slice 5 verifies full debt via `payments: []`. No `Debt` payment method is sent; debt remains `Outstanding = Total − Actual Payments`. Section F CompleteSale semantics are unchanged.
+- **Evidence:** GitHub Actions CI #87 `SUCCESS` at the hardening baseline (frontend production build and test suite; backend restore, build and tests). `tests/e2e/specs/ui-b-sales.spec.ts` covers Sales UI behavior against browser-level mocked APIs and is not real backend/database evidence. The updated real `tests/e2e/real-specs/slice3.spec.ts` and `slice5.spec.ts` were run locally with the existing temporary LocalDB real-E2E flow; CI does not run them, and no raw run log or artifact is committed.
+- **Moved to Pass 2 (non-blocking):** a lightweight live checkout `Lịch sử bán hàng` shortcut (history remains reachable from the sidebar `Đơn bán` and after Sale completion), and `Thêm khách` nowrap on desktop (visual-only wrapping).
+
+**Next: Pass 2 — `APPROVED FOR IMPLEMENTATION / NOT STARTED`.** A — Shell/layout refinement (spacing, typography, control sizing, alignment, responsive behavior, visual polish, `Thêm khách` nowrap, lightweight `Lịch sử bán hàng` shortcut) and F — Complete/recovery/completion/receipt refinement without changing transaction semantics (unresolved-state clarity, retry messaging, locked-state visual treatment, completion hierarchy, receipt presentation, print/reprint UX). Pass 2 needs its own implementation review and Product Owner approval. Pass 3 remains `NOT STARTED`. UI-B is not final production-approved or completed.
 
 ## Governance
 
-UI-A remains `APPROVED / COMPLETED — D-104`. D-105 remains the authoritative UI-B capability breakdown, and D-106 remains the Sales visual source of truth. The UI Redesign Program remains `NOT COMPLETED`. PR-A/PR-B/PR-C, `PR-BLOCKER-01..07`, `M7 — NOT ACHIEVED`, `Pilot — NOT STARTED`, `Production readiness — NOT DECLARED` and `C14 value / willingness-to-pay — NOT VALIDATED` are unchanged.
+UI-A remains `APPROVED / COMPLETED — D-104`. D-105 remains the authoritative UI-B capability breakdown, and D-106 remains the Sales visual source of truth. D-107 remains the Sales Production Polish scope authority and D-108 approves only Pass 1. The UI Redesign Program remains `NOT COMPLETED`. PR-A/PR-B/PR-C, `PR-BLOCKER-01..07`, `M7 — NOT ACHIEVED`, `Pilot — NOT STARTED`, `Production readiness — NOT DECLARED` and `C14 value / willingness-to-pay — NOT VALIDATED` are unchanged.
