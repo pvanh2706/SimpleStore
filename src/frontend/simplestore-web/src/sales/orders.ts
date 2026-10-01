@@ -5,6 +5,13 @@ export type PaymentMethod = 'Cash' | 'Transfer'
 /** "Debt" (`Bán nợ`) is Demo / Visual Reference only (D-107); live debt is Total − Actual Payments. */
 export type PayMode = PaymentMethod | 'Debt'
 export interface PaymentInput { amount: number; method: PaymentMethod }
+/**
+ * How a live order is paid when CompleteSale snapshots it; debt is always Total − Actual Payments (D-107).
+ * - full-payment: no amount entered, the selected Cash/Transfer method pays the whole total;
+ * - explicit-payments: only the amounts the cashier entered count, and entering none is not a debt;
+ * - full-debt: the cashier deliberately records no payment (`Ghi nợ toàn bộ`), so a Customer is required.
+ */
+export type PaymentIntent = 'full-payment' | 'explicit-payments' | 'full-debt'
 /** discountPercent is Demo-only preview data; live totals ignore it (D-107). */
 export interface CartLine { product: ProductListItem; quantity: number; discountPercent?: number }
 export interface SaleOrder {
@@ -13,6 +20,7 @@ export interface SaleOrder {
   customer: Customer | null
   payments: PaymentInput[]
   payMode: PayMode
+  paymentIntent: PaymentIntent
   /** Demo only: the sales API has no Sale note, so live Sales never shows or sends it (D-107). */
   note: string
 }
@@ -31,7 +39,7 @@ export function orderTotal(order: SaleOrder): number {
 }
 
 export function emptyOrder(number: number): SaleOrder {
-  return { number, cart: [], customer: null, payments: [], payMode: 'Cash', note: '' }
+  return { number, cart: [], customer: null, payments: [], payMode: 'Cash', paymentIntent: 'full-payment', note: '' }
 }
 
 export interface OrderBook {
@@ -88,5 +96,8 @@ export function createOrderBook(seed: SaleOrder[] = []): OrderBook {
   return { orders, active, activate, create, clearActive, completeActive, reset }
 }
 
-/** The one live working order, kept in memory across checkout remounts in this tab; never persisted. */
+/**
+ * The one live working order, kept in RAM across checkout remounts within one authenticated session.
+ * Never persisted; App resets it when the session ends or changes user (D-107).
+ */
 export const liveOrderBook = createOrderBook()

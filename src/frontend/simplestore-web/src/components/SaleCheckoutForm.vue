@@ -71,8 +71,9 @@ const shownProducts = computed(() => {
 let productRequestId = 0
 
 const amount = ref<number | null>(null)
-const splitOpen = ref(false)
-const splitShown = computed(() => splitOpen.value || payments.value.length > 0)
+/** Live payment intent lives on the order, so it survives a remount within the session (D-107). */
+const fullDebt = computed(() => !props.previewOnly && order.value.paymentIntent === 'full-debt')
+const splitShown = computed(() => order.value.paymentIntent === 'explicit-payments' || payments.value.length > 0)
 /** Live payment methods are Cash and Transfer only; `Bán nợ` stays a D-106 visual in Demo mode (D-107). */
 const payModes: ReadonlyArray<{ id: PayMode; label: string; icon: IconName }> = [
   { id: 'Cash', label: 'Tiền mặt', icon: 'cash' },
@@ -103,20 +104,24 @@ const discount = computed(() => props.previewOnly ? cart.value.reduce((sum, line
 const total = computed(() => subtotal.value - discount.value)
 const explicitPaid = computed(() => payments.value.reduce((sum, payment) => sum + payment.amount, 0))
 /**
- * Entered amounts win. Without entered amounts, Tiền mặt/Chuyển khoản pays the whole order. Once the
- * cashier opens "Nhập số tiền", only actually entered payments count, possibly none, so live debt is
- * Outstanding = Total − Actual Payments without any Debt method (D-107). Demo keeps `Bán nợ` as no payment.
+ * Actual payments for CompleteSale; live debt is Outstanding = Total − Actual Payments (D-107).
+ * Entered amounts win. `full-payment` pays the whole order with the selected Cash/Transfer method;
+ * `full-debt` deliberately pays nothing; `explicit-payments` with no amount yet is not submittable.
+ * Demo keeps its visual `Bán nợ` as no payment.
  */
 const effectivePayments = computed<PaymentInput[]>(() => {
   if (payments.value.length) return payments.value
   if (total.value <= 0) return []
   const mode = order.value.payMode
-  if (props.previewOnly ? mode === 'Debt' : splitOpen.value) return []
+  if (props.previewOnly ? mode === 'Debt' : order.value.paymentIntent !== 'full-payment') return []
   return [{ amount: total.value, method: mode === 'Transfer' ? 'Transfer' : 'Cash' }]
 })
 const paid = computed(() => effectivePayments.value.reduce((sum, payment) => sum + payment.amount, 0))
 const outstanding = computed(() => Math.max(0, total.value - paid.value))
-const customerRequired = computed(() => cart.value.length > 0 && outstanding.value > 0)
+/** "Nhập số tiền" opened with no amount yet: not a debt, and not submittable until resolved. */
+const paymentPending = computed(() => !props.previewOnly && order.value.paymentIntent === 'explicit-payments'
+  && payments.value.length === 0 && total.value > 0)
+const customerRequired = computed(() => cart.value.length > 0 && outstanding.value > 0 && !paymentPending.value)
 const locked = computed(() => ['completing', 'checking', 'retryable', 'completed'].includes(state.value))
 const busy = computed(() => locked.value || creatingCustomer.value)
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value)
@@ -197,6 +202,21 @@ function changeQuantity(line: { quantity: number }, delta: number) {
 function setPayMode(mode: PayMode) {
   if (locked.value) return
   order.value.payMode = mode
+  if (fullDebt.value) order.value.paymentIntent = 'full-payment'
+}
+
+function toggleAmountEntry() {
+  if (locked.value || payments.value.length) return
+  resetFeedback()
+  order.value.paymentIntent = splitShown.value ? 'full-payment' : 'explicit-payments'
+}
+
+/** A deliberate action, not a payment method; entered amounts must be removed first (D-107). */
+function toggleFullDebt() {
+  if (locked.value || payments.value.length || !cart.value.length) return
+  resetFeedback()
+  amount.value = null
+  order.value.paymentIntent = fullDebt.value ? 'full-payment' : 'full-debt'
 }
 
 function addPayment() {
@@ -212,6 +232,7 @@ function addPayment() {
     return
   }
   payments.value.push({ amount: value, method: order.value.payMode === 'Transfer' ? 'Transfer' : 'Cash' })
+  if (!props.previewOnly) order.value.paymentIntent = 'explicit-payments'
   amount.value = null
 }
 
@@ -245,6 +266,7 @@ async function findCustomers(page = 1) {
 
 function selectCustomer(item: Customer | null) {
   if (busy.value) return
+  resetFeedback()
   order.value.customer = item
   closeDetails(customerPicker.value)
 }
@@ -260,6 +282,7 @@ async function createAndSelectCustomer() {
       newCustomerPhone.value.trim() || null,
     )
     if (locked.value) return
+    resetFeedback()
     target.customer = created
     newCustomerName.value = ''
     newCustomerPhone.value = ''
@@ -298,7 +321,6 @@ function clearOrder() {
   if (busy.value) return
   book.clearActive()
   selectedProductId.value = null
-  splitOpen.value = false
   amount.value = null
   resetFeedback()
 }
@@ -341,6 +363,10 @@ async function complete() {
     }
     if (paid.value > total.value) {
       message.value = 'Tổng thanh toán không được vượt tổng đơn.'
+      return
+    }
+    if (paymentPending.value) {
+      message.value = 'Nhập số tiền đã thu hoặc chọn Ghi nợ toàn bộ.'
       return
     }
     if (outstanding.value > 0 && !customer.value) {
@@ -671,20 +697,34 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 
       <div class="sales-pos__pay-head">
         <h3 :id="`sales-payment-heading${idSuffix}`" class="sales-pos__pay-title">Hình thức thanh toán</h3>
-        <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :disabled="locked" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="splitOpen = !splitShown">{{ splitShown ? 'Thu đủ' : 'Nhập số tiền' }}</button>
+        <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :disabled="locked" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="toggleAmountEntry">{{ splitShown ? 'Thu đủ' : 'Nhập số tiền' }}</button>
       </div>
       <div class="sales-pos__payment-grid" :class="{ 'sales-pos__payment-grid--two': payModes.length === 2 }" role="group" :aria-labelledby="`sales-payment-heading${idSuffix}`">
         <button
           v-for="mode in payModes"
           :key="mode.id"
           class="sales-pos__pay-btn"
-          :class="{ 'is-active': order.payMode === mode.id }"
+          :class="{ 'is-active': order.payMode === mode.id && !fullDebt }"
           type="button"
-          :aria-pressed="order.payMode === mode.id"
+          :aria-pressed="order.payMode === mode.id && !fullDebt"
           :disabled="locked"
           @click="setPayMode(mode.id)"
         ><LineIcon :name="mode.icon" class="sales-pos__icon-sm" /> {{ mode.label }}</button>
       </div>
+      <template v-if="!previewOnly">
+        <button
+          class="sales-pos__full-debt-btn"
+          :class="{ 'is-active': fullDebt }"
+          type="button"
+          :aria-pressed="fullDebt"
+          :disabled="locked || payments.length > 0 || !cart.length"
+          :title="payments.length ? 'Xóa các khoản đã nhập để ghi nợ toàn bộ.' : undefined"
+          @click="toggleFullDebt"
+        ><LineIcon name="debt" class="sales-pos__icon-sm" /> Ghi nợ toàn bộ</button>
+        <p v-if="fullDebt && cart.length" class="sales-pos__full-debt-state" role="status">
+          <strong>Chưa thu tiền</strong><span>Còn nợ {{ money(outstanding) }} đ</span>
+        </p>
+      </template>
       <div v-show="splitShown" :id="`sales-split${idSuffix}`" class="sales-pos__split">
         <div class="sales-pos__split-row">
           <label :for="`sales-payment-amount${idSuffix}`" class="sales-pos__sr-only">Số tiền thanh toán</label>
@@ -709,8 +749,11 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
             <button type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
           </li>
         </ul>
-        <p class="sales-pos__split-summary" aria-live="polite">Khách trả <strong>{{ money(paid) }} đ</strong> · Còn nợ <strong>{{ money(outstanding) }} đ</strong></p>
-        <p class="sales-pos__hint">Chỉ các khoản đã nhập được ghi nhận là tiền thu; phần chưa thanh toán ghi công nợ cho khách hàng.</p>
+        <template v-if="payments.length">
+          <p class="sales-pos__split-summary" aria-live="polite">Khách trả <strong>{{ money(paid) }} đ</strong> · Còn nợ <strong>{{ money(outstanding) }} đ</strong></p>
+          <p class="sales-pos__hint">Chỉ các khoản đã nhập được ghi nhận là tiền thu; phần chưa thanh toán ghi công nợ cho khách hàng.</p>
+        </template>
+        <p v-else class="sales-pos__hint">Nhập số tiền khách đã trả. Không thu tiền? Chọn Ghi nợ toàn bộ.</p>
       </div>
 
       <p v-if="notice" class="sales-pos__notice" role="status">{{ notice }}</p>
@@ -1301,6 +1344,34 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 }
 .sales-pos__pay-btn.is-active { border-color: rgb(10 163 107 / 45%); background: #eff9f3; color: #0a915f; }
 .sales-pos__pay-btn:disabled { opacity: 0.6; }
+.sales-pos__full-debt-btn {
+  display: flex;
+  width: 100%;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: -6px 0 12px;
+  border: 1px dashed #e7c27a;
+  border-radius: 9px;
+  background: #fff;
+  color: #9d6b06;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+.sales-pos__full-debt-btn:hover:not(:disabled) { border-style: solid; background: #fffaf0; }
+.sales-pos__full-debt-btn.is-active { border: 1.5px solid #efb44a; background: #fff8ea; color: #7d5300; }
+.sales-pos__full-debt-btn:disabled { opacity: 0.5; }
+.sales-pos__full-debt-state {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -4px 0 12px;
+  color: #7d5300;
+  font-size: 13px;
+}
+.sales-pos__full-debt-state span { font-weight: 800; }
 .sales-pos__split { display: grid; gap: 8px; margin: -6px 0 14px; }
 .sales-pos__split-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .sales-pos__split-list { display: grid; gap: 4px; }

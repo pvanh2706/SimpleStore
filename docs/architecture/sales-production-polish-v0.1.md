@@ -130,6 +130,10 @@ Each pass is reviewed with evidence appropriate to its scope:
 
 D-107 does not authorize: backend, API, domain, database or migration changes; a Category master; Product image domain/storage; Held Sale backend; multiple production working orders; Sale note persistence; discount domain/calculation; a new Debt payment method; new stock thresholds; new C14 semantics; Return/Void redesign; or polish of unrelated screens. A genuine dependency on any of these stops that portion for a separate Product Owner decision.
 
+## Implementation note
+
+Pass 1 was implemented at `25de2b6c2866c8478f59da0aaae3e2f72d6ed952`. After Product Owner review, a hardening fix made full debt an explicit live action, `Ghi nợ toàn bộ`, outside the payment-method grid: opening `Nhập số tiền` without an amount is no longer a debt and cannot be completed, and a deliberate full debt sends `payments: []`. The fix also resets the RAM-only live working order when the authenticated session ends or changes user, and updated the real Slice 3/Slice 5 E2E. Pass 1 remains `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; the status lines at the top record the D-107 approval-time state.
+
 ## Governance
 
 UI-A remains `APPROVED / COMPLETED — D-104`. D-105 remains the authoritative UI-B capability breakdown, and D-106 remains the Sales visual source of truth. The UI Redesign Program remains `NOT COMPLETED`. PR-A/PR-B/PR-C, `PR-BLOCKER-01..07`, `M7 — NOT ACHIEVED`, `Pilot — NOT STARTED`, `Production readiness — NOT DECLARED` and `C14 value / willingness-to-pay — NOT VALIDATED` are unchanged.

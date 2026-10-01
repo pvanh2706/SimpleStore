@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import AppShell from './components/app/AppShell.vue'
 import AppButton from './components/ui/AppButton.vue'
 import AppSkeleton from './components/ui/AppSkeleton.vue'
 import { useAuthStore } from './stores/auth'
+import { liveOrderBook } from './sales/orders'
 
 const auth = useAuthStore()
 const router = useRouter()
 const showShell = computed(() => auth.initialized && auth.session.isAuthenticated
   && auth.session.hasStore && !auth.session.mustChangePassword)
+
+/**
+ * The live Sales working order lives in RAM for one authenticated session only (D-107). It survives
+ * route changes, and is cleared when the session ends (logout, expiry) or another user signs in.
+ * A failed logout keeps the session, so it keeps the order too.
+ */
+const sessionIdentity = computed(() => auth.session.isAuthenticated
+  ? `${auth.session.storeId ?? ''}|${auth.session.email ?? ''}` : null)
+watch(sessionIdentity, () => liveOrderBook.reset())
 
 async function logout() {
   await auth.logout()

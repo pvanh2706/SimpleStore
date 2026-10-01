@@ -229,13 +229,22 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   await expect(receipt).toHaveCount(0)
 })
 
-test('Cashier records a full outstanding sale with no actual payment for a selected Customer', async ({ page }) => {
+test('Cashier records a deliberate full-debt sale with Ghi nợ toàn bộ and sends no payment', async ({ page }) => {
   const { attempts } = await mockCashierCheckout(page)
   await page.setViewportSize({ width: 1536, height: 1024 })
   await page.goto('/sales/new')
   await page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` }).click()
+
+  // Opening "Nhập số tiền" alone is not a debt: completing asks for an amount or an explicit full debt.
   await page.getByRole('button', { name: 'Nhập số tiền' }).click()
-  await expect(page.locator('.sales-pos__split-summary')).toHaveText('Khách trả 0 đ · Còn nợ 7.000 đ')
+  await expect(page.getByRole('note')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
+  await expect(page.locator('.sales-pos__message')).toHaveText('Nhập số tiền đã thu hoặc chọn Ghi nợ toàn bộ.')
+
+  await page.getByRole('button', { name: 'Ghi nợ toàn bộ' }).click()
+  await expect(page.getByRole('button', { name: 'Ghi nợ toàn bộ' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.sales-pos__full-debt-state')).toContainText('Chưa thu tiền')
+  await expect(page.locator('.sales-pos__full-debt-state')).toContainText('Còn nợ 7.000 đ')
   await expect(page.getByRole('note')).toContainText('Chọn khách hàng để ghi nhận công nợ 7.000 đ.')
   await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
   await expect(page.locator('.sales-pos__message')).toHaveText('Chọn khách hàng khi đơn còn công nợ.')
@@ -245,6 +254,8 @@ test('Cashier records a full outstanding sale with no actual payment for a selec
   await page.getByRole('textbox', { name: 'Tìm khách hàng' }).fill('0909')
   await page.getByRole('button', { name: 'Tìm khách hàng' }).click()
   await page.getByRole('button', { name: `Chọn khách hàng ${customer.name}` }).click()
+  await expect(page.getByRole('note')).toContainText(`Ghi nhận công nợ 7.000 đ cho ${customer.name}.`)
+  await captureVisual(page, 'sales-desktop-full-debt-1536x1024.png')
   await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
   await expect(page.getByRole('heading', { name: 'Đơn bán đã hoàn tất' })).toBeVisible()
   expect(attempts).toHaveLength(1)
@@ -253,6 +264,51 @@ test('Cashier records a full outstanding sale with no actual payment for a selec
     lines: [{ productId: products[1].id, quantity: 1 }],
     payments: [],
   })
+})
+
+test('Live working order survives navigation in one session and is cleared by logout', async ({ page }) => {
+  await mockCashierCheckout(page)
+  let signedIn = true
+  const session = () => signedIn
+    ? { isAuthenticated: true, email: 'cashier@example.test', storeId: 'store-1', roles: ['Cashier'], hasStore: true, mustChangePassword: false, isEnabled: true }
+    : { isAuthenticated: false, email: null, storeId: null, roles: [], hasStore: false, mustChangePassword: false, isEnabled: false }
+  await page.route('**/api/auth/session', route => fulfillJson(route, session()))
+  await page.route('**/api/auth/logout', route => { signedIn = false; return route.fulfill({ status: 204, body: '' }) })
+  await page.route('**/api/auth/login', route => { signedIn = true; return fulfillJson(route, session()) })
+  await page.setViewportSize({ width: 1536, height: 1024 })
+  const navigation = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
+
+  await page.goto('/sales/new')
+  await page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` }).click()
+  await page.locator('.sales-pos__customer-picker summary').click()
+  await page.getByRole('textbox', { name: 'Tìm khách hàng' }).fill('0909')
+  await page.getByRole('button', { name: 'Tìm khách hàng' }).click()
+  await page.getByRole('button', { name: `Chọn khách hàng ${customer.name}` }).click()
+  await page.getByRole('button', { name: 'Nhập số tiền' }).click()
+  await page.getByRole('spinbutton', { name: 'Số tiền thanh toán' }).fill('5000')
+  await page.getByRole('button', { name: 'Thêm thanh toán' }).click()
+
+  await navigation.getByRole('link', { name: 'Sản phẩm' }).click()
+  await expect(page).toHaveURL(/\/products$/)
+  await navigation.getByRole('link', { name: 'Bán hàng' }).click()
+  await expect(page.getByRole('spinbutton', { name: `Số lượng ${products[1].name}` })).toHaveValue('1')
+  await expect(page.locator('.sales-pos__customer-picker summary')).toContainText(customer.name)
+  await expect(page.getByRole('list', { name: 'Các khoản đã nhập' })).toContainText('5.000 đ')
+
+  await page.locator('.app-topbar-profile summary').click()
+  await page.locator('.app-topbar-profile').getByRole('button', { name: 'Đăng xuất' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+  await page.locator('#email').fill('cashier@example.test')
+  await page.locator('#password').fill('secret')
+  await page.getByRole('button', { name: 'Đăng nhập' }).click()
+  await expect(page).toHaveURL(/\/products$/)
+  await navigation.getByRole('link', { name: 'Bán hàng' }).click()
+
+  await expect(page.getByText('Chưa có sản phẩm. Tìm hoặc quét sản phẩm ở bên trái để bắt đầu đơn bán.')).toBeVisible()
+  await expect(page.locator('.sales-pos__customer-picker summary')).toContainText('Khách lẻ')
+  await expect(page.getByRole('list', { name: 'Các khoản đã nhập' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Tiền mặt' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Nhập số tiền' })).toBeVisible()
 })
 
 test('Sales workspace remains usable without horizontal clipping on tablet and mobile', async ({ page }) => {

@@ -18,6 +18,8 @@ async function mockOwner(page: Page) {
     mainWarehouseName: 'Kho chính', timeZoneId: 'Asia/Ho_Chi_Minh',
   } }))
   await page.route('**/api/store/operational-settings', route => route.fulfill({ json: { allowNegativeStock: false } }))
+  // Mutations fetch a CSRF token first; mock it so the spec never depends on a running backend.
+  await page.route('**/api/security/antiforgery', route => route.fulfill({ json: { requestToken: 'test-token' } }))
 }
 
 test('settings show the reference Giao diện preview and keep the real Vận hành form', async ({ page }) => {

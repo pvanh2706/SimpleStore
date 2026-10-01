@@ -16,7 +16,6 @@ import { debtDemoEnabled } from '../../debts/demo'
 import { dayCloseDemoEnabled } from '../../dayclose/demo'
 import { todayDemoEnabled } from '../../today/demo'
 import { settingsDemoEnabled } from '../../settings/demo'
-import { liveOrderBook } from '../../sales/orders'
 
 const props = defineProps<{ email: string | null; roles: readonly string[] }>()
 const emit = defineEmits<{ logout: [] }>()
@@ -165,7 +164,7 @@ function logout() {
   dayCloseDemoEnabled.value = false
   todayDemoEnabled.value = false
   settingsDemoEnabled.value = false
-  liveOrderBook.reset()
+  // The live Sales working order is reset by App once the session actually ends.
   emit('logout')
 }
 </script>

@@ -234,7 +234,7 @@ describe('SaleCheckoutForm', () => {
     expect((wrapper.vm as unknown as { total: number }).total).toBe(12000)
   })
 
-  it('requires a customer only when actual payments leave an outstanding amount', async () => {
+  it('requires a customer for a deliberate full debt and explains why', async () => {
     const customer = { id: 'customer-1', name: 'An', phone: '0909', createdAt: '', updatedAt: '' }
     const searchCustomers = vi.fn().mockResolvedValue({ ...customerPage, items: [customer], totalCount: 1, totalPages: 1 })
     const wrapper = mountForm({ searchCustomers })
@@ -242,7 +242,11 @@ describe('SaleCheckoutForm', () => {
     expect(wrapper.find('.sales-pos__required-tag').exists()).toBe(false)
     expect(wrapper.find('[role="note"]').exists()).toBe(false)
 
-    await button(wrapper, 'Nhập số tiền').trigger('click')
+    await button(wrapper, 'Ghi nợ toàn bộ').trigger('click')
+    const vm = wrapper.vm as unknown as { paid: number; outstanding: number }
+    expect(vm.paid).toBe(0)
+    expect(vm.outstanding).toBe(12000)
+    expect(wrapper.get('.sales-pos__full-debt-state').text()).toBe('Chưa thu tiềnCòn nợ 12.000 đ')
     expect(wrapper.get('.sales-pos__required-tag').text()).toBe('Bắt buộc khi còn nợ')
     expect(wrapper.get('.sales-pos__select').classes()).toContain('is-required')
     expect(wrapper.get('[role="note"]').text()).toBe('Còn nợ 12.000 đ. Chọn khách hàng để ghi nhận công nợ 12.000 đ.')
@@ -255,11 +259,70 @@ describe('SaleCheckoutForm', () => {
     await wrapper.get('[aria-label="Chọn khách hàng An"]').trigger('click')
     expect(searchCustomers).toHaveBeenCalledWith('0909', 1)
     expect(wrapper.get('[role="note"]').text()).toBe('Còn nợ 12.000 đ. Ghi nhận công nợ 12.000 đ cho An.')
+    expect(wrapper.find('.sales-pos__message').exists()).toBe(false)
     expect(wrapper.get('.sales-pos__select').classes()).not.toContain('is-required')
 
     await button(wrapper, 'Chuyển về Khách lẻ').trigger('click')
     expect((wrapper.vm as unknown as { customer: unknown }).customer).toBeNull()
     expect(wrapper.get('.sales-pos__select-value').text()).toBe('Khách lẻ')
+  })
+
+  it('does not treat an open Nhập số tiền with no amount as a debt', async () => {
+    const completeSale = vi.fn()
+    const wrapper = mountForm({ completeSale })
+    await addProduct(wrapper)
+    await button(wrapper, 'Nhập số tiền').trigger('click')
+
+    expect(wrapper.find('[role="note"]').exists()).toBe(false)
+    expect(wrapper.find('.sales-pos__required-tag').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Nhập số tiền khách đã trả. Không thu tiền? Chọn Ghi nợ toàn bộ.')
+    await button(wrapper, 'Hoàn tất bán hàng').trigger('click')
+
+    expect(wrapper.get('.sales-pos__message').text()).toBe('Nhập số tiền đã thu hoặc chọn Ghi nợ toàn bộ.')
+    expect(completeSale).not.toHaveBeenCalled()
+    expect(crypto.randomUUID).not.toHaveBeenCalled()
+  })
+
+  it('keeps Ghi nợ toàn bộ outside the payment methods and switches back predictably', async () => {
+    const wrapper = mountForm()
+    await addProduct(wrapper)
+    const vm = wrapper.vm as unknown as { paid: number; outstanding: number }
+    const fullDebt = () => button(wrapper, 'Ghi nợ toàn bộ')
+    expect(wrapper.findAll('.sales-pos__payment-grid button').map(item => item.text())).toEqual(['Tiền mặt', 'Chuyển khoản'])
+    expect(wrapper.find('.sales-pos__payment-grid .sales-pos__full-debt-btn').exists()).toBe(false)
+
+    await fullDebt().trigger('click')
+    expect(fullDebt().attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[aria-pressed="true"].sales-pos__pay-btn').exists()).toBe(false)
+    expect(vm.outstanding).toBe(12000)
+
+    await button(wrapper, 'Chuyển khoản').trigger('click')
+    expect(fullDebt().attributes('aria-pressed')).toBe('false')
+    expect(wrapper.get('[aria-pressed="true"].sales-pos__pay-btn').text()).toBe('Chuyển khoản')
+    expect(vm.paid).toBe(12000)
+    expect(vm.outstanding).toBe(0)
+
+    await fullDebt().trigger('click')
+    await fullDebt().trigger('click')
+    expect(vm.outstanding).toBe(0)
+    await fullDebt().trigger('click')
+    await button(wrapper, 'Nhập số tiền').trigger('click')
+    expect(fullDebt().attributes('aria-pressed')).toBe('false')
+    expect(wrapper.find('.sales-pos__full-debt-state').exists()).toBe(false)
+  })
+
+  it('does not let Ghi nợ toàn bộ silently drop entered payments', async () => {
+    const wrapper = mountForm()
+    await addProduct(wrapper)
+    await button(wrapper, 'Nhập số tiền').trigger('click')
+    await wrapper.get('[aria-label="Số tiền thanh toán"]').setValue('5000')
+    await button(wrapper, 'Thêm thanh toán').trigger('click')
+
+    expect(button(wrapper, 'Ghi nợ toàn bộ').attributes('disabled')).toBeDefined()
+    await button(wrapper, 'Ghi nợ toàn bộ').trigger('click')
+    expect((wrapper.vm as unknown as { payments: unknown[] }).payments).toEqual([{ amount: 5000, method: 'Cash' }])
+    await wrapper.get('[aria-label="Xóa khoản thanh toán 1"]').trigger('click')
+    expect(button(wrapper, 'Ghi nợ toàn bộ').attributes('disabled')).toBeUndefined()
   })
 
   it('requests later customer pages without losing the search term', async () => {
@@ -282,14 +345,12 @@ describe('SaleCheckoutForm', () => {
     expect(wrapper.text()).not.toContain(first.name)
   })
 
-  it('creates and selects a customer for a full outstanding Sale with no actual payment', async () => {
+  it('creates and selects a customer for a full-debt Sale and sends no payment', async () => {
     const customer = { id: 'customer-new', name: 'Nguyễn Thị An', phone: '0909000000', createdAt: '', updatedAt: '' }
     const createCustomer = vi.fn().mockResolvedValue(customer)
     const completeSale = vi.fn().mockResolvedValue({ ...sale, customer, paidAmount: 0, outstandingAmount: 12000 })
     const wrapper = mountForm({ createCustomer, completeSale })
     await addProduct(wrapper)
-    await button(wrapper, 'Nhập số tiền').trigger('click')
-    expect((wrapper.vm as unknown as { outstanding: number }).outstanding).toBe(12000)
 
     await wrapper.get('.sales-pos__create-customer summary').trigger('click')
     expect((wrapper.get('.sales-pos__create-customer').element as HTMLDetailsElement).open).toBe(true)
@@ -299,6 +360,8 @@ describe('SaleCheckoutForm', () => {
     await flushPromises()
     expect(createCustomer).toHaveBeenCalledWith('Nguyễn Thị An', '0909000000')
     expect(wrapper.text()).toContain(customer.name)
+    await button(wrapper, 'Ghi nợ toàn bộ').trigger('click')
+    expect(wrapper.get('[role="note"]').text()).toBe('Còn nợ 12.000 đ. Ghi nhận công nợ 12.000 đ cho Nguyễn Thị An.')
 
     await wrapper.findAll('button').find(button => button.text() === 'Hoàn tất bán hàng')!.trigger('click')
     await flushPromises()
@@ -485,7 +548,7 @@ describe('SaleCheckoutForm', () => {
     const checkOperation = vi.fn().mockResolvedValue(null)
     const wrapper = mountForm({ searchCustomers, completeSale, checkOperation })
     await addProduct(wrapper)
-    await button(wrapper, 'Nhập số tiền').trigger('click')
+    await button(wrapper, 'Ghi nợ toàn bộ').trigger('click')
     await wrapper.get('[aria-label="Tìm khách hàng"]').setValue('0909')
     await wrapper.findAll('form').find(form => form.find('[aria-label="Tìm khách hàng"]').exists())!.trigger('submit')
     await flushPromises()
@@ -500,8 +563,11 @@ describe('SaleCheckoutForm', () => {
     expect(wrapper.get('[aria-label="Chọn khách hàng Nguyễn An"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[aria-label="Tên khách hàng mới"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[aria-label="Số điện thoại khách hàng mới"]').attributes('disabled')).toBeDefined()
-    // The payment-entry mode decides actual payments, so it stays locked with the attempt too.
-    expect(button(wrapper, 'Thu đủ').attributes('disabled')).toBeDefined()
+    // Payment intent decides actual payments, so every payment control stays locked with the attempt.
+    for (const name of ['Ghi nợ toàn bộ', 'Nhập số tiền', 'Tiền mặt', 'Chuyển khoản']) {
+      expect(button(wrapper, name).attributes('disabled')).toBeDefined()
+    }
+    expect((wrapper.vm as unknown as { attempt: { payments: unknown[] } }).attempt.payments).toEqual([])
     expect((wrapper.vm as unknown as { outstanding: number }).outstanding).toBe(12000)
   })
 
@@ -574,8 +640,7 @@ describe('SaleCheckoutForm', () => {
     const wrapper = mountForm()
     await addProduct(wrapper)
     await button(wrapper, 'Nhập số tiền').trigger('click')
-    expect(wrapper.get('[role="note"]').text()).toContain('Còn nợ 12.000 đ')
-    expect(wrapper.get('.sales-pos__split-summary').text()).toBe('Khách trả 0 đ · Còn nợ 12.000 đ')
+    expect(wrapper.find('[role="note"]').exists()).toBe(false)
     await wrapper.get('[aria-label="Số tiền thanh toán"]').setValue('5000')
     await button(wrapper, 'Thêm thanh toán').trigger('click')
 
@@ -586,12 +651,61 @@ describe('SaleCheckoutForm', () => {
     expect(wrapper.get('.sales-pos__split-summary').text()).toBe('Khách trả 5.000 đ · Còn nợ 7.000 đ')
   })
 
+  it('pays the whole order with Tiền mặt by default', async () => {
+    const completeSale = vi.fn().mockResolvedValue(sale)
+    const wrapper = mountForm({ completeSale })
+    await addProduct(wrapper)
+    expect(wrapper.get('[aria-pressed="true"].sales-pos__pay-btn').text()).toBe('Tiền mặt')
+    await button(wrapper, 'Hoàn tất bán hàng').trigger('click')
+    await flushPromises()
+    expect(completeSale).toHaveBeenCalledWith(expect.objectContaining({
+      customerId: null, payments: [{ amount: 12000, method: 'Cash' }],
+    }))
+  })
+
+  it('keeps the live working order across a remount and starts empty after a session reset', async () => {
+    const customer = { id: 'customer-1', name: 'An', phone: '0909', createdAt: '', updatedAt: '' }
+    const searchCustomers = vi.fn().mockResolvedValue({ ...customerPage, items: [customer], totalCount: 1, totalPages: 1 })
+    const orderBook = createOrderBook()
+    const first = mountForm({ orderBook, searchCustomers })
+    await addProduct(first)
+    await first.get('[aria-label="Tìm khách hàng"]').setValue('An')
+    await first.findAll('form')[1].trigger('submit')
+    await flushPromises()
+    await first.get('[aria-label="Chọn khách hàng An"]').trigger('click')
+    await button(first, 'Nhập số tiền').trigger('click')
+    await first.get('[aria-label="Số tiền thanh toán"]').setValue('5000')
+    await button(first, 'Thêm thanh toán').trigger('click')
+    first.unmount()
+
+    const returned = mountForm({ orderBook })
+    await flushPromises()
+    const kept = returned.vm as unknown as { cart: unknown[]; payments: unknown[]; outstanding: number }
+    expect(kept.cart).toHaveLength(1)
+    expect(kept.payments).toEqual([{ amount: 5000, method: 'Cash' }])
+    expect(kept.outstanding).toBe(7000)
+    expect(returned.get('.sales-pos__select-value').text()).toBe('An')
+    returned.unmount()
+
+    orderBook.reset()
+    const fresh = mountForm({ orderBook })
+    await flushPromises()
+    const reset = fresh.vm as unknown as { cart: unknown[]; payments: unknown[]; customer: unknown }
+    expect(reset.cart).toEqual([])
+    expect(reset.payments).toEqual([])
+    expect(reset.customer).toBeNull()
+    expect(fresh.get('.sales-pos__select-value').text()).toBe('Khách lẻ')
+    expect(fresh.get('[aria-pressed="true"].sales-pos__pay-btn').text()).toBe('Tiền mặt')
+    expect(button(fresh, 'Nhập số tiền').exists()).toBe(true)
+    expect(orderBook.active.value.paymentIntent).toBe('full-payment')
+  })
+
   it('returns to paying the whole order when Nhập số tiền is closed without amounts', async () => {
     const wrapper = mountForm()
     await addProduct(wrapper)
     const vm = wrapper.vm as unknown as { paid: number; outstanding: number }
     await button(wrapper, 'Nhập số tiền').trigger('click')
-    expect(vm.outstanding).toBe(12000)
+    expect(wrapper.find('[role="note"]').exists()).toBe(false)
     await button(wrapper, 'Thu đủ').trigger('click')
     expect(vm.paid).toBe(12000)
     expect(vm.outstanding).toBe(0)
