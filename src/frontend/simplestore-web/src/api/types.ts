@@ -43,6 +43,7 @@ export interface ProductListItem {
   salePrice: number
   isActive: boolean
   quantityOnHand: number
+  updatedAt?: string
 }
 
 export interface ProductPage {

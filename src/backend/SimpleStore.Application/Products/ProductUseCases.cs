@@ -220,7 +220,8 @@ public sealed class GetProductsUseCase(
                 item.Product.Unit,
                 item.Product.SalePrice,
                 item.Product.IsActive,
-                item.QuantityOnHand))
+                item.QuantityOnHand,
+                item.Product.UpdatedAt))
             .ToArray();
         var totalPages = result.TotalCount == 0
             ? 0

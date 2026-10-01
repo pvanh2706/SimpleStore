@@ -195,6 +195,7 @@ public sealed class Slice1IntegrationTests(CustomWebApplicationFactory factory)
 
             Assert.NotNull(searchResult);
             Assert.Single(searchResult.Items);
+            Assert.NotEqual(default, searchResult.Items[0].UpdatedAt);
             Assert.Equal(2, searchResult.TotalCount);
             Assert.Equal(2, searchResult.TotalPages);
         }

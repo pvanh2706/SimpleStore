@@ -44,7 +44,8 @@ public sealed record ProductListItemResult(
     string Unit,
     decimal SalePrice,
     bool IsActive,
-    decimal QuantityOnHand);
+    decimal QuantityOnHand,
+    DateTimeOffset UpdatedAt);
 
 public sealed record InventoryBalanceResult(
     Guid ProductId,
