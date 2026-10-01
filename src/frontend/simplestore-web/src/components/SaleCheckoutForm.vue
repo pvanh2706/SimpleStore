@@ -5,8 +5,8 @@ import { ApiError } from '../api/client'
 import type { Customer, CustomerPage, OperationStatus, ProductListItem, ProductPage, Sale } from '../api/types'
 import LineIcon from './ui/LineIcon'
 import type { IconName } from './ui/icons'
-import { productCategories, productCategory, stockStatus, type ProductCategory } from '../sales/catalog'
-import { createDemoOrderBook, demoImageById, demoProducts } from '../sales/demo'
+import { factualStockState, productCategories, productCategory, stockStatus, type ProductCategory } from '../sales/catalog'
+import { createDemoOrderBook, demoImageById } from '../sales/demo'
 import {
   createOrderBook, lineAmount, lineDiscount, orderTotal,
   type OrderBook, type PaymentInput, type PayMode,
@@ -62,19 +62,22 @@ const productLoading = ref(false)
 const productError = ref('')
 const category = ref<ProductCategory>('Tất cả')
 const selectedProductId = ref<string | null>(props.previewOnly ? 'demo-coke' : null)
+/** Keyword Category is Demo / Visual Reference only (D-107); live shows every loaded Product. */
 const shownProducts = computed(() => {
   const items = products.value?.items ?? []
-  return category.value === 'Tất cả' ? items : items.filter(item => productCategory(item) === category.value)
+  if (!props.previewOnly || category.value === 'Tất cả') return items
+  return items.filter(item => productCategory(item) === category.value)
 })
 let productRequestId = 0
 
 const amount = ref<number | null>(null)
 const splitOpen = ref(false)
 const splitShown = computed(() => splitOpen.value || payments.value.length > 0)
+/** Live payment methods are Cash and Transfer only; `Bán nợ` stays a D-106 visual in Demo mode (D-107). */
 const payModes: ReadonlyArray<{ id: PayMode; label: string; icon: IconName }> = [
   { id: 'Cash', label: 'Tiền mặt', icon: 'cash' },
   { id: 'Transfer', label: 'Chuyển khoản', icon: 'bank' },
-  { id: 'Debt', label: 'Bán nợ', icon: 'debt' },
+  ...(props.previewOnly ? [{ id: 'Debt' as const, label: 'Bán nợ', icon: 'debt' as const }] : []),
 ]
 
 const customerSearch = ref('')
@@ -95,27 +98,34 @@ const notice = ref('')
 
 const itemCount = computed(() => cart.value.reduce((sum, line) => sum + (Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 0), 0))
 const subtotal = computed(() => cart.value.reduce((sum, line) => sum + lineAmount(line), 0))
-const discount = computed(() => cart.value.reduce((sum, line) => sum + lineDiscount(line), 0))
+/** Discounts are a browser-only Demo visual; live totals never include them (D-107). */
+const discount = computed(() => props.previewOnly ? cart.value.reduce((sum, line) => sum + lineDiscount(line), 0) : 0)
 const total = computed(() => subtotal.value - discount.value)
 const explicitPaid = computed(() => payments.value.reduce((sum, payment) => sum + payment.amount, 0))
-/** Entered amounts win; otherwise Tiền mặt/Chuyển khoản pays the whole order and Bán nợ pays nothing. */
+/**
+ * Entered amounts win. Without entered amounts, Tiền mặt/Chuyển khoản pays the whole order. Once the
+ * cashier opens "Nhập số tiền", only actually entered payments count, possibly none, so live debt is
+ * Outstanding = Total − Actual Payments without any Debt method (D-107). Demo keeps `Bán nợ` as no payment.
+ */
 const effectivePayments = computed<PaymentInput[]>(() => {
   if (payments.value.length) return payments.value
-  if (order.value.payMode === 'Debt' || total.value <= 0) return []
-  return [{ amount: total.value, method: order.value.payMode }]
+  if (total.value <= 0) return []
+  const mode = order.value.payMode
+  if (props.previewOnly ? mode === 'Debt' : splitOpen.value) return []
+  return [{ amount: total.value, method: mode === 'Transfer' ? 'Transfer' : 'Cash' }]
 })
 const paid = computed(() => effectivePayments.value.reduce((sum, payment) => sum + payment.amount, 0))
 const outstanding = computed(() => Math.max(0, total.value - paid.value))
+const customerRequired = computed(() => cart.value.length > 0 && outstanding.value > 0)
 const locked = computed(() => ['completing', 'checking', 'retryable', 'completed'].includes(state.value))
 const busy = computed(() => locked.value || creatingCustomer.value)
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value)
 const unitLabel = (unit: string) => unit.charAt(0).toLocaleUpperCase('vi-VN') + unit.slice(1)
 const methodLabel = (method: PaymentInput['method']) => method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản'
 
+/** Sample images belong to Demo Products only; live Products always use the neutral placeholder (D-107). */
 function productImage(product: ProductListItem): string | null {
-  if (demoImageById[product.id]) return demoImageById[product.id]!
-  const match = demoProducts.find(sample => sample.sku === product.sku && sample.name === product.name)
-  return match ? demoImageById[match.id] ?? null : null
+  return props.previewOnly ? demoImageById[product.id] ?? null : null
 }
 
 function closeDetails(element: HTMLDetailsElement | null) {
@@ -288,6 +298,8 @@ function clearOrder() {
   if (busy.value) return
   book.clearActive()
   selectedProductId.value = null
+  splitOpen.value = false
+  amount.value = null
   resetFeedback()
 }
 
@@ -410,7 +422,8 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
     <section class="sales-pos__products" :aria-labelledby="`sales-products-heading${idSuffix}`">
       <h2 :id="`sales-products-heading${idSuffix}`" class="sales-pos__sr-only">Chọn sản phẩm</h2>
 
-      <div class="sales-pos__order-rail" role="group" aria-label="Các đơn đang bán">
+      <!-- Multiple/held working orders are a D-106 visual; live Sales has one active order (D-107). -->
+      <div v-if="previewOnly" class="sales-pos__order-rail" role="group" aria-label="Các đơn đang bán">
         <button
           v-for="(item, index) in railOrders"
           :key="item.number"
@@ -479,7 +492,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         <button class="sales-pos__tool-btn sales-pos__tool-btn--scan" type="button" :disabled="locked" @click="focusSearch"><LineIcon name="scan" class="sales-pos__icon-sm" />Quét mã</button>
       </form>
 
-      <div class="sales-pos__categories" role="group" aria-label="Nhóm sản phẩm">
+      <div v-if="previewOnly" class="sales-pos__categories" role="group" aria-label="Nhóm sản phẩm">
         <button
           v-for="item in productCategories"
           :key="item"
@@ -508,11 +521,15 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
             <p class="sales-pos__product-price">{{ money(product.salePrice) }} đ</p>
             <div class="sales-pos__product-footer">
               <span
-                v-if="stockStatus(product.quantityOnHand)"
+                v-if="previewOnly && stockStatus(product.quantityOnHand)"
                 class="sales-pos__stock-tag"
                 :class="`is-${stockStatus(product.quantityOnHand)!.tone}`"
                 :title="`Tồn ${money(product.quantityOnHand)} ${product.unit}`"
               >{{ stockStatus(product.quantityOnHand)!.label }}</span>
+              <span
+                v-else-if="!previewOnly && factualStockState(product.quantityOnHand) !== 'available'"
+                class="sales-pos__stock-tag is-danger"
+              >{{ factualStockState(product.quantityOnHand) === 'out' ? 'Hết hàng' : 'Tồn âm' }} · {{ money(product.quantityOnHand) }} {{ product.unit }}</span>
               <span v-else class="sales-pos__product-stock">Còn {{ money(product.quantityOnHand) }} {{ product.unit }}</span>
               <button class="sales-pos__add-btn" type="button" :disabled="locked" :aria-label="'Thêm sản phẩm ' + product.name" @click="addProduct(product)">+</button>
             </div>
@@ -533,15 +550,18 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           <span class="sales-pos__status-chip">Đang bán</span>
         </div>
         <div class="sales-pos__checkout-tools">
-          <div class="sales-pos__muted-row"><LineIcon name="kebab" class="sales-pos__icon-sm" /></div>
+          <div v-if="previewOnly" class="sales-pos__muted-row"><LineIcon name="kebab" class="sales-pos__icon-sm" /></div>
           <button class="sales-pos__danger-link" type="button" :disabled="busy || !cart.length" @click="clearOrder"><LineIcon name="trash" class="sales-pos__icon-sm" /> Xóa đơn</button>
         </div>
       </div>
 
-      <span class="sales-pos__field-label">Khách hàng</span>
+      <div class="sales-pos__customer-head">
+        <span class="sales-pos__field-label">Khách hàng</span>
+        <span v-if="customerRequired" class="sales-pos__required-tag">Bắt buộc khi còn nợ</span>
+      </div>
       <div class="sales-pos__field-row">
         <details ref="customerPicker" class="sales-pos__customer-picker">
-          <summary class="sales-pos__select" :aria-label="`Khách hàng: ${customer?.name ?? 'Khách lẻ'}`">
+          <summary class="sales-pos__select" :class="{ 'is-required': customerRequired && !customer }" :aria-label="`Khách hàng: ${customer?.name ?? 'Khách lẻ'}`">
             <span class="sales-pos__select-value">{{ customer?.name ?? 'Khách lẻ' }}</span>
             <LineIcon name="chevron" class="sales-pos__icon-sm" />
           </summary>
@@ -587,8 +607,16 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         </details>
       </div>
 
-      <label class="sales-pos__field-label" :for="`sales-order-note${idSuffix}`">Ghi chú đơn hàng <span class="sales-pos__optional">(tùy chọn)</span></label>
-      <input :id="`sales-order-note${idSuffix}`" v-model="order.note" class="sales-pos__note" type="text" autocomplete="off" placeholder="Thêm ghi chú..." :disabled="locked" />
+      <!-- Outstanding makes the Customer a business requirement; a fully paid Sale keeps Khách lẻ (D-107). -->
+      <p v-if="customerRequired" class="sales-pos__debt-note" :class="{ 'is-missing': !customer }" role="note">
+        <strong>Còn nợ {{ money(outstanding) }} đ.</strong>
+        {{ customer ? `Ghi nhận công nợ ${money(outstanding)} đ cho ${customer.name}.` : `Chọn khách hàng để ghi nhận công nợ ${money(outstanding)} đ.` }}
+      </p>
+
+      <template v-if="previewOnly">
+        <label class="sales-pos__field-label" :for="`sales-order-note${idSuffix}`">Ghi chú đơn hàng <span class="sales-pos__optional">(tùy chọn)</span></label>
+        <input :id="`sales-order-note${idSuffix}`" v-model="order.note" class="sales-pos__note" type="text" autocomplete="off" placeholder="Thêm ghi chú..." :disabled="locked" />
+      </template>
 
       <div class="sales-pos__order-items" aria-label="Sản phẩm trong giỏ">
         <p v-if="cart.length === 0" class="sales-pos__cart-empty">Chưa có sản phẩm. Tìm hoặc quét sản phẩm ở bên trái để bắt đầu đơn bán.</p>
@@ -619,24 +647,21 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
               <div class="sales-pos__line-amount">{{ money(lineAmount(line)) }} đ</div>
             </div>
           </div>
-          <div v-if="line.discountPercent" class="sales-pos__line-discount">
+          <div v-if="previewOnly && line.discountPercent" class="sales-pos__line-discount">
             <span>🏷 Giảm giá</span>
             <span>{{ line.discountPercent }}% &nbsp; -{{ money(lineDiscount(line)) }} đ ›</span>
           </div>
         </template>
       </div>
 
-      <button class="sales-pos__hint-card" type="button" :disabled="locked" @click="invoiceDiscount"><LineIcon name="plus" class="sales-pos__icon-sm" /> Thêm giảm giá hóa đơn</button>
-
-      <p v-if="cart.length && outstanding > 0" class="sales-pos__debt-note" role="note">
-        Còn nợ <strong>{{ money(outstanding) }} đ</strong>.
-        {{ customer ? `Ghi công nợ cho ${customer.name}.` : 'Chọn khách hàng để ghi công nợ.' }}
-      </p>
+      <button v-if="previewOnly" class="sales-pos__hint-card" type="button" :disabled="locked" @click="invoiceDiscount"><LineIcon name="plus" class="sales-pos__icon-sm" /> Thêm giảm giá hóa đơn</button>
 
       <div class="sales-pos__totals">
         <div class="sales-pos__totals-row"><span>Tạm tính ({{ money(itemCount) }} sản phẩm)</span><strong>{{ money(subtotal) }} đ</strong></div>
-        <div class="sales-pos__totals-row"><span>Giảm giá sản phẩm</span><strong>{{ discount ? '-' : '' }}{{ money(discount) }} đ</strong></div>
-        <div class="sales-pos__totals-row"><span>Giảm giá hóa đơn</span><strong>0 đ ›</strong></div>
+        <template v-if="previewOnly">
+          <div class="sales-pos__totals-row"><span>Giảm giá sản phẩm</span><strong>{{ discount ? '-' : '' }}{{ money(discount) }} đ</strong></div>
+          <div class="sales-pos__totals-row"><span>Giảm giá hóa đơn</span><strong>0 đ ›</strong></div>
+        </template>
       </div>
 
       <div class="sales-pos__grand-total">
@@ -646,9 +671,9 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 
       <div class="sales-pos__pay-head">
         <h3 :id="`sales-payment-heading${idSuffix}`" class="sales-pos__pay-title">Hình thức thanh toán</h3>
-        <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="splitOpen = !splitShown">{{ splitShown ? 'Ẩn số tiền' : 'Nhập số tiền' }}</button>
+        <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :disabled="locked" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="splitOpen = !splitShown">{{ splitShown ? 'Thu đủ' : 'Nhập số tiền' }}</button>
       </div>
-      <div class="sales-pos__payment-grid" role="group" :aria-labelledby="`sales-payment-heading${idSuffix}`">
+      <div class="sales-pos__payment-grid" :class="{ 'sales-pos__payment-grid--two': payModes.length === 2 }" role="group" :aria-labelledby="`sales-payment-heading${idSuffix}`">
         <button
           v-for="mode in payModes"
           :key="mode.id"
@@ -684,14 +709,15 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
             <button type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
           </li>
         </ul>
-        <p class="sales-pos__hint">Phần chưa thanh toán sẽ ghi công nợ cho khách hàng.</p>
+        <p class="sales-pos__split-summary" aria-live="polite">Khách trả <strong>{{ money(paid) }} đ</strong> · Còn nợ <strong>{{ money(outstanding) }} đ</strong></p>
+        <p class="sales-pos__hint">Chỉ các khoản đã nhập được ghi nhận là tiền thu; phần chưa thanh toán ghi công nợ cho khách hàng.</p>
       </div>
 
       <p v-if="notice" class="sales-pos__notice" role="status">{{ notice }}</p>
       <p v-if="message" class="sales-pos__message" role="alert">{{ message }}</p>
 
-      <div class="sales-pos__actions">
-        <button class="sales-pos__secondary-btn" type="button" :disabled="busy || !cart.length" @click="holdOrder"><LineIcon name="clock" class="sales-pos__icon-sm" /> Giữ đơn</button>
+      <div class="sales-pos__actions" :class="{ 'sales-pos__actions--single': !previewOnly }">
+        <button v-if="previewOnly" class="sales-pos__secondary-btn" type="button" :disabled="busy || !cart.length" @click="holdOrder"><LineIcon name="clock" class="sales-pos__icon-sm" /> Giữ đơn</button>
         <button
           class="sales-pos__primary-btn sales-pos__complete"
           type="button"
@@ -1050,6 +1076,8 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__danger-link { display: inline-flex; align-items: center; gap: 8px; color: #ed4343; font-weight: 800; }
 .sales-pos__danger-link:disabled { opacity: 0.55; }
 .sales-pos__field-label { display: block; margin-bottom: 7px; font-size: 13.5px; font-weight: 760; }
+.sales-pos__customer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sales-pos__required-tag { border-radius: 999px; background: #fff3dc; padding: 2px 8px; color: #9d6b06; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
 .sales-pos__optional { color: var(--pos-subtle); font-weight: 500; }
 .sales-pos__field-row { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; margin-bottom: 12px; }
 .sales-pos__customer-picker,
@@ -1068,6 +1096,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   color: #25354d;
 }
 .sales-pos__select { gap: 8px; }
+.sales-pos__select.is-required { border-color: #efb44a; background: #fffaf0; box-shadow: 0 0 0 3px rgb(239 180 74 / 16%); }
 .sales-pos__select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sales-pos__add-customer-btn {
   justify-content: center;
@@ -1233,6 +1262,8 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   font-size: 13px;
   line-height: 1.45;
 }
+.sales-pos__debt-note strong { color: #7d5300; }
+.sales-pos__debt-note.is-missing { border-color: #efb44a; }
 .sales-pos__totals { border-top: 1px solid #ecf0f4; padding-top: 12px; }
 .sales-pos__totals-row {
   display: flex;
@@ -1252,6 +1283,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__split-toggle { color: #118458; font-size: 12.5px; font-weight: 700; }
 .sales-pos__split-toggle:hover { text-decoration: underline; }
 .sales-pos__payment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.sales-pos__payment-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .sales-pos__pay-btn {
   display: flex;
   height: 44px;
@@ -1272,6 +1304,8 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__split { display: grid; gap: 8px; margin: -6px 0 14px; }
 .sales-pos__split-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .sales-pos__split-list { display: grid; gap: 4px; }
+.sales-pos__split-summary { color: #344762; font-size: 13px; }
+.sales-pos__split-summary strong { color: #1b2e48; }
 .sales-pos__split-list li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1289,6 +1323,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__notice { border: 1px solid var(--pos-border); background: #f1f5f4; color: #4e607a; }
 .sales-pos__message { border: 1px solid #fbd0d0; background: #fff0f0; color: #b42318; }
 .sales-pos__actions { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
+.sales-pos__actions--single { grid-template-columns: minmax(0, 1fr); }
 .sales-pos__secondary-btn,
 .sales-pos__primary-btn {
   display: flex;

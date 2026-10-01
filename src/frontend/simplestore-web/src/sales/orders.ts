@@ -2,10 +2,10 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue'
 import type { Customer, ProductListItem } from '../api/types'
 
 export type PaymentMethod = 'Cash' | 'Transfer'
-/** "Debt" records no payment, so the whole order stays outstanding for the selected customer. */
+/** "Debt" (`Bán nợ`) is Demo / Visual Reference only (D-107); live debt is Total − Actual Payments. */
 export type PayMode = PaymentMethod | 'Debt'
 export interface PaymentInput { amount: number; method: PaymentMethod }
-/** discountPercent is browser-only preview data until the backend supports discounts. */
+/** discountPercent is Demo-only preview data; live totals ignore it (D-107). */
 export interface CartLine { product: ProductListItem; quantity: number; discountPercent?: number }
 export interface SaleOrder {
   number: number
@@ -13,7 +13,7 @@ export interface SaleOrder {
   customer: Customer | null
   payments: PaymentInput[]
   payMode: PayMode
-  /** Not persisted yet: the sales API has no order note. */
+  /** Demo only: the sales API has no Sale note, so live Sales never shows or sends it (D-107). */
   note: string
 }
 
@@ -46,8 +46,8 @@ export interface OrderBook {
 }
 
 /**
- * Held orders live only in this browser tab. The sales API still receives exactly one
- * completed order at a time; persisting held orders is a later backend capability.
+ * Working orders held in this browser tab only. Demo uses several to mirror the D-106 rail; live Sales
+ * exposes exactly one active order (D-107). Nothing here is persisted or sent beyond CompleteSale.
  */
 export function createOrderBook(seed: SaleOrder[] = []): OrderBook {
   const orders = ref<SaleOrder[]>(seed.length ? seed : [emptyOrder(1)])
@@ -88,5 +88,5 @@ export function createOrderBook(seed: SaleOrder[] = []): OrderBook {
   return { orders, active, activate, create, clearActive, completeActive, reset }
 }
 
-/** Survives the checkout remount after a completed sale, so held orders are not lost. */
+/** The one live working order, kept in memory across checkout remounts in this tab; never persisted. */
 export const liveOrderBook = createOrderBook()

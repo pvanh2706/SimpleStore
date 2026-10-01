@@ -4,7 +4,8 @@ export const productCategories = ['Tất cả', 'Đồ uống', 'Bánh kẹo', '
 export type ProductCategory = typeof productCategories[number]
 
 /**
- * MOCK until a Category master exists in the backend: groups by product-name keywords.
+ * Demo / Visual Reference only (D-107): groups by product-name keywords to mirror the D-106 chips.
+ * It is not business data; live Sales has no Category filter until a Category master exists.
  * Order matters, e.g. "Nước mắm" is Gia vị before "nước" matches Đồ uống.
  */
 const keywordGroups: ReadonlyArray<[ProductCategory, readonly string[]]> = [
@@ -22,9 +23,19 @@ export function productCategory(product: ProductListItem): ProductCategory {
 
 export type StockTone = 'warn' | 'danger'
 
+/** Demo / Visual Reference only (D-107): the sample badges use thresholds that are not business rules. */
 export function stockStatus(quantityOnHand: number): { label: string; tone: StockTone } | null {
   if (quantityOnHand <= 0) return { label: 'Hết hàng', tone: 'danger' }
   if (quantityOnHand <= 2) return { label: 'Rất ít hàng', tone: 'danger' }
   if (quantityOnHand <= 5) return { label: 'Sắp hết hàng', tone: 'warn' }
   return null
+}
+
+export type FactualStockState = 'available' | 'out' | 'negative'
+
+/** Live Sales (D-107): states read directly from quantityOnHand, with no low-stock threshold. */
+export function factualStockState(quantityOnHand: number): FactualStockState {
+  if (quantityOnHand < 0) return 'negative'
+  if (quantityOnHand === 0) return 'out'
+  return 'available'
 }

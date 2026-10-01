@@ -120,6 +120,22 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   expect(desktopPanels!.checkoutRight).toBeLessThanOrEqual(desktopPanels!.viewportWidth + 1)
   expect(desktopPanels!.topDifference).toBeLessThan(40)
 
+  // D-107 live Product browser: no keyword Category, neutral placeholders, factual stock only.
+  await expect(page.locator('.sales-pos__categories')).toHaveCount(0)
+  await expect(page.locator('.sales-pos__product-card img')).toHaveCount(0)
+  await expect(page.locator('.sales-pos__product-card .sales-pos__placeholder')).toHaveCount(products.length)
+  await expect(page.getByText('Rất ít hàng')).toHaveCount(0)
+  await expect(page.getByText('Sắp hết hàng')).toHaveCount(0)
+  await expect(page.locator('.sales-pos__product-card').filter({ hasText: products[10].name })).toContainText('Còn 2 lốc')
+  // D-107 live cart: one working order and no visual-only controls.
+  await expect(page.locator('.sales-pos__order-rail')).toHaveCount(0)
+  for (const name of ['Đơn mới', 'Giữ đơn', 'Thêm giảm giá hóa đơn', 'Bán nợ']) {
+    await expect(page.getByRole('button', { name })).toHaveCount(0)
+  }
+  await expect(page.getByText('Danh sách đơn đang chờ')).toHaveCount(0)
+  await expect(page.getByLabel('Ghi chú đơn hàng')).toHaveCount(0)
+  await expect(page.locator('.sales-pos__pay-btn')).toHaveText(['Tiền mặt', 'Chuyển khoản'])
+
   await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).fill(product.barcode)
   await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).press('Enter')
   await expect(page.getByRole('button', { name: `Thêm sản phẩm ${productName}` })).toBeVisible()
@@ -138,11 +154,15 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   await page.getByRole('button', { name: 'Thêm thanh toán' }).click()
   await expect(page.getByRole('list', { name: 'Các khoản đã nhập' })).toContainText('30.000 đ')
   await expect(page.getByRole('note')).toContainText('Còn nợ 11.000 đ')
+  await expect(page.getByRole('note')).toContainText('Chọn khách hàng để ghi nhận công nợ 11.000 đ.')
+  await expect(page.locator('.sales-pos__required-tag')).toHaveText('Bắt buộc khi còn nợ')
+  await captureVisual(page, 'sales-desktop-outstanding-required-1536x1024.png')
   await page.locator('.sales-pos__customer-picker summary').click()
   await page.getByRole('textbox', { name: 'Tìm khách hàng' }).fill('0909')
   await page.getByRole('button', { name: 'Tìm khách hàng' }).click()
   await page.getByRole('button', { name: `Chọn khách hàng ${customer.name}` }).click()
   await expect(page.locator('.sales-pos__customer-picker summary')).toContainText(customer.name)
+  await expect(page.getByRole('note')).toContainText(`Ghi nhận công nợ 11.000 đ cho ${customer.name}.`)
   await captureVisual(page, 'sales-desktop-payment-customer-1536x1024.png')
   await page.getByRole('button', { name: 'Chuyển khoản', exact: true }).click()
   await page.getByRole('spinbutton', { name: 'Số tiền thanh toán' }).fill('11000')
@@ -179,6 +199,7 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
     payments: [{ method: 'Cash', amount: 30000 }, { method: 'Transfer', amount: 11000 }],
   })
   expect((attempts[0] as { operationId: string }).operationId).toBeTruthy()
+  expect((attempts[0] as { payments: Array<{ method: string }> }).payments.every(payment => ['Cash', 'Transfer'].includes(payment.method))).toBe(true)
 
   await page.emulateMedia({ media: 'print' })
   await expect(receipt).toBeVisible()
@@ -208,6 +229,32 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
   await expect(receipt).toHaveCount(0)
 })
 
+test('Cashier records a full outstanding sale with no actual payment for a selected Customer', async ({ page }) => {
+  const { attempts } = await mockCashierCheckout(page)
+  await page.setViewportSize({ width: 1536, height: 1024 })
+  await page.goto('/sales/new')
+  await page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` }).click()
+  await page.getByRole('button', { name: 'Nhập số tiền' }).click()
+  await expect(page.locator('.sales-pos__split-summary')).toHaveText('Khách trả 0 đ · Còn nợ 7.000 đ')
+  await expect(page.getByRole('note')).toContainText('Chọn khách hàng để ghi nhận công nợ 7.000 đ.')
+  await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
+  await expect(page.locator('.sales-pos__message')).toHaveText('Chọn khách hàng khi đơn còn công nợ.')
+  expect(attempts).toHaveLength(0)
+
+  await page.locator('.sales-pos__customer-picker summary').click()
+  await page.getByRole('textbox', { name: 'Tìm khách hàng' }).fill('0909')
+  await page.getByRole('button', { name: 'Tìm khách hàng' }).click()
+  await page.getByRole('button', { name: `Chọn khách hàng ${customer.name}` }).click()
+  await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
+  await expect(page.getByRole('heading', { name: 'Đơn bán đã hoàn tất' })).toBeVisible()
+  expect(attempts).toHaveLength(1)
+  expect(attempts[0]).toMatchObject({
+    customerId: customer.id,
+    lines: [{ productId: products[1].id, quantity: 1 }],
+    payments: [],
+  })
+})
+
 test('Sales workspace remains usable without horizontal clipping on tablet and mobile', async ({ page }) => {
   await mockCashierCheckout(page)
   for (const viewport of [{ width: 820, height: 900 }, { width: 390, height: 844 }]) {
@@ -220,6 +267,8 @@ test('Sales workspace remains usable without horizontal clipping on tablet and m
     await page.getByRole('button', { name: `Thêm sản phẩm ${productName}` }).click()
     await expect(page.getByRole('spinbutton', { name: `Số lượng ${productName}` })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Hoàn tất bán hàng' })).toBeVisible()
+    await expect(page.locator('.sales-pos__order-rail')).toHaveCount(0)
+    await expect(page.locator('.sales-pos__pay-btn')).toHaveText(['Tiền mặt', 'Chuyển khoản'])
     const panelBounds = await page.evaluate(() => ['.sales-pos__products', '.sales-pos__checkout'].map(selector => {
       const rect = document.querySelector(selector)?.getBoundingClientRect()
       return rect ? { left: rect.left, right: rect.right, width: rect.width } : null
@@ -250,16 +299,43 @@ test('Sales workspace remains usable without horizontal clipping on tablet and m
   }
 })
 
-test('Sales reference preview follows the supplied desktop layout without submitting a sale', async ({ page }) => {
+test('Sales reference preview keeps D-106 visual-only elements without any API write', async ({ page }) => {
   const { attempts } = await mockCashierCheckout(page)
   await page.setViewportSize({ width: 1536, height: 1024 })
   await page.goto('/sales/new')
+  await expect(page.getByRole('heading', { name: 'Đơn 1', exact: true })).toBeVisible()
+  const writes: string[] = []
+  page.on('request', request => {
+    if (request.url().includes('/api/') && request.method() !== 'GET') writes.push(`${request.method()} ${request.url()}`)
+  })
   await page.locator('.app-topbar').getByRole('button', { name: 'Dữ liệu mẫu' }).click()
+  const demo = page.locator('.sales-pos--demo')
   await expect(page.locator('.app-topbar')).toContainText('Việt Anh')
   await expect(page.locator('.sales-pos__product-card:visible')).toHaveCount(12)
+  await expect(demo.locator('.sales-pos__product-card img')).toHaveCount(12)
+  await expect(demo.locator('.sales-pos__categories .sales-pos__chip')).toHaveCount(7)
+  await expect(demo.getByText('Rất ít hàng').first()).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Đơn 1' })).toBeVisible()
-  await expect(page.locator('.sales-pos--demo button.sales-pos__order-pill')).toHaveCount(3)
+  await expect(demo.locator('button.sales-pos__order-pill')).toHaveCount(3)
+  await expect(demo.getByText('Danh sách đơn đang chờ (3)')).toBeVisible()
+  for (const name of ['Đơn mới', 'Giữ đơn', 'Thêm giảm giá hóa đơn', 'Bán nợ']) {
+    await expect(demo.getByRole('button', { name })).toBeVisible()
+  }
+  await expect(demo.getByLabel('Ghi chú đơn hàng')).toBeVisible()
+  await expect(demo.locator('.sales-pos__line-discount')).toBeVisible()
+  await expect(demo.locator('.sales-pos__pay-btn')).toHaveText(['Tiền mặt', 'Chuyển khoản', 'Bán nợ'])
   await captureVisual(page, 'sales-reference-preview-1536x1024.png')
-  await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
+  await demo.getByRole('button', { name: 'Bán nợ' }).click()
+  await demo.getByRole('button', { name: 'Giữ đơn' }).click()
+  await demo.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
+  await expect(demo.locator('.sales-pos__message')).toContainText('dữ liệu mẫu')
+
+  for (const viewport of [{ width: 820, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport)
+    await expect(demo.locator('.sales-pos__checkout')).toBeVisible()
+    await captureVisual(page, `sales-reference-preview-${viewport.width === 820 ? 'tablet-820x900' : 'mobile-390x844'}.png`)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width)
+  }
   expect(attempts).toHaveLength(0)
+  expect(writes).toEqual([])
 })
