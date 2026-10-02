@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { ApiError, apiRequest } from '../api/client'
 import SaleCheckoutForm from '../components/SaleCheckoutForm.vue'
 import SaleReceipt from '../components/SaleReceipt.vue'
 import LineIcon from '../components/ui/LineIcon'
 import type { Customer, CustomerPage, OperationStatus, ProductPage, Sale, StoreOperationalSettings } from '../api/types'
-import { salesDemoEnabled, searchDemoProducts, searchDemoCustomers } from '../sales/demo'
+import { demoCheckout, salesDemoEnabled } from '../sales/demo'
 import { liveOrderBook } from '../sales/orders'
 
 type Attempt = {
@@ -19,11 +19,25 @@ const settings = ref<StoreOperationalSettings | null>(null)
 const completed = ref<Sale | null>(null)
 const error = ref('')
 const receipt = ref<InstanceType<typeof SaleReceipt> | null>(null)
+const liveForm = ref<InstanceType<typeof SaleCheckoutForm> | null>(null)
+const completedHeading = ref<HTMLElement | null>(null)
 const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
 const methodLabel = (method: 'Cash' | 'Transfer') => method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản'
 const paymentSummary = (sale: Sale) => sale.payments
   .map(payment => `${methodLabel(payment.method)} ${money(payment.amount)} ₫`)
   .join(' · ')
+
+// The checkout (and its focused CTA) is replaced by the confirmed Sale: move focus to the success heading.
+watch(completed, sale => {
+  if (sale) void nextTick(() => completedHeading.value?.focus())
+})
+
+/** The next Sale starts in the Product search, ready for the next scan. */
+async function startNewSale() {
+  completed.value = null
+  await nextTick()
+  liveForm.value?.focusSearch()
+}
 
 /** Printing only opens the browser dialog; it never changes or repeats the completed Sale. */
 function printReceipt() {
@@ -63,6 +77,7 @@ onMounted(async () => {
     <SaleCheckoutForm
       v-if="settings && !completed"
       v-show="!salesDemoEnabled"
+      ref="liveForm"
       :allow-negative-stock="settings.allowNegativeStock"
       :order-book="liveOrderBook"
       :search-products="searchProducts"
@@ -73,26 +88,22 @@ onMounted(async () => {
       :load-sale="loadSale"
       @completed="completed = $event"
     />
+    <!-- Demo / Visual Reference never receives a live API callback: demoCheckout stays in the browser (D-107 G). -->
     <SaleCheckoutForm
       v-if="salesDemoEnabled && !completed"
       preview-only
       :allow-negative-stock="false"
-      :search-products="searchDemoProducts"
-      :search-customers="searchDemoCustomers"
-      :create-customer="async (name, phone) => ({ id: `demo-${name}`, name, phone, createdAt: '', updatedAt: '' })"
-      :complete-sale="completeSale"
-      :check-operation="checkOperation"
-      :load-sale="loadSale"
+      v-bind="demoCheckout"
     />
 
     <!-- The receipt stays a direct child of .sales-complete: the 80 mm print rules rely on that structure. -->
     <div v-if="completed" class="sales-complete">
-      <section class="sales-complete__summary no-print" aria-labelledby="sales-complete-heading" aria-live="polite">
+      <section class="sales-complete__summary no-print" aria-labelledby="sales-complete-heading">
         <div class="sales-complete__heading">
           <span class="sales-complete__icon" aria-hidden="true"><LineIcon name="check" /></span>
           <div>
             <p class="sales-complete__state">Giao dịch thành công</p>
-            <h1 id="sales-complete-heading">Đơn bán đã hoàn tất</h1>
+            <h1 id="sales-complete-heading" ref="completedHeading" tabindex="-1">Đơn bán đã hoàn tất</h1>
             <p class="sales-complete__lead">Đơn bán đã được ghi nhận. Việc in hóa đơn không thay đổi trạng thái giao dịch.</p>
             <p v-if="completed.wasAlreadyCompleted" class="sales-complete__recovered">Đơn này đã được ghi nhận từ lần gửi trước; không có đơn trùng.</p>
           </div>
@@ -129,7 +140,7 @@ onMounted(async () => {
         <p v-if="receipt?.printError" class="sales-complete__print-error" role="alert">{{ receipt.printError }}</p>
 
         <div class="sales-complete__next">
-          <button class="sales-complete__new" type="button" @click="completed = null"><LineIcon name="plus" />Đơn bán mới</button>
+          <button class="sales-complete__new" type="button" @click="startNewSale"><LineIcon name="plus" />Đơn bán mới</button>
           <RouterLink class="sales-complete__history" to="/sales"><LineIcon name="clock" />Lịch sử bán hàng</RouterLink>
         </div>
       </section>
@@ -174,6 +185,8 @@ onMounted(async () => {
   padding: clamp(1.15rem, 2vw, 1.5rem);
 }
 .sales-complete__heading { display: flex; align-items: start; gap: 0.9rem; }
+/* Focus lands here programmatically after completion; it is not an interactive control. */
+.sales-complete__heading h1:focus { outline: none; }
 .sales-complete__heading h1 { margin-top: 0.15rem; font-size: 1.45rem; font-weight: 820; letter-spacing: -0.025em; line-height: 1.2; }
 .sales-complete__state { color: var(--positive); font-size: 0.78rem; font-weight: 760; }
 .sales-complete__lead { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.86rem; line-height: 1.45; }

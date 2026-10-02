@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import SaleCheckoutForm from '../components/SaleCheckoutForm.vue'
@@ -24,7 +24,7 @@ const sale: Sale = {
   isVoided: false, void: null, returns: [],
 }
 
-async function mountCompleted(completed: Sale = sale) {
+async function mountCompleted(completed: Sale = sale, attachTo?: HTMLElement) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -33,7 +33,7 @@ async function mountCompleted(completed: Sale = sale) {
     ],
   })
   await router.push('/sales/new')
-  const wrapper = mount(SaleCheckoutView, { global: { plugins: [router] } })
+  const wrapper = mount(SaleCheckoutView, { global: { plugins: [router] }, attachTo })
   await flushPromises()
   wrapper.findComponent(SaleCheckoutForm).vm.$emit('completed', completed)
   await flushPromises()
@@ -41,6 +41,8 @@ async function mountCompleted(completed: Sale = sale) {
 }
 
 describe('SaleCheckoutView completion', () => {
+  enableAutoUnmount(afterEach)
+
   beforeEach(() => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === '/api/store/operational-settings') return { allowNegativeStock: false }
@@ -106,6 +108,17 @@ describe('SaleCheckoutView completion', () => {
     expect(wrapper.find('.sales-complete__print-error').exists()).toBe(false)
     expect(sale).toEqual(before)
     expect(apiRequest.mock.calls.some(([path]) => String(path).includes('/api/sales'))).toBe(false)
+  })
+
+  it('moves focus to the success heading, then to the Product search for the next Sale', async () => {
+    const wrapper = await mountCompleted(sale, document.body)
+    const heading = wrapper.get('h1')
+    expect(heading.attributes('tabindex')).toBe('-1')
+    expect(document.activeElement).toBe(heading.element)
+
+    await wrapper.get('.sales-complete__new').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('[aria-label="Tìm hoặc quét sản phẩm"]').element)
   })
 
   it('notes a recovered Sale and starts an empty checkout with Đơn bán mới', async () => {

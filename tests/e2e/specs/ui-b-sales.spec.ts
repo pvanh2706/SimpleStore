@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from '@playwright/test'
+import { expect, test, type Locator, type Page, type Route } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -54,6 +54,17 @@ async function expectAddCustomerOnOneLine(page: Page) {
   expect(geometry.boxHeight).toBeLessThanOrEqual(48)
   // The Customer selector keeps a usable width beside it.
   expect(geometry.selectWidth).toBeGreaterThan(150)
+}
+
+/** A live CompleteSale request carries exactly the approved fields (D-105/D-107): nothing from Demo or UI state. */
+function expectApprovedPayload(body: unknown) {
+  const attempt = body as { lines: object[]; payments: Array<{ method: string }> }
+  expect(Object.keys(attempt).sort()).toEqual(['customerId', 'lines', 'operationId', 'payments'])
+  for (const line of attempt.lines) expect(Object.keys(line).sort()).toEqual(['productId', 'quantity'])
+  for (const payment of attempt.payments) {
+    expect(Object.keys(payment).sort()).toEqual(['amount', 'method'])
+    expect(['Cash', 'Transfer']).toContain(payment.method)
+  }
 }
 
 async function expectNoHorizontalOverflow(page: Page, width: number) {
@@ -245,6 +256,7 @@ test('Cashier scans, edits and completes one sale, then starts a new one', async
     ],
     payments: [{ method: 'Cash', amount: 30000 }, { method: 'Transfer', amount: 11000 }],
   })
+  expectApprovedPayload(attempts[0])
   expect((attempts[0] as { operationId: string }).operationId).toBeTruthy()
   expect((attempts[0] as { payments: Array<{ method: string }> }).payments.every(payment => ['Cash', 'Transfer'].includes(payment.method))).toBe(true)
 
@@ -311,6 +323,7 @@ test('Cashier records a deliberate full-debt sale with Ghi nợ toàn bộ and s
     lines: [{ productId: products[1].id, quantity: 1 }],
     payments: [],
   })
+  expectApprovedPayload(attempts[0])
 })
 
 test('Unresolved CompleteSale locks the exact attempt and retries it without a new operation', async ({ page }) => {
@@ -344,6 +357,8 @@ test('Unresolved CompleteSale locks the exact attempt and retries it without a n
   // The state block and its exact-retry CTA stay in view inside the viewport-height checkout.
   await expect(state).toBeInViewport()
   await expect(page.getByRole('button', { name: 'Thử lại đúng thao tác' })).toBeInViewport()
+  // The CTA was disabled while confirming; keyboard focus is back on the exact retry.
+  await expect(page.getByRole('button', { name: 'Thử lại đúng thao tác' })).toBeFocused()
   await captureVisual(page, 'sales-desktop-unresolved-1536x1024.png')
   await expect(page.getByText(/operation ?id/i)).toHaveCount(0)
   await expect(page.locator('.sales-pos__status-chip')).toHaveText('Đã khóa')
@@ -437,11 +452,22 @@ test('An unresolved CompleteSale keeps the checkout when leaving is attempted, t
   await page.locator('.app-topbar-profile').getByRole('button', { name: 'Đăng xuất' }).click()
   await expectStillOnCheckout()
   expect(logoutCalls).toBe(0)
+  // Switching to sample data would hide the unresolved Sale, so it is refused the same way.
+  const demoToggle = page.locator('.app-topbar').getByRole('button', { name: 'Dữ liệu mẫu' })
+  await demoToggle.click()
+  await expect(demoToggle).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('.sales-pos--demo')).toHaveCount(0)
+  await expectStillOnCheckout()
   // The tablet drawer closes and the checkout explains why it stays.
   await page.setViewportSize({ width: 820, height: 900 })
   await page.getByRole('button', { name: 'Mở điều hướng' }).click()
   await page.getByRole('dialog', { name: 'Điều hướng ứng dụng' }).getByRole('link', { name: 'Sản phẩm' }).click()
   await expect(page.getByRole('dialog', { name: 'Điều hướng ứng dụng' })).toHaveCount(0)
+  await expectStillOnCheckout()
+  const demoCheckbox = page.getByRole('checkbox', { name: 'Dữ liệu mẫu Bán hàng trên điện thoại' })
+  await demoCheckbox.click()
+  await expect(demoCheckbox).not.toBeChecked()
+  await expect(page.locator('.sales-pos--demo')).toHaveCount(0)
   await expectStillOnCheckout()
   await page.setViewportSize({ width: 1536, height: 1024 })
 
@@ -451,10 +477,82 @@ test('An unresolved CompleteSale keeps the checkout when leaving is attempted, t
   expect(sent[1]).toEqual(sent[0])
   expect(sent[1]!.operationId).toBe(sent[0]!.operationId)
 
-  // Confirmed Sale: no stale guard, and every route works again.
+  // Confirmed Sale: no stale guard, and every route and the Demo switch work again.
   expect(await unloadIsGuarded()).toBe(false)
+  await demoToggle.click()
+  await expect(demoToggle).toHaveAttribute('aria-pressed', 'true')
+  await demoToggle.click()
+  await expect(demoToggle).toHaveAttribute('aria-pressed', 'false')
   await navigation.getByRole('link', { name: 'Sản phẩm' }).click()
   await expect(page).toHaveURL(/\/products$/)
+})
+
+test('A cashier completes a Sale with the keyboard and focus follows the workflow', async ({ page }) => {
+  const { attempts } = await mockCashierCheckout(page)
+  await page.setViewportSize({ width: 1536, height: 1024 })
+  await page.goto('/sales/new')
+  const search = page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' })
+  await expect(page.getByRole('button', { name: `Thêm sản phẩm ${products[11].name}` })).toBeVisible()
+  await search.focus()
+  await page.keyboard.type(products[1].sku)
+  await page.keyboard.press('Enter')
+  const add = page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` })
+  await expect(page.locator('.sales-pos__product-card')).toHaveCount(1)
+  // Tab order: search → Thêm nhanh → Quét mã → the result's Add button, with a visible focus ring.
+  for (let step = 0; step < 3; step++) await page.keyboard.press('Tab')
+  await expect(add).toBeFocused()
+  expect(await add.evaluate(element => getComputedStyle(element).outlineStyle)).not.toBe('none')
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: `Tăng số lượng ${products[1].name}` }).focus()
+  await page.keyboard.press('Space')
+  await expect(page.getByRole('spinbutton', { name: `Số lượng ${products[1].name}` })).toHaveValue('2')
+
+  // Customer picker: Enter opens, Escape closes back to the summary, a selection returns focus there too.
+  const picker = page.locator('.sales-pos__customer-picker summary')
+  await picker.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('textbox', { name: 'Tìm khách hàng' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('textbox', { name: 'Tìm khách hàng' })).toBeHidden()
+  await expect(picker).toBeFocused()
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('textbox', { name: 'Tìm khách hàng' })).toBeFocused()
+  await page.keyboard.type('0909')
+  await page.keyboard.press('Enter')
+  const choice = page.getByRole('button', { name: `Chọn khách hàng ${customer.name}` })
+  await expect(choice).toBeVisible()
+  await choice.focus()
+  await page.keyboard.press('Enter')
+  await expect(picker).toBeFocused()
+  await expect(picker).toContainText(customer.name)
+
+  // Payment by keyboard: Chuyển khoản, Nhập số tiền, amount, Thêm thanh toán.
+  await page.getByRole('button', { name: 'Chuyển khoản' }).focus()
+  await page.keyboard.press('Space')
+  await expect(page.getByRole('button', { name: 'Chuyển khoản' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Nhập số tiền' }).focus()
+  await page.keyboard.press('Enter')
+  await page.getByRole('spinbutton', { name: 'Số tiền thanh toán' }).focus()
+  await page.keyboard.type('14000')
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Thêm thanh toán' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('list', { name: 'Các khoản đã nhập' })).toContainText('14.000 đ')
+
+  // F12 completes; focus lands on the success heading, then Tab reaches print and the next Sale.
+  await page.keyboard.press('F12')
+  const heading = page.getByRole('heading', { name: 'Đơn bán đã hoàn tất' })
+  await expect(heading).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'In hóa đơn' })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Đơn bán mới' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(search).toBeFocused()
+  expect(attempts).toHaveLength(1)
+  expectApprovedPayload(attempts[0])
+  expect(attempts[0]).toMatchObject({ customerId: customer.id, lines: [{ productId: products[1].id, quantity: 2 }], payments: [{ amount: 14000, method: 'Transfer' }] })
 })
 
 test('A rejected CompleteSale returns to editable correction without lock residue', async ({ page }) => {
@@ -475,6 +573,7 @@ test('A rejected CompleteSale returns to editable correction without lock residu
   await expect(error).toContainText('Chưa hoàn tất đơn bán')
   await expect(error).toContainText(`Không đủ tồn kho cho ${products[1].name}.`)
   await expect(page.getByRole('button', { name: 'Hoàn tất bán hàng' })).toBeInViewport()
+  await expect(page.getByRole('button', { name: 'Hoàn tất bán hàng' })).toBeFocused()
   await expect(page.locator('.sales-pos__txn-state')).toHaveCount(0)
   await expect(page.locator('.sales-pos__status-chip')).toHaveText('Đang bán')
   await expect(page.getByRole('link', { name: 'Lịch sử bán hàng' })).not.toHaveAttribute('aria-disabled', 'true')
@@ -589,7 +688,8 @@ test('Live working order survives navigation in one session and is cleared by lo
 
 test('Sales workspace remains usable without horizontal clipping on tablet and mobile', async ({ page }) => {
   await mockCashierCheckout(page)
-  for (const viewport of [{ width: 820, height: 900 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 820, height: 900 }, { width: 390, height: 844 }, { width: 360, height: 740 }]) {
+    const name = viewport.width === 820 ? 'tablet-820x900' : `mobile-${viewport.width}x${viewport.height}`
     await page.setViewportSize(viewport)
     await page.goto('/sales/new')
     await page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' }).fill(product.sku)
@@ -625,7 +725,7 @@ test('Sales workspace remains usable without horizontal clipping on tablet and m
       const mobileHeader = document.querySelector('.app-mobile-header')?.getBoundingClientRect().height ?? 0
       window.scrollBy(0, -(mobileHeader + 8))
     })
-    await captureVisual(page, `sales-${viewport.width === 820 ? 'tablet-820x900' : 'mobile-390x844'}.png`)
+    await captureVisual(page, `sales-${name}.png`)
     await expectNoHorizontalOverflow(page, viewport.width)
     await expectAddCustomerOnOneLine(page)
     // Customer controls stay usable: both dropdowns open inside the viewport.
@@ -637,19 +737,38 @@ test('Sales workspace remains usable without horizontal clipping on tablet and m
       expect(panel!.width).toBeGreaterThan(260)
       await page.locator(`${picker} summary`).click()
     }
-    const ctaBox = await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).boundingBox()
-    expect(ctaBox!.height).toBeGreaterThanOrEqual(44)
-    const payHeights = await page.locator('.sales-pos__pay-btn').evaluateAll(buttons => buttons.map(button => button.getBoundingClientRect().height))
-    for (const height of payHeights) expect(height).toBeGreaterThanOrEqual(viewport.width < 600 ? 44 : 40)
+    // Touch targets on tablet/phone counters: primary controls about 44 px, secondary utilities at least 40 px.
+    const sizes = async (locator: Locator) => locator.evaluateAll(elements => elements.map(element => {
+      const box = element.getBoundingClientRect()
+      return { width: box.width, height: box.height }
+    }))
+    for (const [locator, minimum] of [
+      [page.getByRole('button', { name: `Thêm sản phẩm ${productName}` }), 44],
+      [page.getByRole('button', { name: `Giảm số lượng ${productName}` }), 44],
+      [page.getByRole('button', { name: `Tăng số lượng ${productName}` }), 44],
+      [page.locator('.sales-pos__pay-btn'), 44],
+      [page.locator('.sales-pos__customer-picker summary'), 44],
+      [page.locator('.sales-pos__create-customer summary'), 44],
+      [page.getByRole('button', { name: 'Ghi nợ toàn bộ' }), 44],
+      [page.getByRole('button', { name: 'Hoàn tất bán hàng' }), 44],
+      [page.getByRole('button', { name: `Xóa ${productName}` }), 40],
+      [page.getByRole('button', { name: 'Nhập số tiền' }), 40],
+      [page.locator('.sales-pos__checkout-tools').getByRole('link', { name: 'Lịch sử bán hàng' }), 40],
+      // The drawer's Menu button is the shared UI-A AppButton (2.5 rem, D-104), not a Sales control.
+      [page.getByRole('button', { name: 'Mở điều hướng' }), 40],
+    ] as Array<[Locator, number]>) {
+      for (const box of await sizes(locator)) expect(box.height, String(locator)).toBeGreaterThanOrEqual(minimum)
+    }
+    for (const box of await sizes(page.locator('.sales-pos__qty-box button'))) expect(box.width).toBeGreaterThanOrEqual(44)
     await expect(page.getByRole('button', { name: 'Ghi nợ toàn bộ' })).toBeVisible()
-    await captureVisual(page, `sales-${viewport.width === 820 ? 'tablet-820x900' : 'mobile-390x844'}-full.png`, true)
+    await captureVisual(page, `sales-${name}-full.png`, true)
 
     await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
     await expect(page.getByRole('heading', { name: 'Đơn bán đã hoàn tất' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Đơn bán mới' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'In hóa đơn' })).toBeVisible()
     await expectNoHorizontalOverflow(page, viewport.width)
-    await captureVisual(page, `sales-completed-${viewport.width === 820 ? 'tablet-820x900' : 'mobile-390x844'}.png`, true)
+    await captureVisual(page, `sales-completed-${name}.png`, true)
     await page.getByRole('button', { name: 'Đơn bán mới' }).click()
     await expect(page.getByRole('textbox', { name: 'Tìm hoặc quét sản phẩm' })).toBeVisible()
   }
@@ -661,8 +780,10 @@ test('Sales reference preview keeps D-106 visual-only elements without any API w
   await page.goto('/sales/new')
   await expect(page.getByRole('heading', { name: 'Đơn 1', exact: true })).toBeVisible()
   const writes: string[] = []
+  const demoReads: string[] = []
   page.on('request', request => {
     if (request.url().includes('/api/') && request.method() !== 'GET') writes.push(`${request.method()} ${request.url()}`)
+    if (/\/api\/(products|customers|sales|operations)/.test(request.url()) && request.method() === 'GET') demoReads.push(request.url())
   })
   await page.locator('.app-topbar').getByRole('button', { name: 'Dữ liệu mẫu' }).click()
   const demo = page.locator('.sales-pos--demo')
@@ -685,6 +806,18 @@ test('Sales reference preview keeps D-106 visual-only elements without any API w
   await demo.getByRole('button', { name: 'Giữ đơn' }).click()
   await demo.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
   await expect(demo.locator('.sales-pos__message')).toContainText('dữ liệu mẫu')
+  // A Demo Customer exists only in this tab.
+  await demo.locator('.sales-pos__create-customer summary').click()
+  await demo.getByRole('textbox', { name: 'Tên khách hàng mới' }).fill('Khách mẫu')
+  await demo.getByRole('button', { name: 'Tạo và chọn khách hàng' }).click()
+  await expect(demo.locator('.sales-pos__customer-picker summary')).toContainText('Khách mẫu')
+  // Switching the mode is browser-only too.
+  const demoToggle = page.locator('.app-topbar').getByRole('button', { name: 'Dữ liệu mẫu' })
+  for (const pressed of ['false', 'true', 'false', 'true']) {
+    await demoToggle.click()
+    await expect(demoToggle).toHaveAttribute('aria-pressed', pressed)
+  }
+  await expect(demo.locator('button.sales-pos__order-pill')).toHaveCount(3)
 
   for (const viewport of [{ width: 820, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport)
@@ -694,4 +827,6 @@ test('Sales reference preview keeps D-106 visual-only elements without any API w
   }
   expect(attempts).toHaveLength(0)
   expect(writes).toEqual([])
+  // Demo reads only its sample data: no Product, Customer or Sale API call after it was switched on.
+  expect(demoReads).toEqual([])
 })

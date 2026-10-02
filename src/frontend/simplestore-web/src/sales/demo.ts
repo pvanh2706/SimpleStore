@@ -1,5 +1,6 @@
 import { ref } from 'vue'
-import type { CustomerPage, ProductListItem, ProductPage } from '../api/types'
+import { ApiError } from '../api/client'
+import type { Customer, CustomerPage, OperationStatus, ProductListItem, ProductPage, Sale } from '../api/types'
 import { createOrderBook, emptyOrder, type OrderBook } from './orders'
 
 /** Preview data lives only in the browser tab and never enters the sales API. */
@@ -54,4 +55,27 @@ export async function searchDemoProducts(search: string, page: number): Promise<
 
 export async function searchDemoCustomers(): Promise<CustomerPage> {
   return { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 }
+}
+
+/** A Demo write is refused locally as a non-ambiguous error, so it can never look like an unresolved Sale. */
+function refuseDemoWrite(): never {
+  throw new ApiError(400, { code: 'sales-demo-only', title: 'Dữ liệu mẫu không ghi giao dịch.' })
+}
+
+let demoCustomerNumber = 0
+
+/**
+ * Everything the Demo checkout may call. None of it reaches the API: Products and Customers come from the
+ * sample data, a created Customer exists only in the tab, and CompleteSale/status/Sale reads are refused.
+ * The Demo checkout already stops before submitting; these keep production safe even if that UI regresses (D-107 G).
+ */
+export const demoCheckout = {
+  searchProducts: searchDemoProducts,
+  searchCustomers: searchDemoCustomers,
+  async createCustomer(name: string, phone: string | null): Promise<Customer> {
+    return { id: `demo-customer-${++demoCustomerNumber}`, name, phone, createdAt: '', updatedAt: '' }
+  },
+  async completeSale(): Promise<Sale> { return refuseDemoWrite() },
+  async checkOperation(): Promise<OperationStatus | null> { return null },
+  async loadSale(): Promise<Sale> { return refuseDemoWrite() },
 }

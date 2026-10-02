@@ -43,6 +43,7 @@ const createPicker = ref<HTMLDetailsElement | null>(null)
 const queueMenu = ref<HTMLDetailsElement | null>(null)
 const cartList = ref<HTMLElement | null>(null)
 const actions = ref<HTMLElement | null>(null)
+const completeButton = ref<HTMLButtonElement | null>(null)
 const idSuffix = props.previewOnly ? '-preview' : ''
 
 const book = props.orderBook ?? (props.previewOnly ? createDemoOrderBook() : createOrderBook())
@@ -154,6 +155,19 @@ function productImage(product: ProductListItem): string | null {
 
 function closeDetails(element: HTMLDetailsElement | null) {
   if (element) element.open = false
+}
+
+/** A closed picker hides the control that had focus; keep keyboard focus on the picker's own summary. */
+function focusSummary(element: HTMLDetailsElement | null) {
+  element?.querySelector('summary')?.focus()
+}
+
+/** Escape closes an open picker and returns focus to its summary, as a disclosure should. */
+function closePickerOnEscape(event: KeyboardEvent) {
+  const details = event.currentTarget as HTMLDetailsElement
+  if (!details.open) return
+  closeDetails(details)
+  focusSummary(details)
 }
 
 function resetFeedback() {
@@ -298,6 +312,7 @@ function selectCustomer(item: Customer | null) {
   resetFeedback()
   order.value.customer = item
   closeDetails(customerPicker.value)
+  focusSummary(customerPicker.value)
 }
 
 async function createAndSelectCustomer() {
@@ -316,6 +331,7 @@ async function createAndSelectCustomer() {
     newCustomerName.value = ''
     newCustomerPhone.value = ''
     closeDetails(createPicker.value)
+    focusSummary(customerPicker.value)
   } catch (reason) {
     customerError.value = reason instanceof Error
       ? 'Không thể tạo khách hàng. ' + reason.message
@@ -412,7 +428,7 @@ async function complete() {
       operationId: crypto.randomUUID(),
       customerId: customer.value?.id ?? null,
       lines: cart.value.map(line => ({ productId: line.product.id, quantity: line.quantity })),
-      payments: effectivePayments.value.map(payment => ({ ...payment })),
+      payments: effectivePayments.value.map(payment => ({ amount: payment.amount, method: payment.method })),
     }
   }
 
@@ -473,7 +489,14 @@ watch(locked, value => {
 // The transaction state and its CTA (retry or correction) must be in view after Complete was pressed.
 watch([state, rejected], ([value, isRejected]) => {
   if (value !== 'checking' && value !== 'retryable' && !isRejected) return
-  void nextTick(() => actions.value?.scrollIntoView?.({ block: 'nearest' }))
+  void nextTick(() => {
+    actions.value?.scrollIntoView?.({ block: 'nearest' })
+    // The CTA was disabled while confirming; give keyboard focus back to it only if focus was lost.
+    const active = document.activeElement
+    if ((value === 'retryable' || isRejected) && (!active || active === document.body) && root.value?.offsetParent) {
+      completeButton.value?.focus({ preventScroll: true })
+    }
+  })
 })
 
 /** Reload or tab close would lose the RAM-only attempt; browsers show their own generic warning. */
@@ -498,6 +521,14 @@ watch(blockedSaleLeaves, () => {
   salesDemoEnabled.value = false
   void nextTick(() => actions.value?.scrollIntoView?.({ block: 'nearest' }))
 })
+// Sample data would hide the live checkout and its unresolved attempt, so switching waits like leaving does.
+if (!props.previewOnly) {
+  watch(salesDemoEnabled, enabled => {
+    if (!enabled || !outcomePending.value) return
+    salesDemoEnabled.value = false
+    canLeaveSales()
+  }, { flush: 'sync' })
+}
 
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
@@ -510,7 +541,7 @@ onUnmounted(() => {
   window.removeEventListener('beforeunload', warnBeforeUnload)
   if (outcomePending.value) saleOutcomePending.value = false
 })
-defineExpose({ state, attempt, cart, payments, customer, total, paid, outstanding })
+defineExpose({ state, attempt, cart, payments, customer, total, paid, outstanding, focusSearch })
 </script>
 
 <template>
@@ -610,10 +641,12 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
       <p v-else-if="products && products.items.length === 0" class="sales-pos__empty" role="status">Không tìm thấy sản phẩm phù hợp.</p>
       <p v-else-if="!products" class="sales-pos__empty" role="status">Nhập tên, SKU hoặc barcode để tìm sản phẩm.</p>
       <p v-else-if="shownProducts.length === 0" class="sales-pos__empty" role="status">Không có sản phẩm thuộc nhóm “{{ category }}” trong kết quả hiện tại.</p>
-      <div v-else class="sales-pos__product-grid" aria-live="polite">
+      <!-- One short announcement instead of reading every card when results change. -->
+      <p v-if="products && shownProducts.length" class="sales-pos__sr-only" role="status">Tìm thấy {{ previewOnly ? shownProducts.length : products.totalCount }} sản phẩm.</p>
+      <div v-if="!productLoading && !productError && products && shownProducts.length" class="sales-pos__product-grid">
         <article v-for="product in shownProducts" :key="product.id" class="sales-pos__product-card" :class="{ 'is-selected': selectedProductId === product.id }">
           <div class="sales-pos__product-image">
-            <img v-if="productImage(product)" :src="productImage(product)!" :alt="product.name" />
+            <img v-if="productImage(product)" :src="productImage(product)!" alt="" />
             <svg v-else class="sales-pos__placeholder" aria-hidden="true" viewBox="0 0 80 80" fill="none"><rect x="17" y="21" width="46" height="42" rx="7" fill="#EAF3F1" /><path d="M17 32h46M30 21v42m22-42v42" stroke="#93B9AA" stroke-width="3" /><path d="M35 43h10" stroke="#0AA06A" stroke-width="3" stroke-linecap="round" /></svg>
           </div>
           <div class="sales-pos__product-body">
@@ -670,7 +703,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         <span v-if="customerRequired" class="sales-pos__required-tag">Bắt buộc khi còn nợ</span>
       </div>
       <div class="sales-pos__field-row">
-        <details ref="customerPicker" class="sales-pos__customer-picker">
+        <details ref="customerPicker" class="sales-pos__customer-picker" @keydown.esc="closePickerOnEscape">
           <summary
             class="sales-pos__select"
             :class="{ 'is-required': customerRequired && !customer }"
@@ -711,7 +744,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
             <button v-if="customer" class="sales-pos__walk-in" type="button" :disabled="locked || creatingCustomer" @click="selectCustomer(null)">Chuyển về Khách lẻ</button>
           </div>
         </details>
-        <details ref="createPicker" class="sales-pos__create-customer">
+        <details ref="createPicker" class="sales-pos__create-customer" @keydown.esc="closePickerOnEscape">
           <summary class="sales-pos__add-customer-btn" :aria-disabled="locked ? 'true' : undefined" @click="guardLockedToggle"><LineIcon name="plus" class="sales-pos__icon-sm" /><span>Thêm khách</span></summary>
           <div class="sales-pos__dropdown sales-pos__dropdown--end">
             <label :for="`sales-new-customer-name${idSuffix}`">Tên khách hàng</label>
@@ -738,7 +771,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         <p v-if="cart.length === 0" class="sales-pos__cart-empty">Chưa có sản phẩm. Tìm hoặc quét sản phẩm ở bên trái để bắt đầu đơn bán.</p>
         <template v-for="line in cart" :key="line.product.id">
           <div class="sales-pos__line-item">
-            <img v-if="productImage(line.product)" class="sales-pos__line-image" :src="productImage(line.product)!" :alt="line.product.name" />
+            <img v-if="productImage(line.product)" class="sales-pos__line-image" :src="productImage(line.product)!" alt="" />
             <span v-else class="sales-pos__line-image sales-pos__line-image--empty" aria-hidden="true"><LineIcon name="box" /></span>
             <div class="sales-pos__line-main">
               <div class="sales-pos__line-name" :title="line.product.name">{{ line.product.name }}</div>
@@ -746,7 +779,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
               <div class="sales-pos__qty-box">
                 <button type="button" :disabled="locked" :aria-label="'Giảm số lượng ' + line.product.name" @click="changeQuantity(line, -1)">−</button>
                 <input
-                  :id="`sales-quantity-${line.product.id}`"
+                  :id="`sales-quantity-${line.product.id}${idSuffix}`"
                   v-model.number="line.quantity"
                   type="number"
                   min="0.001"
@@ -882,6 +915,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
       <div ref="actions" class="sales-pos__actions" :class="{ 'sales-pos__actions--single': !previewOnly }">
         <button v-if="previewOnly" class="sales-pos__secondary-btn" type="button" :disabled="busy || !cart.length" @click="holdOrder"><LineIcon name="clock" class="sales-pos__icon-sm" /> Giữ đơn</button>
         <button
+          ref="completeButton"
           class="sales-pos__primary-btn sales-pos__complete"
           :class="{ 'is-retry': state === 'retryable' }"
           type="button"
@@ -1093,7 +1127,8 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   padding: 0 16px;
   box-shadow: 0 6px 16px rgb(61 84 179 / 6%);
 }
-.sales-pos__search-box:focus-within { border-color: rgb(77 103 238 / 45%); box-shadow: 0 0 0 3px rgb(77 103 238 / 7%); }
+/* The input itself has no outline, so the whole box carries a clearly visible focus ring. */
+.sales-pos__search-box:focus-within { border-color: rgb(77 103 238 / 55%); box-shadow: 0 0 0 3px rgb(77 103 238 / 22%); }
 .sales-pos__search-box input {
   min-width: 0;
   flex: 1;
@@ -1730,6 +1765,25 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 @media (max-width: 1080px) {
   .sales-pos { grid-template-columns: minmax(0, 1fr); }
   .sales-pos__checkout { position: static; }
+  /* Tablet and phone counters are touch-first: production controls reach about 44 px. */
+  .sales-pos__add-btn { width: 44px; height: 44px; }
+  .sales-pos__select,
+  .sales-pos__add-customer-btn,
+  .sales-pos__control,
+  .sales-pos__control-btn,
+  .sales-pos__full-debt-btn { height: 44px; }
+  .sales-pos__pay-btn { height: 48px; }
+  /* 46 px outside so the −/+ buttons keep 44 px inside the 1 px border. */
+  .sales-pos__qty-box { width: 142px; height: 46px; grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .sales-pos__qty-box input { height: 28px; }
+  .sales-pos__remove-mini { display: grid; width: 40px; height: 40px; place-items: center; margin: -8px -10px -6px 0; }
+  .sales-pos__split-list button,
+  .sales-pos__pager button { min-height: 40px; }
+  .sales-pos__history-link,
+  .sales-pos__danger-link,
+  .sales-pos__split-toggle { min-height: 40px; }
+  /* Tablets have room for the two header utilities side by side. */
+  .sales-pos__checkout-tools { grid-auto-flow: column; align-items: center; gap: 16px; }
 }
 @media (max-width: 860px) {
   .sales-pos__categories { display: none; }
@@ -1751,18 +1805,13 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   .sales-pos__field-row .sales-pos__dropdown--end { right: 0; left: 0; width: auto; }
   /* Three Demo pay modes stack; the two live methods stay side by side. */
   .sales-pos__payment-grid:not(.sales-pos__payment-grid--two) { grid-template-columns: minmax(0, 1fr); }
-  /* Comfortable touch targets at the counter. */
-  .sales-pos__select,
-  .sales-pos__add-customer-btn,
-  .sales-pos__control,
-  .sales-pos__control-btn,
-  .sales-pos__full-debt-btn { height: 44px; }
-  .sales-pos__pay-btn { height: 48px; gap: 8px; padding: 0 8px; }
-  .sales-pos__qty-box { width: 132px; height: 40px; }
-  .sales-pos__qty-box input { height: 26px; }
-  .sales-pos__history-link,
-  .sales-pos__danger-link { min-height: 32px; }
-  .sales-pos__split-toggle { padding: 8px 0; }
+  /* Narrow phones: two pay methods side by side need tighter padding. */
+  .sales-pos__pay-btn { gap: 8px; padding: 0 8px; }
+  .sales-pos__checkout-tools { grid-auto-flow: row; gap: 0; }
+}
+@media (max-width: 400px) {
+  /* Keeps "Chuyển khoản" on one line on 360 px phones. */
+  .sales-pos__pay-btn { gap: 6px; font-size: 14.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sales-pos button,

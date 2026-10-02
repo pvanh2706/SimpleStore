@@ -8,6 +8,7 @@ import AppButton from '../ui/AppButton.vue'
 import AppNavigation from './AppNavigation.vue'
 import TodayDateControl from './TodayDateControl.vue'
 import LineIcon from '../ui/LineIcon'
+import { canLeaveSales } from '../../sales/checkoutGuard'
 import { demoIdentity, salesDemoEnabled } from '../../sales/demo'
 import { productDemoEnabled } from '../../products/demo'
 import { purchaseDemoEnabled } from '../../purchases/demo'
@@ -145,6 +146,23 @@ function onWindowKeydown(event: KeyboardEvent) {
   }
 }
 
+/**
+ * Sample Sales data hides the live checkout. While a live CompleteSale outcome is pending, switching to it waits
+ * like leaving does, and the checkout explains why (D-109).
+ */
+function setSalesDemo(enabled: boolean, checkbox?: HTMLInputElement) {
+  if (enabled && !canLeaveSales()) {
+    if (checkbox) checkbox.checked = false
+    return
+  }
+  salesDemoEnabled.value = enabled
+}
+
+function onSalesDemoChange(event: Event) {
+  const checkbox = event.target as HTMLInputElement
+  setSalesDemo(checkbox.checked, checkbox)
+}
+
 function focusProductSearch() {
   // The live and the preview checkout can both be mounted; focus the visible one.
   Array.from(document.querySelectorAll<HTMLInputElement>('.sales-pos__search-box input'))
@@ -195,7 +213,7 @@ function logout() {
       <AppButton ref="menuTrigger" variant="secondary" type="button" aria-label="Mở điều hướng" :aria-controls="menuOpen ? 'app-mobile-menu' : undefined" :aria-expanded="menuOpen" @click="menuOpen = true">Menu</AppButton>
       <RouterLink class="app-brand-name" to="/">SimpleStore</RouterLink>
       <label v-if="isSalesWorkspace || isProductListWorkspace || isPurchaseListWorkspace || isInventoryWorkspace || isDebtWorkspace || isDayCloseWorkspace || isTodayWorkspace || isSettingsWorkspace" class="app-demo-toggle" title="Hiển thị dữ liệu mẫu">
-        <input v-if="isSalesWorkspace" v-model="salesDemoEnabled" type="checkbox" aria-label="Dữ liệu mẫu Bán hàng trên điện thoại" />
+        <input v-if="isSalesWorkspace" :checked="salesDemoEnabled" type="checkbox" aria-label="Dữ liệu mẫu Bán hàng trên điện thoại" @change="onSalesDemoChange" />
         <input v-else-if="isProductListWorkspace" v-model="productDemoEnabled" type="checkbox" aria-label="Dữ liệu mẫu Sản phẩm trên điện thoại" />
         <input v-else-if="isPurchaseListWorkspace" v-model="purchaseDemoEnabled" type="checkbox" aria-label="Dữ liệu mẫu Nhập hàng trên điện thoại" />
         <input v-else-if="isInventoryWorkspace" v-model="inventoryDemoEnabled" type="checkbox" aria-label="Dữ liệu mẫu Tồn kho trên điện thoại" />
@@ -232,7 +250,7 @@ function logout() {
         <!-- A single Store per account today: the chevron mirrors the reference, there is no Store switcher yet. -->
         <div class="app-topbar-store" :title="shownStoreName"><span>{{ shownStoreName }}</span><LineIcon name="chevron" /></div>
         <div class="app-topbar-actions">
-          <button v-if="isSalesWorkspace" class="app-mock-toggle" type="button" :aria-pressed="salesDemoEnabled" title="Hiển thị dữ liệu mẫu giống bản thiết kế; không lưu giao dịch" @click="salesDemoEnabled = !salesDemoEnabled"><LineIcon name="box" />Dữ liệu mẫu</button>
+          <button v-if="isSalesWorkspace" class="app-mock-toggle" type="button" :aria-pressed="salesDemoEnabled" title="Hiển thị dữ liệu mẫu giống bản thiết kế; không lưu giao dịch" @click="setSalesDemo(!salesDemoEnabled)"><LineIcon name="box" />Dữ liệu mẫu</button>
           <button v-if="isProductListWorkspace" class="app-mock-toggle" type="button" :aria-pressed="productDemoEnabled" title="Hiển thị dữ liệu mẫu giống bản thiết kế; không lưu sản phẩm" @click="productDemoEnabled = !productDemoEnabled"><LineIcon name="box" />Dữ liệu mẫu</button>
           <button v-if="isPurchaseListWorkspace" class="app-mock-toggle" type="button" :aria-pressed="purchaseDemoEnabled" title="Hiển thị dữ liệu mẫu giống bản thiết kế; không lưu phiếu nhập" @click="purchaseDemoEnabled = !purchaseDemoEnabled"><LineIcon name="box" />Dữ liệu mẫu</button>
           <button v-if="isInventoryWorkspace" class="app-mock-toggle" type="button" :aria-pressed="inventoryDemoEnabled" title="Hiển thị dữ liệu mẫu giống bản thiết kế; không ghi tồn kho" @click="inventoryDemoEnabled = !inventoryDemoEnabled"><LineIcon name="box" />Dữ liệu mẫu</button>

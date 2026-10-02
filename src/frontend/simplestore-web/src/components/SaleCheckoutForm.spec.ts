@@ -837,6 +837,58 @@ describe('SaleCheckoutForm', () => {
       expect(push).toHaveBeenCalledWith('/sales')
     })
 
+    it('closes Customer pickers with Escape and keeps keyboard focus on the Customer control', async () => {
+      const customer = { id: 'customer-1', name: 'Nguyễn An', phone: null, createdAt: '', updatedAt: '' }
+      const created = { id: 'customer-2', name: 'Trần Bình', phone: null, createdAt: '', updatedAt: '' }
+      const wrapper = mount(SaleCheckoutForm, {
+        attachTo: document.body,
+        props: {
+          allowNegativeStock: false,
+          searchProducts: vi.fn().mockResolvedValue(productPage()),
+          searchCustomers: vi.fn().mockResolvedValue({ ...customerPage, items: [customer], totalCount: 1, totalPages: 1 }),
+          createCustomer: vi.fn().mockResolvedValue(created),
+          completeSale: vi.fn(), checkOperation: vi.fn(), loadSale: vi.fn(),
+        },
+      })
+      await flushPromises()
+      const picker = wrapper.get('.sales-pos__customer-picker')
+      const summary = picker.get('summary')
+      const pickerElement = picker.element as HTMLDetailsElement
+
+      pickerElement.open = true
+      ;(wrapper.get('[aria-label="Tìm khách hàng"]').element as HTMLInputElement).focus()
+      await wrapper.get('[aria-label="Tìm khách hàng"]').trigger('keydown', { key: 'Escape' })
+      expect(pickerElement.open).toBe(false)
+      expect(document.activeElement).toBe(summary.element)
+
+      pickerElement.open = true
+      await wrapper.get('[aria-label="Tìm khách hàng"]').setValue('An')
+      await wrapper.findAll('form').find(form => form.find('[aria-label="Tìm khách hàng"]').exists())!.trigger('submit')
+      await flushPromises()
+      await wrapper.get('[aria-label="Chọn khách hàng Nguyễn An"]').trigger('click')
+      expect(pickerElement.open).toBe(false)
+      expect(document.activeElement).toBe(summary.element)
+      expect(summary.attributes('aria-label')).toBe('Khách hàng: Nguyễn An')
+
+      const create = wrapper.get('.sales-pos__create-customer').element as HTMLDetailsElement
+      create.open = true
+      await wrapper.get('[aria-label="Tên khách hàng mới"]').setValue('Trần Bình')
+      await button(wrapper, 'Tạo và chọn khách hàng').trigger('click')
+      await flushPromises()
+      expect(create.open).toBe(false)
+      expect(document.activeElement).toBe(summary.element)
+      expect(summary.attributes('aria-label')).toBe('Khách hàng: Trần Bình')
+    })
+
+    it('announces Product results once instead of reading every card', async () => {
+      const wrapper = mountForm({ searchProducts: vi.fn().mockResolvedValue(productPage([product, { ...product, id: 'product-102', name: 'Tea' }], 1, 3)) })
+      await flushPromises()
+      expect(wrapper.get('.sales-pos__product-grid').attributes('aria-live')).toBeUndefined()
+      const status = wrapper.findAll('[role="status"]').find(item => item.text().startsWith('Tìm thấy'))!
+      expect(status.text()).toBe('Tìm thấy 60 sản phẩm.')
+      expect(status.classes()).toContain('sales-pos__sr-only')
+    })
+
     it('keeps + Thêm khách as one icon-and-label control', async () => {
       const wrapper = mountForm()
       await flushPromises()
