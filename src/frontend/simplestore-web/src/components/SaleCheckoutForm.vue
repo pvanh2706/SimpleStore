@@ -6,7 +6,8 @@ import type { Customer, CustomerPage, OperationStatus, ProductListItem, ProductP
 import LineIcon from './ui/LineIcon'
 import type { IconName } from './ui/icons'
 import { factualStockState, productCategories, productCategory, stockStatus, type ProductCategory } from '../sales/catalog'
-import { createDemoOrderBook, demoImageById } from '../sales/demo'
+import { blockedSaleLeaves, canLeaveSales, saleOutcomePending } from '../sales/checkoutGuard'
+import { createDemoOrderBook, demoImageById, salesDemoEnabled } from '../sales/demo'
 import {
   createOrderBook, lineAmount, lineDiscount, orderTotal,
   type OrderBook, type PaymentInput, type PayMode,
@@ -130,6 +131,11 @@ const locked = computed(() => ['completing', 'checking', 'retryable', 'completed
 const busy = computed(() => locked.value || creatingCustomer.value)
 /** The outcome is not known yet, so the locked transaction is shown as protected rather than merely disabled. */
 const guarding = computed(() => state.value === 'checking' || state.value === 'retryable')
+/** An attempt is in flight or its outcome is unknown: leaving would lose the exact attempt (D-107/D-108 F). */
+const outcomePending = computed(() => !props.previewOnly
+  && (state.value === 'completing' || state.value === 'checking' || state.value === 'retryable'))
+/** Someone tried to leave Sales (route, logout) while the outcome was pending. */
+const leaveBlocked = ref(false)
 const completeLabel = computed(() => ({
   idle: 'Hoàn tất bán hàng',
   completing: 'Đang xác nhận…',
@@ -354,9 +360,10 @@ function invoiceDiscount() {
 }
 
 function openHistory(event: MouseEvent) {
-  // Leaving would drop an attempt whose outcome is still unknown, so the shortcut waits for it.
+  // Leaving would drop an attempt whose outcome is still unknown, so the shortcut waits for it and says why.
   if (locked.value) {
     event.preventDefault()
+    canLeaveSales()
     return
   }
   if (!router || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
@@ -469,6 +476,29 @@ watch([state, rejected], ([value, isRejected]) => {
   void nextTick(() => actions.value?.scrollIntoView?.({ block: 'nearest' }))
 })
 
+/** Reload or tab close would lose the RAM-only attempt; browsers show their own generic warning. */
+function warnBeforeUnload(event: BeforeUnloadEvent) {
+  event.preventDefault()
+  event.returnValue = true
+}
+
+// The router guard and logout hold the live checkout while its outcome is pending; nothing is persisted (D-107).
+watch(outcomePending, pending => {
+  saleOutcomePending.value = pending
+  if (pending) {
+    window.addEventListener('beforeunload', warnBeforeUnload)
+  } else {
+    window.removeEventListener('beforeunload', warnBeforeUnload)
+    leaveBlocked.value = false
+  }
+}, { flush: 'sync' })
+watch(blockedSaleLeaves, () => {
+  if (!outcomePending.value) return
+  leaveBlocked.value = true
+  salesDemoEnabled.value = false
+  void nextTick(() => actions.value?.scrollIntoView?.({ block: 'nearest' }))
+})
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   document.addEventListener('pointerdown', onPointerDown)
@@ -477,6 +507,8 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)
   document.removeEventListener('pointerdown', onPointerDown)
+  window.removeEventListener('beforeunload', warnBeforeUnload)
+  if (outcomePending.value) saleOutcomePending.value = false
 })
 defineExpose({ state, attempt, cart, payments, customer, total, paid, outstanding })
 </script>
@@ -824,6 +856,14 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           <p v-if="rejected" class="sales-pos__error-title">Chưa hoàn tất đơn bán</p>
           <p class="sales-pos__message">{{ message }}</p>
           <p v-if="rejected" class="sales-pos__error-hint">Bạn có thể sửa đơn rồi bấm Hoàn tất bán hàng lần nữa.</p>
+        </div>
+      </div>
+      <!-- Re-keyed per refused leave so every attempt to leave is announced again. -->
+      <div v-if="leaveBlocked && outcomePending" :key="blockedSaleLeaves" class="sales-pos__leave-blocked" role="alert">
+        <LineIcon name="lock" class="sales-pos__icon-sm" />
+        <div>
+          <p class="sales-pos__leave-title">Đơn bán đang chờ xác định kết quả.</p>
+          <p>Hãy kiểm tra kết quả hoặc thử lại đúng thao tác trước khi rời màn bán hàng để tránh tạo đơn trùng.</p>
         </div>
       </div>
       <p v-if="state === 'checking'" class="sales-pos__checking" role="status">
@@ -1560,6 +1600,23 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__error-title { color: #912018; font-weight: 800; }
 .sales-pos__message { font-weight: 650; overflow-wrap: anywhere; }
 .sales-pos__error-hint { margin-top: 2px; color: #7a271a; }
+/* A refused leave (route, logout) while the outcome is pending: the order stays, and this says why. */
+.sales-pos__leave-blocked {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+  border: 1px solid var(--pos-amber-border);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px 12px;
+  color: #5c4209;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.sales-pos__leave-blocked :deep(.line-icon) { margin-top: 1px; color: var(--pos-amber-text); }
+.sales-pos__leave-title { color: #4a3305; font-weight: 850; }
 .sales-pos__checking { margin-bottom: 12px; border-radius: 10px; background: var(--pos-lock-bg); padding: 8px 12px; color: var(--pos-lock-text); font-size: 13px; font-weight: 650; line-height: 1.4; }
 /* Unknown outcome: prominent but calm, it explains the lock and the exact retry below it. */
 .sales-pos__txn-state {

@@ -5,6 +5,7 @@ import AppShell from './components/app/AppShell.vue'
 import AppButton from './components/ui/AppButton.vue'
 import AppSkeleton from './components/ui/AppSkeleton.vue'
 import { useAuthStore } from './stores/auth'
+import { canLeaveSales } from './sales/checkoutGuard'
 import { liveOrderBook } from './sales/orders'
 
 const auth = useAuthStore()
@@ -22,6 +23,8 @@ const sessionIdentity = computed(() => auth.session.isAuthenticated
 watch(sessionIdentity, () => liveOrderBook.reset())
 
 async function logout() {
+  // Signing out would abandon a live CompleteSale whose outcome is unknown; the checkout explains why it stays.
+  if (!canLeaveSales()) return
   await auth.logout()
   await router.push({ name: 'login' })
 }

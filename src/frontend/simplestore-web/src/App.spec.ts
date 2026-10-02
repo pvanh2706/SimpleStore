@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import type { Session } from './api/types'
 import { useAuthStore } from './stores/auth'
+import { blockedSaleLeaves, saleOutcomePending } from './sales/checkoutGuard'
 import { liveOrderBook } from './sales/orders'
 
 async function mountForSession(session: Session, initialized = true) {
@@ -116,6 +117,30 @@ describe('live Sales working order across the authenticated session (D-107)', ()
     expect(order.payments).toEqual([])
     expect(order.paymentIntent).toBe('full-payment')
     expect(order.payMode).toBe('Cash')
+  })
+
+  it('refuses to sign out while a CompleteSale outcome is pending, then signs out once it is resolved', async () => {
+    const { wrapper, router, auth } = await mountSignedIn()
+    const signOut = () => wrapper.get('.app-sidebar .app-account-area button').trigger('click')
+    const logoutCalls = () => vi.mocked(fetch).mock.calls.filter(([input]) => String(input) === '/api/auth/logout')
+    const refused = blockedSaleLeaves.value
+    saleOutcomePending.value = true
+    try {
+      await signOut()
+      await flushPromises()
+      expect(blockedSaleLeaves.value).toBe(refused + 1)
+      expect(logoutCalls()).toHaveLength(0)
+      expect(auth.session.isAuthenticated).toBe(true)
+      expect(router.currentRoute.value.name).not.toBe('login')
+      expect(liveOrderBook.active.value.cart).toHaveLength(1)
+    } finally {
+      saleOutcomePending.value = false
+    }
+
+    await signOut()
+    await flushPromises()
+    expect(logoutCalls()).toHaveLength(1)
+    expect(router.currentRoute.value.name).toBe('login')
   })
 
   it('keeps both the session and the order when the logout request fails', async () => {

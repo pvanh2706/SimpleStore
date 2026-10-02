@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { keepPendingSale } from '../sales/checkoutGuard'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -34,6 +35,9 @@ const router = createRouter({
     { path: '/settings/users', name: 'user-settings', component: () => import('../views/UserSettingsView.vue'), meta: { ownerOnly: true } },
   ],
 })
+
+// First, and synchronous: an unresolved CompleteSale keeps the live checkout mounted (D-107/D-108 F).
+router.beforeEach(keepPendingSale(() => useAuthStore().session.isAuthenticated))
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()

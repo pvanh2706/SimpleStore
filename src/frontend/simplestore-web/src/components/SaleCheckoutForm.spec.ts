@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { routerKey } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -71,6 +71,8 @@ async function fullyPay(wrapper: ReturnType<typeof mountForm>) {
 }
 
 describe('SaleCheckoutForm', () => {
+  // Unmounting releases window listeners (keydown, beforeunload) and the pending-outcome guard.
+  enableAutoUnmount(afterEach)
   beforeEach(() => {
     vi.stubGlobal('crypto', { randomUUID: vi.fn(() => 'operation-1') })
   })

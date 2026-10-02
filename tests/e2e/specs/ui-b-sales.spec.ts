@@ -378,6 +378,85 @@ test('Unresolved CompleteSale locks the exact attempt and retries it without a n
   expect(attempts[0]).toMatchObject({ customerId: customer.id, payments: [{ method: 'Cash', amount: 5000 }] })
 })
 
+test('An unresolved CompleteSale keeps the checkout when leaving is attempted, then retries the same operation', async ({ page }) => {
+  await mockCashierCheckout(page)
+  const sent: Array<Record<string, unknown>> = []
+  let failNext = true
+  await page.route('**/api/sales/complete', route => {
+    sent.push(route.request().postDataJSON() as Record<string, unknown>)
+    if (!failNext) return route.fallback()
+    failNext = false
+    return fulfillJson(route, { title: 'Service unavailable' }, 503)
+  })
+  await page.route('**/api/operations/**', route => fulfillJson(route, { title: 'Not found' }, 404))
+  let logoutCalls = 0
+  await page.route('**/api/auth/logout', route => { logoutCalls++; return route.fulfill({ status: 204, body: '' }) })
+  await page.setViewportSize({ width: 1536, height: 1024 })
+  const navigation = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
+  const unloadIsGuarded = () => page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  })
+
+  await page.goto('/products')
+  // Wait until /products is the settled route, so Bán hàng pushes a real history entry to go Back to.
+  await expect(navigation.getByRole('link', { name: 'Sản phẩm' })).toHaveAttribute('aria-current', 'page')
+  await navigation.getByRole('link', { name: 'Bán hàng' }).click()
+  await expect(page).toHaveURL(/\/sales\/new$/)
+  await page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` }).click()
+  expect(await unloadIsGuarded()).toBe(false)
+  await page.getByRole('button', { name: 'Hoàn tất bán hàng' }).click()
+  const state = page.locator('.sales-pos__txn-state')
+  await expect(state).toContainText('Chưa xác định được kết quả')
+  expect(sent).toHaveLength(1)
+  expect(await unloadIsGuarded()).toBe(true)
+
+  const leaveBlocked = page.locator('.sales-pos__leave-blocked')
+  const expectStillOnCheckout = async () => {
+    await expect(page).toHaveURL(/\/sales\/new$/)
+    await expect(state).toBeVisible()
+    await expect(leaveBlocked).toContainText('Đơn bán đang chờ xác định kết quả.')
+    await expect(leaveBlocked).toContainText('Hãy kiểm tra kết quả hoặc thử lại đúng thao tác trước khi rời màn bán hàng để tránh tạo đơn trùng.')
+    await expect(page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` })).toBeDisabled()
+  }
+  // Sidebar, brand link and browser Back are all refused by the router guard.
+  await navigation.getByRole('link', { name: 'Sản phẩm' }).click()
+  await expectStillOnCheckout()
+  await expect(leaveBlocked).toBeInViewport()
+  await expect(page.getByRole('button', { name: 'Thử lại đúng thao tác' })).toBeInViewport()
+  await captureVisual(page, 'sales-desktop-leave-blocked-1536x1024.png')
+  await page.locator('.app-sidebar .app-brand').click()
+  await expectStillOnCheckout()
+  // Back to /products is an in-app (popstate) navigation: the guard refuses it and the router restores the URL.
+  expect(await page.evaluate(() => (history.state as { back: string | null }).back)).toBe('/products')
+  await page.goBack({ waitUntil: 'commit' })
+  await expectStillOnCheckout()
+  // Sign-out is refused before the logout request is sent.
+  await page.locator('.app-topbar-profile summary').click()
+  await page.locator('.app-topbar-profile').getByRole('button', { name: 'Đăng xuất' }).click()
+  await expectStillOnCheckout()
+  expect(logoutCalls).toBe(0)
+  // The tablet drawer closes and the checkout explains why it stays.
+  await page.setViewportSize({ width: 820, height: 900 })
+  await page.getByRole('button', { name: 'Mở điều hướng' }).click()
+  await page.getByRole('dialog', { name: 'Điều hướng ứng dụng' }).getByRole('link', { name: 'Sản phẩm' }).click()
+  await expect(page.getByRole('dialog', { name: 'Điều hướng ứng dụng' })).toHaveCount(0)
+  await expectStillOnCheckout()
+  await page.setViewportSize({ width: 1536, height: 1024 })
+
+  await page.getByRole('button', { name: 'Thử lại đúng thao tác' }).click()
+  await expect(page.getByRole('heading', { name: 'Đơn bán đã hoàn tất' })).toBeVisible()
+  expect(sent).toHaveLength(2)
+  expect(sent[1]).toEqual(sent[0])
+  expect(sent[1]!.operationId).toBe(sent[0]!.operationId)
+
+  // Confirmed Sale: no stale guard, and every route works again.
+  expect(await unloadIsGuarded()).toBe(false)
+  await navigation.getByRole('link', { name: 'Sản phẩm' }).click()
+  await expect(page).toHaveURL(/\/products$/)
+})
+
 test('A rejected CompleteSale returns to editable correction without lock residue', async ({ page }) => {
   const { attempts } = await mockCashierCheckout(page)
   let rejectNext = true
