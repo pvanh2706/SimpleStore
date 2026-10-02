@@ -50,6 +50,7 @@ export const icons = {
   clipboard: ['M9 3h6v4H9z', 'M9 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-3', 'm9 14 2 2 4-4'],
   sliders: ['M5 21v-7', 'M5 10V3', 'M12 21v-9', 'M12 8V3', 'M19 21v-5', 'M19 12V3', 'M2 14h6', 'M9 8h6', 'M16 16h6'],
   lock: ['M5 11h14v10H5z', 'M8 11V7a4 4 0 0 1 8 0v4', 'M12 15v2'],
+  retry: ['M20 12a8 8 0 1 1-2.34-5.66', 'M20 4v5h-5'],
   // Copied from the Today HTML visual reference (TemplateHTML/Today).
   todayCart: [circle(9, 21, 1), circle(20, 21, 1), 'M1 2h3l2.5 13h14l2-10H5'],
   chevronLeft: ['m15 18-6-6 6-6'],

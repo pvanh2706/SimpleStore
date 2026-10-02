@@ -2,7 +2,8 @@
 import { computed, ref } from 'vue'
 import type { Sale } from '../api/types'
 
-const props = defineProps<{ sale: Sale }>()
+/** hidePrintAction: the host renders its own `In hóa đơn` (and print error) that calls printReceipt. */
+const props = defineProps<{ sale: Sale; hidePrintAction?: boolean }>()
 const printError = ref('')
 const originalOutstanding = computed(() => Math.max(0, props.sale.totalAmount - props.sale.paidAmount))
 function printReceipt() {
@@ -40,8 +41,10 @@ const money = (value: number) => new Intl.NumberFormat('vi-VN').format(value)
       <p>Chi tiết từng lần trả hàng xem trong đơn bán đã lưu.</p>
     </div>
     <p class="mt-6 text-center text-sm">Cảm ơn quý khách.</p>
-    <p v-if="printError" class="error mt-4" role="alert">{{ printError }}</p>
-    <button class="btn-primary no-print mt-5 w-full" type="button" @click="printReceipt">In hóa đơn</button>
+    <template v-if="!hidePrintAction">
+      <p v-if="printError" class="error mt-4" role="alert">{{ printError }}</p>
+      <button class="btn-primary no-print mt-5 w-full" type="button" @click="printReceipt">In hóa đơn</button>
+    </template>
   </section>
 </template>
 

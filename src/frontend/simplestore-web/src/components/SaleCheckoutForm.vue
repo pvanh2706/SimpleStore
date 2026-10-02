@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, onUnmounted, ref } from 'vue'
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { routerKey } from 'vue-router'
 import { ApiError } from '../api/client'
 import type { Customer, CustomerPage, OperationStatus, ProductListItem, ProductPage, Sale } from '../api/types'
@@ -40,6 +40,8 @@ const searchInput = ref<HTMLInputElement | null>(null)
 const customerPicker = ref<HTMLDetailsElement | null>(null)
 const createPicker = ref<HTMLDetailsElement | null>(null)
 const queueMenu = ref<HTMLDetailsElement | null>(null)
+const cartList = ref<HTMLElement | null>(null)
+const actions = ref<HTMLElement | null>(null)
 const idSuffix = props.previewOnly ? '-preview' : ''
 
 const book = props.orderBook ?? (props.previewOnly ? createDemoOrderBook() : createOrderBook())
@@ -96,6 +98,8 @@ const state = ref<State>('idle')
 const attempt = ref<AttemptSnapshot | null>(null)
 const message = ref('')
 const notice = ref('')
+/** The server rejected the attempt outright: the message is a correctable error, never an unresolved outcome. */
+const rejected = ref(false)
 
 const itemCount = computed(() => cart.value.reduce((sum, line) => sum + (Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 0), 0))
 const subtotal = computed(() => cart.value.reduce((sum, line) => sum + lineAmount(line), 0))
@@ -124,6 +128,15 @@ const paymentPending = computed(() => !props.previewOnly && order.value.paymentI
 const customerRequired = computed(() => cart.value.length > 0 && outstanding.value > 0 && !paymentPending.value)
 const locked = computed(() => ['completing', 'checking', 'retryable', 'completed'].includes(state.value))
 const busy = computed(() => locked.value || creatingCustomer.value)
+/** The outcome is not known yet, so the locked transaction is shown as protected rather than merely disabled. */
+const guarding = computed(() => state.value === 'checking' || state.value === 'retryable')
+const completeLabel = computed(() => ({
+  idle: 'Hoàn tất bán hàng',
+  completing: 'Đang xác nhận…',
+  checking: 'Đang kiểm tra kết quả…',
+  retryable: 'Thử lại đúng thao tác',
+  completed: 'Hoàn tất bán hàng',
+})[state.value])
 const money = (value: number) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value)
 const unitLabel = (unit: string) => unit.charAt(0).toLocaleUpperCase('vi-VN') + unit.slice(1)
 const methodLabel = (method: PaymentInput['method']) => method === 'Cash' ? 'Tiền mặt' : 'Chuyển khoản'
@@ -140,6 +153,12 @@ function closeDetails(element: HTMLDetailsElement | null) {
 function resetFeedback() {
   message.value = ''
   notice.value = ''
+  rejected.value = false
+}
+
+/** Customer pickers stay closed while the transaction is locked; their controls are disabled too. */
+function guardLockedToggle(event: Event) {
+  if (locked.value) event.preventDefault()
 }
 
 async function findProducts(page = 1) {
@@ -185,6 +204,10 @@ function addProduct(product: ProductListItem) {
   }
   cart.value.push({ product, quantity: 1 })
   selectedProductId.value = product.id
+  // A long cart scrolls inside the checkout; keep the line just added in view.
+  void nextTick(() => {
+    if (cartList.value) cartList.value.scrollTop = cartList.value.scrollHeight
+  })
 }
 
 function removeProduct(productId: string) {
@@ -331,7 +354,12 @@ function invoiceDiscount() {
 }
 
 function openHistory(event: MouseEvent) {
-  if (!router) return
+  // Leaving would drop an attempt whose outcome is still unknown, so the shortcut waits for it.
+  if (locked.value) {
+    event.preventDefault()
+    return
+  }
+  if (!router || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
   event.preventDefault()
   void router.push('/sales')
 }
@@ -399,6 +427,7 @@ async function complete() {
       state.value = 'idle'
       attempt.value = null
       message.value = reason instanceof Error ? reason.message : 'Không thể hoàn tất đơn bán.'
+      rejected.value = true
       return
     }
 
@@ -413,8 +442,8 @@ async function complete() {
       }
     } catch { /* Keep the exact attempt because the outcome remains ambiguous. */ }
 
+    // The transaction-state block explains the unresolved outcome and the exact retry.
     state.value = 'retryable'
-    message.value = 'Chưa xác định được kết quả. Giỏ hàng, khách hàng và thanh toán đã được khóa để thử lại đúng thao tác.'
   }
 }
 
@@ -431,6 +460,15 @@ function onPointerDown(event: PointerEvent) {
   })
 }
 
+watch(locked, value => {
+  if (value) root.value?.querySelectorAll('details[open]').forEach(details => details.removeAttribute('open'))
+})
+// The transaction state and its CTA (retry or correction) must be in view after Complete was pressed.
+watch([state, rejected], ([value, isRejected]) => {
+  if (value !== 'checking' && value !== 'retryable' && !isRejected) return
+  void nextTick(() => actions.value?.scrollIntoView?.({ block: 'nearest' }))
+})
+
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   document.addEventListener('pointerdown', onPointerDown)
@@ -444,7 +482,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 </script>
 
 <template>
-  <div ref="root" class="sales-pos no-print" :class="{ 'sales-pos--demo': previewOnly }">
+  <div ref="root" class="sales-pos no-print" :class="{ 'sales-pos--demo': previewOnly, 'sales-pos--guarded': guarding }">
     <section class="sales-pos__products" :aria-labelledby="`sales-products-heading${idSuffix}`">
       <h2 :id="`sales-products-heading${idSuffix}`" class="sales-pos__sr-only">Chọn sản phẩm</h2>
 
@@ -497,6 +535,11 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         <strong>Lưu ý về tồn kho</strong>
         <span>Cửa hàng đang cho phép bán âm tồn. Giá vốn có thể ở trạng thái ước tính hoặc chưa xác định.</span>
       </div>
+
+      <p v-if="guarding" class="sales-pos__lock-strip">
+        <LineIcon name="lock" class="sales-pos__icon-sm" />
+        <span>Tạm khóa tìm và thêm sản phẩm cho tới khi có kết quả của đơn đang xác nhận.</span>
+      </p>
 
       <form class="sales-pos__search" role="search" @submit.prevent="findProducts(1)">
         <label :for="`sales-product-search${idSuffix}`" class="sales-pos__sr-only">Tìm hoặc quét sản phẩm</label>
@@ -573,21 +616,36 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
       <div class="sales-pos__checkout-top">
         <div class="sales-pos__checkout-title">
           <h2 :id="`sales-checkout-heading${idSuffix}`">Đơn {{ order.number }}</h2>
-          <span class="sales-pos__status-chip">Đang bán</span>
+          <span class="sales-pos__status-chip" :class="{ 'is-locked': guarding }"><LineIcon v-if="guarding" name="lock" class="sales-pos__icon-xs" />{{ guarding ? 'Đã khóa' : 'Đang bán' }}</span>
         </div>
         <div class="sales-pos__checkout-tools">
           <div v-if="previewOnly" class="sales-pos__muted-row"><LineIcon name="kebab" class="sales-pos__icon-sm" /></div>
+          <!-- A quiet live shortcut to /sales; the Demo keeps it inside the waiting-order menu (D-106). -->
+          <a
+            v-else
+            class="sales-pos__history-link"
+            href="/sales"
+            :aria-disabled="locked ? 'true' : undefined"
+            :tabindex="locked ? -1 : undefined"
+            @click="openHistory"
+          ><LineIcon name="clock" class="sales-pos__icon-sm" />Lịch sử bán hàng</a>
           <button class="sales-pos__danger-link" type="button" :disabled="busy || !cart.length" @click="clearOrder"><LineIcon name="trash" class="sales-pos__icon-sm" /> Xóa đơn</button>
         </div>
       </div>
 
       <div class="sales-pos__customer-head">
-        <span class="sales-pos__field-label">Khách hàng</span>
+        <span class="sales-pos__field-label">Khách hàng<LineIcon v-if="guarding" name="lock" class="sales-pos__lock-icon" /></span>
         <span v-if="customerRequired" class="sales-pos__required-tag">Bắt buộc khi còn nợ</span>
       </div>
       <div class="sales-pos__field-row">
         <details ref="customerPicker" class="sales-pos__customer-picker">
-          <summary class="sales-pos__select" :class="{ 'is-required': customerRequired && !customer }" :aria-label="`Khách hàng: ${customer?.name ?? 'Khách lẻ'}`">
+          <summary
+            class="sales-pos__select"
+            :class="{ 'is-required': customerRequired && !customer }"
+            :aria-label="`Khách hàng: ${customer?.name ?? 'Khách lẻ'}`"
+            :aria-disabled="locked ? 'true' : undefined"
+            @click="guardLockedToggle"
+          >
             <span class="sales-pos__select-value">{{ customer?.name ?? 'Khách lẻ' }}</span>
             <LineIcon name="chevron" class="sales-pos__icon-sm" />
           </summary>
@@ -622,7 +680,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
           </div>
         </details>
         <details ref="createPicker" class="sales-pos__create-customer">
-          <summary class="sales-pos__add-customer-btn"><LineIcon name="plus" class="sales-pos__icon-sm" /> Thêm khách</summary>
+          <summary class="sales-pos__add-customer-btn" :aria-disabled="locked ? 'true' : undefined" @click="guardLockedToggle"><LineIcon name="plus" class="sales-pos__icon-sm" /><span>Thêm khách</span></summary>
           <div class="sales-pos__dropdown sales-pos__dropdown--end">
             <label :for="`sales-new-customer-name${idSuffix}`">Tên khách hàng</label>
             <input :id="`sales-new-customer-name${idSuffix}`" v-model="newCustomerName" class="sales-pos__control" aria-label="Tên khách hàng mới" placeholder="Tên khách hàng mới" :disabled="locked || creatingCustomer" />
@@ -644,14 +702,14 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         <input :id="`sales-order-note${idSuffix}`" v-model="order.note" class="sales-pos__note" type="text" autocomplete="off" placeholder="Thêm ghi chú..." :disabled="locked" />
       </template>
 
-      <div class="sales-pos__order-items" aria-label="Sản phẩm trong giỏ">
+      <div ref="cartList" class="sales-pos__order-items" role="group" aria-label="Sản phẩm trong giỏ">
         <p v-if="cart.length === 0" class="sales-pos__cart-empty">Chưa có sản phẩm. Tìm hoặc quét sản phẩm ở bên trái để bắt đầu đơn bán.</p>
         <template v-for="line in cart" :key="line.product.id">
           <div class="sales-pos__line-item">
             <img v-if="productImage(line.product)" class="sales-pos__line-image" :src="productImage(line.product)!" :alt="line.product.name" />
             <span v-else class="sales-pos__line-image sales-pos__line-image--empty" aria-hidden="true"><LineIcon name="box" /></span>
             <div class="sales-pos__line-main">
-              <div class="sales-pos__line-name">{{ line.product.name }}</div>
+              <div class="sales-pos__line-name" :title="line.product.name">{{ line.product.name }}</div>
               <div class="sales-pos__line-price">{{ money(line.product.salePrice) }} đ</div>
               <div class="sales-pos__qty-box">
                 <button type="button" :disabled="locked" :aria-label="'Giảm số lượng ' + line.product.name" @click="changeQuantity(line, -1)">−</button>
@@ -695,79 +753,108 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
         <div class="sales-pos__grand-value">{{ money(total) }} đ</div>
       </div>
 
-      <div class="sales-pos__pay-head">
-        <h3 :id="`sales-payment-heading${idSuffix}`" class="sales-pos__pay-title">Hình thức thanh toán</h3>
-        <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :disabled="locked" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="toggleAmountEntry">{{ splitShown ? 'Thu đủ' : 'Nhập số tiền' }}</button>
-      </div>
-      <div class="sales-pos__payment-grid" :class="{ 'sales-pos__payment-grid--two': payModes.length === 2 }" role="group" :aria-labelledby="`sales-payment-heading${idSuffix}`">
-        <button
-          v-for="mode in payModes"
-          :key="mode.id"
-          class="sales-pos__pay-btn"
-          :class="{ 'is-active': order.payMode === mode.id && !fullDebt }"
-          type="button"
-          :aria-pressed="order.payMode === mode.id && !fullDebt"
-          :disabled="locked"
-          @click="setPayMode(mode.id)"
-        ><LineIcon :name="mode.icon" class="sales-pos__icon-sm" /> {{ mode.label }}</button>
-      </div>
-      <template v-if="!previewOnly">
-        <button
-          class="sales-pos__full-debt-btn"
-          :class="{ 'is-active': fullDebt }"
-          type="button"
-          :aria-pressed="fullDebt"
-          :disabled="locked || payments.length > 0 || !cart.length"
-          :title="payments.length ? 'Xóa các khoản đã nhập để ghi nợ toàn bộ.' : undefined"
-          @click="toggleFullDebt"
-        ><LineIcon name="debt" class="sales-pos__icon-sm" /> Ghi nợ toàn bộ</button>
-        <p v-if="fullDebt && cart.length" class="sales-pos__full-debt-state" role="status">
-          <strong>Chưa thu tiền</strong><span>Còn nợ {{ money(outstanding) }} đ</span>
-        </p>
-      </template>
-      <div v-show="splitShown" :id="`sales-split${idSuffix}`" class="sales-pos__split">
-        <div class="sales-pos__split-row">
-          <label :for="`sales-payment-amount${idSuffix}`" class="sales-pos__sr-only">Số tiền thanh toán</label>
-          <input
-            :id="`sales-payment-amount${idSuffix}`"
-            v-model.number="amount"
-            class="sales-pos__control"
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputmode="decimal"
-            aria-label="Số tiền thanh toán"
-            :placeholder="`Khách trả (${order.payMode === 'Transfer' ? 'Chuyển khoản' : 'Tiền mặt'})`"
-            :disabled="locked"
-          />
-          <button class="sales-pos__control-btn" type="button" :disabled="locked" @click="addPayment">Thêm thanh toán</button>
+      <div class="sales-pos__payment">
+        <div class="sales-pos__pay-head">
+          <h3 :id="`sales-payment-heading${idSuffix}`" class="sales-pos__pay-title">Hình thức thanh toán<LineIcon v-if="guarding" name="lock" class="sales-pos__lock-icon" /></h3>
+          <button v-if="!payments.length && !previewOnly" class="sales-pos__split-toggle" type="button" :disabled="locked" :aria-expanded="splitShown" :aria-controls="`sales-split${idSuffix}`" @click="toggleAmountEntry">{{ splitShown ? 'Thu đủ' : 'Nhập số tiền' }}</button>
         </div>
-        <ul v-if="payments.length" class="sales-pos__split-list" aria-label="Các khoản đã nhập">
-          <li v-for="(payment, index) in payments" :key="index">
-            <span>{{ methodLabel(payment.method) }}</span>
-            <strong>{{ money(payment.amount) }} đ</strong>
-            <button type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
-          </li>
-        </ul>
-        <template v-if="payments.length">
-          <p class="sales-pos__split-summary" aria-live="polite">Khách trả <strong>{{ money(paid) }} đ</strong> · Còn nợ <strong>{{ money(outstanding) }} đ</strong></p>
-          <p class="sales-pos__hint">Chỉ các khoản đã nhập được ghi nhận là tiền thu; phần chưa thanh toán ghi công nợ cho khách hàng.</p>
+        <div class="sales-pos__payment-grid" :class="{ 'sales-pos__payment-grid--two': payModes.length === 2 }" role="group" :aria-labelledby="`sales-payment-heading${idSuffix}`">
+          <button
+            v-for="mode in payModes"
+            :key="mode.id"
+            class="sales-pos__pay-btn"
+            :class="{ 'is-active': order.payMode === mode.id && !fullDebt }"
+            type="button"
+            :aria-pressed="order.payMode === mode.id && !fullDebt"
+            :disabled="locked"
+            @click="setPayMode(mode.id)"
+          ><LineIcon :name="mode.icon" class="sales-pos__icon-sm" /> {{ mode.label }}</button>
+        </div>
+        <template v-if="!previewOnly">
+          <button
+            class="sales-pos__full-debt-btn"
+            :class="{ 'is-active': fullDebt }"
+            type="button"
+            :aria-pressed="fullDebt"
+            :disabled="locked || payments.length > 0 || !cart.length"
+            :title="payments.length ? 'Xóa các khoản đã nhập để ghi nợ toàn bộ.' : undefined"
+            @click="toggleFullDebt"
+          ><LineIcon name="debt" class="sales-pos__icon-sm" /> Ghi nợ toàn bộ</button>
+          <p v-if="fullDebt && cart.length" class="sales-pos__full-debt-state" role="status">
+            <strong>Chưa thu tiền</strong><span>Còn nợ {{ money(outstanding) }} đ</span>
+          </p>
         </template>
-        <p v-else class="sales-pos__hint">Nhập số tiền khách đã trả. Không thu tiền? Chọn Ghi nợ toàn bộ.</p>
+        <div v-show="splitShown" :id="`sales-split${idSuffix}`" class="sales-pos__split">
+          <div class="sales-pos__split-row">
+            <label :for="`sales-payment-amount${idSuffix}`" class="sales-pos__sr-only">Số tiền thanh toán</label>
+            <input
+              :id="`sales-payment-amount${idSuffix}`"
+              v-model.number="amount"
+              class="sales-pos__control"
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputmode="decimal"
+              aria-label="Số tiền thanh toán"
+              :placeholder="`Khách trả (${order.payMode === 'Transfer' ? 'Chuyển khoản' : 'Tiền mặt'})`"
+              :disabled="locked"
+            />
+            <button class="sales-pos__control-btn" type="button" :disabled="locked" @click="addPayment">Thêm thanh toán</button>
+          </div>
+          <ul v-if="payments.length" class="sales-pos__split-list" aria-label="Các khoản đã nhập">
+            <li v-for="(payment, index) in payments" :key="index">
+              <span>{{ methodLabel(payment.method) }}</span>
+              <strong>{{ money(payment.amount) }} đ</strong>
+              <button type="button" :disabled="locked" :aria-label="'Xóa khoản thanh toán ' + (index + 1)" @click="removePayment(index)">Xóa</button>
+            </li>
+          </ul>
+          <template v-if="payments.length">
+            <p class="sales-pos__split-summary" aria-live="polite">Khách trả <strong>{{ money(paid) }} đ</strong> · Còn nợ <strong>{{ money(outstanding) }} đ</strong></p>
+            <p class="sales-pos__hint">Chỉ các khoản đã nhập được ghi nhận là tiền thu; phần chưa thanh toán ghi công nợ cho khách hàng.</p>
+          </template>
+          <p v-else class="sales-pos__hint">Nhập số tiền khách đã trả. Không thu tiền? Chọn Ghi nợ toàn bộ.</p>
+        </div>
       </div>
 
       <p v-if="notice" class="sales-pos__notice" role="status">{{ notice }}</p>
-      <p v-if="message" class="sales-pos__message" role="alert">{{ message }}</p>
+      <!-- Validation and outright rejections are correctable: the order stays editable (D-107 F). -->
+      <div v-if="message" class="sales-pos__error" role="alert">
+        <LineIcon name="alert" class="sales-pos__icon-sm" />
+        <div>
+          <p v-if="rejected" class="sales-pos__error-title">Chưa hoàn tất đơn bán</p>
+          <p class="sales-pos__message">{{ message }}</p>
+          <p v-if="rejected" class="sales-pos__error-hint">Bạn có thể sửa đơn rồi bấm Hoàn tất bán hàng lần nữa.</p>
+        </div>
+      </div>
+      <p v-if="state === 'checking'" class="sales-pos__checking" role="status">
+        Chưa nhận được phản hồi. SimpleStore đang kiểm tra đơn đã được ghi nhận hay chưa; đơn hàng được giữ nguyên.
+      </p>
+      <!-- An unknown outcome keeps the exact attempt: one calm state block, then the exact-retry CTA. -->
+      <div v-else-if="state === 'retryable'" class="sales-pos__txn-state" role="alert">
+        <span class="sales-pos__txn-icon" aria-hidden="true"><LineIcon name="lock" /></span>
+        <div class="sales-pos__txn-body">
+          <p class="sales-pos__txn-title">Chưa xác định được kết quả</p>
+          <p>Giỏ hàng, khách hàng và thanh toán đã được khóa để giữ nguyên thao tác trước: không tạo đơn mới, không chỉnh sửa đơn này.</p>
+          <p class="sales-pos__txn-support">SimpleStore sẽ dùng lại đúng mã thao tác trước đó để tránh tạo đơn trùng.</p>
+        </div>
+      </div>
 
-      <div class="sales-pos__actions" :class="{ 'sales-pos__actions--single': !previewOnly }">
+      <div ref="actions" class="sales-pos__actions" :class="{ 'sales-pos__actions--single': !previewOnly }">
         <button v-if="previewOnly" class="sales-pos__secondary-btn" type="button" :disabled="busy || !cart.length" @click="holdOrder"><LineIcon name="clock" class="sales-pos__icon-sm" /> Giữ đơn</button>
         <button
           class="sales-pos__primary-btn sales-pos__complete"
+          :class="{ 'is-retry': state === 'retryable' }"
           type="button"
           :data-shortcut="state === 'idle' ? 'F12' : undefined"
+          :aria-busy="state === 'completing' || state === 'checking' ? 'true' : undefined"
           :disabled="state === 'completing' || state === 'checking' || state === 'completed' || creatingCustomer"
           @click="complete"
-        ><LineIcon v-if="state === 'idle'" name="check" class="sales-pos__icon-sm" />{{ state === 'retryable' ? 'Thử lại đúng thao tác' : state === 'completing' || state === 'checking' ? 'Đang xác nhận…' : 'Hoàn tất bán hàng' }}</button>
+        >
+          <span v-if="state === 'completing' || state === 'checking'" class="sales-pos__spinner" aria-hidden="true" />
+          <LineIcon v-else-if="state === 'retryable'" name="retry" class="sales-pos__icon-sm" />
+          <LineIcon v-else-if="state === 'idle'" name="check" class="sales-pos__icon-sm" />
+          {{ completeLabel }}
+        </button>
       </div>
     </section>
   </div>
@@ -782,6 +869,13 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   --pos-subtle: #7f8ba0;
   --pos-primary: #0aa06a;
   --pos-primary-strong: #078b5d;
+  /* Guarded (unresolved CompleteSale) controls stay readable: tinted, not faded. */
+  --pos-lock-bg: #f3f5f8;
+  --pos-lock-border: #dce3ea;
+  --pos-lock-text: #5b6b80;
+  --pos-amber-bg: #fff8ea;
+  --pos-amber-border: #efc677;
+  --pos-amber-text: #7d5300;
   display: grid;
   max-width: 1536px;
   grid-template-columns: minmax(0, 1fr) 404px;
@@ -800,6 +894,8 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 /* Like the reference icons, these may shrink when a label wraps inside a narrow button. */
 .sales-pos :deep(.line-icon) { width: 20px; height: 20px; flex: 0 1 auto; }
 .sales-pos :deep(.sales-pos__icon-sm) { width: 18px; height: 18px; }
+.sales-pos :deep(.sales-pos__icon-xs) { width: 13px; height: 13px; flex: none; }
+.sales-pos :deep(.sales-pos__lock-icon) { display: inline-block; width: 14px; height: 14px; margin-left: 6px; color: var(--pos-amber-text); vertical-align: -2px; }
 .sales-pos__sr-only {
   position: absolute;
   width: 1px;
@@ -893,7 +989,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__ghost-pill:hover:not(:disabled),
 .sales-pos__tool-btn:hover:not(:disabled),
 .sales-pos__pay-btn:hover:not(:disabled),
-.sales-pos__add-customer-btn:hover { border-color: rgb(10 163 107 / 48%); background-color: #f8fdfa; }
+.sales-pos__add-customer-btn:hover:not([aria-disabled="true"]) { border-color: rgb(10 163 107 / 48%); background-color: #f8fdfa; }
 .sales-pos__queue-item {
   display: flex;
   align-items: baseline;
@@ -922,6 +1018,21 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   font-size: 13px;
   line-height: 1.45;
 }
+.sales-pos__lock-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  border: 1px solid var(--pos-lock-border);
+  border-radius: 10px;
+  background: var(--pos-lock-bg);
+  padding: 8px 12px;
+  color: var(--pos-lock-text);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.sales-pos__lock-strip :deep(.line-icon) { flex: none; color: var(--pos-amber-text); }
 
 .sales-pos__search {
   display: grid;
@@ -1053,9 +1164,11 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 }
 .sales-pos__product-meta { color: #637493; font-size: 12.5px; }
 .sales-pos__product-price { font-size: 16px; font-weight: 820; }
-.sales-pos__product-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
-.sales-pos__product-stock { margin-top: auto; color: #596a82; font-size: 12.5px; }
-.sales-pos__stock-tag { display: inline-flex; align-items: center; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; }
+.sales-pos__product-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sales-pos__product-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+/* A long Unit label or a large stock value truncates instead of pushing the Add button out. */
+.sales-pos__product-stock { min-width: 0; overflow: hidden; margin-top: auto; color: #596a82; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-pos__stock-tag { display: inline-flex; min-width: 0; align-items: center; overflow: hidden; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .sales-pos__stock-tag.is-warn { background: #fff6e6; color: #f7a531; }
 .sales-pos__stock-tag.is-danger { background: #ffecec; color: #eb5a49; }
 .sales-pos__add-btn {
@@ -1075,6 +1188,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 }
 .sales-pos__add-btn:hover:not(:disabled) { background: #d9f3e6; transform: translateY(-1px); }
 .sales-pos__add-btn:disabled { opacity: 0.5; }
+.sales-pos__product-price { overflow-wrap: anywhere; }
 .sales-pos__pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; color: #4e607a; font-size: 13px; }
 .sales-pos__pager button {
   height: 34px;
@@ -1107,23 +1221,45 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   display: inline-flex;
   height: 24px;
   align-items: center;
+  gap: 4px;
   border-radius: 999px;
   background: #edf9f3;
   padding: 0 9px;
   color: #0d8b5b;
   font-size: 11px;
   font-weight: 800;
+  white-space: nowrap;
 }
-.sales-pos__checkout-tools { text-align: right; }
-.sales-pos__muted-row { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 10px; color: #43546c; }
-.sales-pos__danger-link { display: inline-flex; align-items: center; gap: 8px; color: #ed4343; font-weight: 800; }
+.sales-pos__status-chip.is-locked { background: var(--pos-amber-bg); box-shadow: inset 0 0 0 1px var(--pos-amber-border); color: var(--pos-amber-text); }
+.sales-pos__checkout-tools { display: grid; justify-items: end; gap: 6px; text-align: right; }
+.sales-pos__muted-row { display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 4px; color: #43546c; }
+/* Utility navigation: quieter than Xóa đơn and far from the Complete CTA. */
+.sales-pos__history-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 7px;
+  color: #3d4f69;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sales-pos__history-link :deep(.line-icon) { width: 16px; height: 16px; flex: none; color: #60718a; }
+.sales-pos__history-link:hover:not([aria-disabled="true"]) { color: #0f915f; text-decoration: underline; }
+.sales-pos__history-link:hover:not([aria-disabled="true"]) :deep(.line-icon) { color: currentColor; }
+.sales-pos__history-link[aria-disabled="true"] { cursor: not-allowed; color: #8d99ab; }
+.sales-pos__danger-link { display: inline-flex; align-items: center; gap: 8px; border-radius: 7px; color: #ed4343; font-weight: 800; white-space: nowrap; }
+.sales-pos__danger-link:hover:not(:disabled) { color: #c92a2a; }
 .sales-pos__danger-link:disabled { opacity: 0.55; }
 .sales-pos__field-label { display: block; margin-bottom: 7px; font-size: 13.5px; font-weight: 760; }
 .sales-pos__customer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .sales-pos__required-tag { border-radius: 999px; background: #fff3dc; padding: 2px 8px; color: #9d6b06; font-size: 11.5px; font-weight: 800; white-space: nowrap; }
 .sales-pos__optional { color: var(--pos-subtle); font-weight: 500; }
-.sales-pos__field-row { display: grid; grid-template-columns: minmax(0, 1fr) 126px; gap: 10px; margin-bottom: 12px; }
-.sales-pos__customer-picker,
+/* The Customer dropdown anchors to the whole row, so `+ Thêm khách` can size to its one-line label. */
+.sales-pos__field-row { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-bottom: 12px; }
+.sales-pos__customer-picker { position: static; min-width: 0; }
 .sales-pos__create-customer { position: relative; min-width: 0; }
 .sales-pos__select,
 .sales-pos__note,
@@ -1143,12 +1279,18 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sales-pos__add-customer-btn {
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   border-color: rgb(10 163 107 / 28%);
   background: #fbfffd;
+  padding: 0 12px;
   color: #0f915f;
+  font-size: 14px;
   font-weight: 800;
+  white-space: nowrap;
 }
+.sales-pos__add-customer-btn :deep(.line-icon) { flex: none; }
+.sales-pos__select[aria-disabled="true"],
+.sales-pos__add-customer-btn[aria-disabled="true"] { cursor: not-allowed; }
 .sales-pos__note { width: 100%; margin-bottom: 12px; }
 .sales-pos__note::placeholder { color: #9aa6b8; }
 .sales-pos__dropdown {
@@ -1167,7 +1309,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   box-shadow: 0 16px 32px rgb(16 39 68 / 14%);
   font-size: 14px;
 }
-.sales-pos__dropdown--row { width: calc(100% + 136px); }
+.sales-pos__dropdown--row { width: 100%; }
 .sales-pos__dropdown--end { right: 0; left: auto; width: 300px; }
 .sales-pos__dropdown label { color: #4e607a; font-size: 12.5px; font-weight: 700; }
 .sales-pos__dropdown-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
@@ -1232,13 +1374,23 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 }
 .sales-pos__line-image--empty { display: grid; place-items: center; color: #93b9aa; }
 .sales-pos__line-main { min-width: 0; }
-.sales-pos__line-name { font-size: 13.5px; font-weight: 780; line-height: 1.25; overflow-wrap: anywhere; }
+.sales-pos__line-name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 780;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
 .sales-pos__line-price { margin-top: 4px; color: #4d5f78; font-size: 12px; }
 .sales-pos__qty-box {
   display: grid;
-  width: 116px;
+  width: 120px;
   height: 34px;
-  grid-template-columns: 1fr 1fr 1fr;
+  /* A wider middle cell keeps five- and six-digit quantities readable. */
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
   align-items: center;
   overflow: hidden;
   margin-top: 7px;
@@ -1249,6 +1401,7 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 .sales-pos__qty-box button,
 .sales-pos__qty-box input { display: grid; height: 100%; min-width: 0; place-items: center; font-weight: 800; }
 .sales-pos__qty-box button:hover:not(:disabled) { background: #f1f5f4; }
+.sales-pos__qty-box button:focus-visible { outline-offset: -3px; }
 .sales-pos__qty-box button:disabled { opacity: 0.5; }
 .sales-pos__qty-box input {
   width: 100%;
@@ -1318,14 +1471,15 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   font-size: 13px;
 }
 .sales-pos__totals-row strong { color: #1b2e48; white-space: nowrap; }
-.sales-pos__grand-total { display: flex; align-items: end; justify-content: space-between; gap: 10px; margin: 6px 0 12px; }
+.sales-pos__grand-total { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 2px 10px; margin: 6px 0 12px; }
 .sales-pos__grand-total h3 { font-size: 18px; font-weight: 850; }
 .sales-pos__grand-value { color: var(--pos-primary-strong); font-size: 26px; font-weight: 900; letter-spacing: -0.02em; white-space: nowrap; }
-.sales-pos__pay-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+.sales-pos__payment { display: grid; gap: 10px; margin-bottom: 16px; }
+.sales-pos__pay-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .sales-pos__pay-title { font-size: 13.5px; font-weight: 760; }
 .sales-pos__split-toggle { color: #118458; font-size: 12.5px; font-weight: 700; }
 .sales-pos__split-toggle:hover { text-decoration: underline; }
-.sales-pos__payment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.sales-pos__payment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .sales-pos__payment-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .sales-pos__pay-btn {
   display: flex;
@@ -1351,7 +1505,6 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: -6px 0 12px;
   border: 1px dashed #e7c27a;
   border-radius: 9px;
   background: #fff;
@@ -1367,12 +1520,11 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  margin: -4px 0 12px;
   color: #7d5300;
   font-size: 13px;
 }
 .sales-pos__full-debt-state span { font-weight: 800; }
-.sales-pos__split { display: grid; gap: 8px; margin: -6px 0 14px; }
+.sales-pos__split { display: grid; gap: 8px; }
 .sales-pos__split-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
 .sales-pos__split-list { display: grid; gap: 4px; }
 .sales-pos__split-summary { color: #344762; font-size: 13px; }
@@ -1389,10 +1541,52 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 }
 .sales-pos__split-list button { border-radius: 7px; padding: 4px 8px; color: #6b7a91; font-size: 12.5px; font-weight: 700; }
 .sales-pos__split-list button:hover:not(:disabled) { background: #fff0f0; color: #df4040; }
-.sales-pos__notice,
-.sales-pos__message { margin: -4px 0 12px; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 650; line-height: 1.4; }
-.sales-pos__notice { border: 1px solid var(--pos-border); background: #f1f5f4; color: #4e607a; }
-.sales-pos__message { border: 1px solid #fbd0d0; background: #fff0f0; color: #b42318; }
+.sales-pos__notice { margin-bottom: 12px; border: 1px solid var(--pos-border); border-radius: 10px; background: #f1f5f4; padding: 8px 12px; color: #4e607a; font-size: 13px; font-weight: 650; line-height: 1.4; }
+/* A correctable error sits right above the Complete CTA; the order stays editable. */
+.sales-pos__error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+  border: 1px solid #fbd0d0;
+  border-radius: 10px;
+  background: #fff0f0;
+  padding: 9px 12px;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.sales-pos__error :deep(.line-icon) { margin-top: 1px; }
+.sales-pos__error-title { color: #912018; font-weight: 800; }
+.sales-pos__message { font-weight: 650; overflow-wrap: anywhere; }
+.sales-pos__error-hint { margin-top: 2px; color: #7a271a; }
+.sales-pos__checking { margin-bottom: 12px; border-radius: 10px; background: var(--pos-lock-bg); padding: 8px 12px; color: var(--pos-lock-text); font-size: 13px; font-weight: 650; line-height: 1.4; }
+/* Unknown outcome: prominent but calm, it explains the lock and the exact retry below it. */
+.sales-pos__txn-state {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--pos-amber-border);
+  border-radius: 12px;
+  background: var(--pos-amber-bg);
+  padding: 12px;
+  color: #5c4209;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.sales-pos__txn-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9px;
+  background: #fdecc8;
+  color: var(--pos-amber-text);
+}
+.sales-pos__txn-body { display: grid; gap: 4px; }
+.sales-pos__txn-title { color: #4a3305; font-size: 14.5px; font-weight: 850; }
+.sales-pos__txn-support { color: var(--pos-amber-text); font-weight: 700; }
 .sales-pos__actions { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; }
 .sales-pos__actions--single { grid-template-columns: minmax(0, 1fr); }
 .sales-pos__secondary-btn,
@@ -1420,9 +1614,55 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
 }
 .sales-pos__primary-btn:hover:not(:disabled) { filter: brightness(0.98); transform: translateY(-1px); }
 .sales-pos__primary-btn:disabled { opacity: 0.7; }
+.sales-pos__primary-btn[aria-busy="true"] { opacity: 0.88; cursor: progress; }
+.sales-pos__spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2.5px solid rgb(255 255 255 / 38%);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: sales-pos-spin 0.8s linear infinite;
+}
+@keyframes sales-pos-spin { to { transform: rotate(360deg); } }
 /* The shortcut hint stays out of the button's accessible text. */
 .sales-pos__primary-btn[data-shortcut]::after { margin-left: auto; opacity: 0.9; content: attr(data-shortcut); }
 
+/* Unresolved CompleteSale: every mutable control reads as protected, not broken (D-107 F). */
+.sales-pos--guarded .sales-pos__search-box { border-color: var(--pos-lock-border); background: var(--pos-lock-bg); box-shadow: none; }
+.sales-pos--guarded .sales-pos__search-box input::placeholder { color: var(--pos-lock-text); }
+.sales-pos--guarded .sales-pos__tool-btn:disabled,
+.sales-pos--guarded .sales-pos__add-btn:disabled,
+.sales-pos--guarded .sales-pos__pager button:disabled,
+.sales-pos--guarded .sales-pos__pay-btn:disabled,
+.sales-pos--guarded .sales-pos__full-debt-btn:disabled,
+.sales-pos--guarded .sales-pos__control-btn:disabled,
+.sales-pos--guarded .sales-pos__danger-link:disabled,
+.sales-pos--guarded .sales-pos__select,
+.sales-pos--guarded .sales-pos__add-customer-btn,
+.sales-pos--guarded .sales-pos__control:disabled,
+.sales-pos--guarded .sales-pos__qty-box {
+  border-color: var(--pos-lock-border);
+  background-color: var(--pos-lock-bg);
+  box-shadow: none;
+  color: var(--pos-lock-text);
+  opacity: 1;
+}
+.sales-pos--guarded .sales-pos__danger-link:disabled { background: none; }
+.sales-pos--guarded .sales-pos__qty-box button:disabled,
+.sales-pos--guarded .sales-pos__split-toggle:disabled,
+.sales-pos--guarded .sales-pos__remove-mini:disabled,
+.sales-pos--guarded .sales-pos__split-list button:disabled { color: #9aa6b8; opacity: 1; }
+/* The locked attempt still shows what it will send: the chosen method or full debt. */
+.sales-pos--guarded .sales-pos__pay-btn.is-active { border-color: #b9d8c8; background: #eaf4ef; color: #2f6f55; }
+.sales-pos--guarded .sales-pos__full-debt-btn.is-active { border: 1.5px solid var(--pos-amber-border); background: var(--pos-amber-bg); color: var(--pos-amber-text); }
+.sales-pos--guarded .sales-pos__primary-btn.is-retry { box-shadow: 0 10px 20px rgb(10 163 107 / 20%); }
+
+@media (min-width: 1081px) {
+  /* The checkout stays within the viewport: a long cart scrolls inside it so the Complete CTA remains reachable. */
+  .sales-pos__checkout { max-height: calc(100dvh - 82px); overflow-y: auto; overscroll-behavior: contain; }
+  .sales-pos__order-items { max-height: max(146px, calc(100dvh - 600px)); overflow-y: auto; overscroll-behavior: contain; }
+}
 @media (max-width: 1280px) {
   .sales-pos { grid-template-columns: minmax(0, 1fr) 350px; }
   .sales-pos__product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1435,25 +1675,42 @@ defineExpose({ state, attempt, cart, payments, customer, total, paid, outstandin
   .sales-pos__checkout { position: static; }
 }
 @media (max-width: 860px) {
-  .sales-pos__search { grid-template-columns: minmax(0, 1fr); }
   .sales-pos__categories { display: none; }
   .sales-pos__product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sales-pos__field-row,
-  .sales-pos__actions,
-  .sales-pos__payment-grid { grid-template-columns: minmax(0, 1fr); }
+  .sales-pos__actions { grid-template-columns: minmax(0, 1fr); }
   .sales-pos__order-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sales-pos__dropdown--row { width: 100%; }
 }
 @media (max-width: 560px) {
   .sales-pos { gap: 12px; }
+  .sales-pos__search { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sales-pos__search-box { grid-column: 1 / -1; }
+  .sales-pos__tool-btn--scan { flex-direction: row; gap: 8px; font-size: 14px; }
   .sales-pos__product-grid,
   .sales-pos__order-rail { grid-template-columns: minmax(0, 1fr); }
   .sales-pos__checkout { padding: 16px; }
   .sales-pos__dropdown--end { width: 100%; min-width: 0; }
+  /* On phones the create-Customer panel spans the Customer row instead of the narrow button. */
+  .sales-pos__create-customer { position: static; }
+  .sales-pos__field-row .sales-pos__dropdown--end { right: 0; left: 0; width: auto; }
+  /* Three Demo pay modes stack; the two live methods stay side by side. */
+  .sales-pos__payment-grid:not(.sales-pos__payment-grid--two) { grid-template-columns: minmax(0, 1fr); }
+  /* Comfortable touch targets at the counter. */
+  .sales-pos__select,
+  .sales-pos__add-customer-btn,
+  .sales-pos__control,
+  .sales-pos__control-btn,
+  .sales-pos__full-debt-btn { height: 44px; }
+  .sales-pos__pay-btn { height: 48px; gap: 8px; padding: 0 8px; }
+  .sales-pos__qty-box { width: 132px; height: 40px; }
+  .sales-pos__qty-box input { height: 26px; }
+  .sales-pos__history-link,
+  .sales-pos__danger-link { min-height: 32px; }
+  .sales-pos__split-toggle { padding: 8px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sales-pos button,
   .sales-pos summary,
   .sales-pos__product-card { transition: none; }
+  .sales-pos__spinner { animation-duration: 2.4s; }
 }
 </style>

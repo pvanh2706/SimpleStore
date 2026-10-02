@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { routerKey } from 'vue-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../api/client'
 import SaleCheckoutForm from './SaleCheckoutForm.vue'
@@ -32,9 +33,10 @@ type Attempt = {
 /** Every CompleteSale payload a test sends; afterEach asserts none carries a Debt method (D-107). */
 const submitted: Attempt[] = []
 
-function mountForm(overrides: Record<string, unknown> = {}) {
+function mountForm(overrides: Record<string, unknown> = {}, provide: Record<symbol, unknown> = {}) {
   const completeSale = (overrides.completeSale ?? vi.fn().mockResolvedValue(sale)) as (attempt: Attempt) => Promise<Sale>
   return mount(SaleCheckoutForm, {
+    global: { provide },
     props: {
       allowNegativeStock: false,
       searchProducts: vi.fn().mockResolvedValue(productPage()),
@@ -104,6 +106,10 @@ describe('SaleCheckoutForm', () => {
     await wrapper.get('.sales-pos__complete').trigger('click')
     expect(completeSale).not.toHaveBeenCalled()
     expect(wrapper.get('[role="alert"]').text()).toContain('dữ liệu mẫu')
+    // The live Lịch sử bán hàng shortcut stays out of the Demo, which keeps its D-106 kebab and waiting list.
+    expect(wrapper.find('.sales-pos__history-link').exists()).toBe(false)
+    expect(wrapper.find('.sales-pos__muted-row').exists()).toBe(true)
+    expect(wrapper.get('.sales-pos__queue-history').text()).toBe('Lịch sử bán hàng')
   })
 
   it('shows only supported Product browser capability in live mode', async () => {
@@ -790,5 +796,167 @@ describe('SaleCheckoutForm', () => {
     expect(completeSale).toHaveBeenCalledTimes(1)
     resolve(sale)
     await flushPromises()
+  })
+  describe('Pass 2 shell and transaction state', () => {
+    /** Every mutable control of the live order that an unresolved CompleteSale must lock. */
+    const guardedControls = (wrapper: ReturnType<typeof mountForm>) => [
+      wrapper.get('[aria-label="Tìm hoặc quét sản phẩm"]'),
+      button(wrapper, 'Thêm nhanh'),
+      button(wrapper, 'Quét mã'),
+      wrapper.get('[aria-label="Thêm sản phẩm Coffee"]'),
+      wrapper.get('[aria-label="Giảm số lượng Coffee"]'),
+      wrapper.get('[aria-label="Số lượng Coffee"]'),
+      wrapper.get('[aria-label="Tăng số lượng Coffee"]'),
+      wrapper.get('[aria-label="Xóa Coffee"]'),
+      wrapper.get('[aria-label="Tìm khách hàng"]'),
+      wrapper.get('[aria-label="Tên khách hàng mới"]'),
+      button(wrapper, 'Tiền mặt'),
+      button(wrapper, 'Chuyển khoản'),
+      button(wrapper, 'Nhập số tiền'),
+      button(wrapper, 'Ghi nợ toàn bộ'),
+      wrapper.get('[aria-label="Số tiền thanh toán"]'),
+      button(wrapper, 'Thêm thanh toán'),
+      button(wrapper, 'Xóa đơn'),
+    ]
+
+    it('routes the live Lịch sử bán hàng shortcut to Sales history', async () => {
+      const push = vi.fn()
+      const wrapper = mountForm({}, { [routerKey]: { push } })
+      await addProduct(wrapper)
+      const shortcut = wrapper.get('a.sales-pos__history-link')
+
+      expect(shortcut.text()).toBe('Lịch sử bán hàng')
+      expect(shortcut.attributes('href')).toBe('/sales')
+      expect(shortcut.attributes('aria-disabled')).toBeUndefined()
+      // A quiet header utility, never an action beside the Complete CTA.
+      expect(wrapper.get('.sales-pos__checkout-tools').element.contains(shortcut.element)).toBe(true)
+      expect(wrapper.get('.sales-pos__actions').text()).not.toContain('Lịch sử')
+      await shortcut.trigger('click', { button: 0 })
+      expect(push).toHaveBeenCalledWith('/sales')
+    })
+
+    it('keeps + Thêm khách as one icon-and-label control', async () => {
+      const wrapper = mountForm()
+      await flushPromises()
+      const add = wrapper.get('.sales-pos__create-customer summary')
+
+      expect(add.text()).toBe('Thêm khách')
+      expect(add.findAll('.line-icon')).toHaveLength(1)
+      expect(add.findAll('span').map(item => item.text())).toEqual(['Thêm khách'])
+    })
+
+    it('shows one busy status: Đang xác nhận… then Đang kiểm tra kết quả…', async () => {
+      let failComplete!: (reason: unknown) => void
+      let answerStatus!: (value: null) => void
+      const completeSale = vi.fn(() => new Promise<Sale>((_, reject) => { failComplete = reject }))
+      const checkOperation = vi.fn(() => new Promise<null>(resolve => { answerStatus = resolve }))
+      const wrapper = mountForm({ completeSale, checkOperation })
+      await addProduct(wrapper)
+      await button(wrapper, 'Hoàn tất bán hàng').trigger('click')
+
+      const cta = () => wrapper.get('.sales-pos__complete')
+      expect(cta().text()).toBe('Đang xác nhận…')
+      expect(cta().attributes('aria-busy')).toBe('true')
+      expect(cta().attributes('disabled')).toBeDefined()
+      expect(wrapper.findAll('.sales-pos__spinner')).toHaveLength(1)
+      expect(wrapper.find('.sales-pos__checking').exists()).toBe(false)
+
+      failComplete(new TypeError('network lost'))
+      await flushPromises()
+      expect(cta().text()).toBe('Đang kiểm tra kết quả…')
+      expect(cta().attributes('aria-busy')).toBe('true')
+      expect(wrapper.findAll('.sales-pos__spinner')).toHaveLength(1)
+      expect(wrapper.get('.sales-pos__checking').text()).toContain('đang kiểm tra đơn đã được ghi nhận hay chưa')
+      expect(wrapper.get('.sales-pos').classes()).toContain('sales-pos--guarded')
+
+      answerStatus(null)
+      await flushPromises()
+      expect(cta().text()).toBe('Thử lại đúng thao tác')
+      expect(cta().attributes('aria-busy')).toBeUndefined()
+      expect(cta().attributes('disabled')).toBeUndefined()
+      expect(wrapper.findAll('.sales-pos__spinner')).toHaveLength(0)
+    })
+
+    it('explains an unresolved outcome calmly and visibly locks the whole transaction', async () => {
+      const push = vi.fn()
+      const completeSale = vi.fn().mockRejectedValue(new ApiError(503, { title: 'Unavailable' }))
+      const wrapper = mountForm({ completeSale, checkOperation: vi.fn().mockResolvedValue(null) }, { [routerKey]: { push } })
+      await addProduct(wrapper)
+      await wrapper.get('.sales-pos__create-customer summary').trigger('click')
+      expect((wrapper.get('.sales-pos__create-customer').element as HTMLDetailsElement).open).toBe(true)
+      await button(wrapper, 'Hoàn tất bán hàng').trigger('click')
+      await flushPromises()
+
+      const block = wrapper.get('.sales-pos__txn-state')
+      expect(block.attributes('role')).toBe('alert')
+      expect(block.get('.sales-pos__txn-title').text()).toBe('Chưa xác định được kết quả')
+      expect(block.text()).toContain('không tạo đơn mới')
+      expect(block.text()).toContain('đã được khóa')
+      expect(block.text()).toContain('SimpleStore sẽ dùng lại đúng mã thao tác trước đó để tránh tạo đơn trùng.')
+      expect(wrapper.text()).not.toMatch(/operation ?id/i)
+      // One transaction status: the red correction box is not reused for an unknown outcome.
+      expect(wrapper.find('.sales-pos__error').exists()).toBe(false)
+      expect(wrapper.get('.sales-pos__complete').text()).toBe('Thử lại đúng thao tác')
+      expect(wrapper.get('.sales-pos__status-chip').text()).toBe('Đã khóa')
+      expect(wrapper.get('.sales-pos__lock-strip').text()).toContain('Tạm khóa')
+      expect(wrapper.get('.sales-pos').classes()).toContain('sales-pos--guarded')
+
+      for (const control of guardedControls(wrapper)) expect(control.attributes('disabled'), control.html()).toBeDefined()
+      for (const summary of wrapper.findAll('.sales-pos__field-row summary')) {
+        expect(summary.attributes('aria-disabled')).toBe('true')
+      }
+      // Open pickers close with the lock and cannot be reopened while it holds.
+      expect((wrapper.get('.sales-pos__create-customer').element as HTMLDetailsElement).open).toBe(false)
+      const toggle = new MouseEvent('click', { bubbles: true, cancelable: true })
+      wrapper.get('.sales-pos__customer-picker summary').element.dispatchEvent(toggle)
+      expect(toggle.defaultPrevented).toBe(true)
+      // Leaving would drop the unresolved attempt, so the history shortcut waits.
+      const shortcut = wrapper.get('a.sales-pos__history-link')
+      expect(shortcut.attributes('aria-disabled')).toBe('true')
+      expect(shortcut.attributes('tabindex')).toBe('-1')
+      await shortcut.trigger('click', { button: 0 })
+      expect(push).not.toHaveBeenCalled()
+    })
+
+    it('returns a rejected sale to an editable correction state without lock residue', async () => {
+      const completeSale = vi.fn()
+        .mockRejectedValueOnce(new ApiError(422, { title: 'Không đủ tồn kho cho Coffee.' }))
+        .mockResolvedValueOnce(sale)
+      vi.mocked(crypto.randomUUID)
+        .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+        .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+      const wrapper = mountForm({ completeSale })
+      await addProduct(wrapper)
+      await button(wrapper, 'Hoàn tất bán hàng').trigger('click')
+      await flushPromises()
+
+      const error = wrapper.get('.sales-pos__error')
+      expect(error.attributes('role')).toBe('alert')
+      expect(error.get('.sales-pos__error-title').text()).toBe('Chưa hoàn tất đơn bán')
+      expect(error.get('.sales-pos__message').text()).toBe('Không đủ tồn kho cho Coffee.')
+      expect(error.text()).toContain('sửa đơn rồi bấm Hoàn tất bán hàng')
+      // The correction sits right above the transaction action.
+      expect(error.element.nextElementSibling?.classList.contains('sales-pos__actions')).toBe(true)
+      expect(wrapper.find('.sales-pos__txn-state').exists()).toBe(false)
+      expect(wrapper.find('.sales-pos__lock-strip').exists()).toBe(false)
+      expect(wrapper.get('.sales-pos').classes()).not.toContain('sales-pos--guarded')
+      expect(wrapper.get('.sales-pos__status-chip').text()).toBe('Đang bán')
+      expect(wrapper.get('.sales-pos__complete').text()).toBe('Hoàn tất bán hàng')
+      for (const control of guardedControls(wrapper)) expect(control.attributes('disabled'), control.html()).toBeUndefined()
+      for (const summary of wrapper.findAll('.sales-pos__field-row summary')) {
+        expect(summary.attributes('aria-disabled')).toBeUndefined()
+      }
+
+      // A corrected order is a new attempt with a new operation, as before Pass 2.
+      await wrapper.get('[aria-label="Số lượng Coffee"]').setValue('2')
+      await button(wrapper, 'Hoàn tất bán hàng').trigger('click')
+      await flushPromises()
+      expect(completeSale.mock.calls[0][0]).toMatchObject({ operationId: '00000000-0000-4000-8000-000000000001' })
+      expect(completeSale.mock.calls[1][0]).toMatchObject({
+        operationId: '00000000-0000-4000-8000-000000000002',
+        lines: [{ productId: product.id, quantity: 2 }],
+      })
+      expect(wrapper.find('.sales-pos__error').exists()).toBe(false)
+    })
   })
 })

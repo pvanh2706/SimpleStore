@@ -58,6 +58,21 @@ describe('SaleReceipt', () => {
     expect(wrapper.emitted('completed')).toBeUndefined()
   })
 
+  it('lets a host render the print action while printReceipt keeps the same print boundary', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementationOnce(() => { throw new Error('printer unavailable') })
+    const wrapper = mount(SaleReceipt, { props: { sale, hidePrintAction: true } })
+    expect(wrapper.findAll('button')).toHaveLength(0)
+    expect(wrapper.text()).toContain('Coffee')
+
+    const exposed = wrapper.vm as unknown as { printReceipt: () => void; printError: string }
+    exposed.printReceipt()
+    await wrapper.vm.$nextTick()
+    expect(print).toHaveBeenCalledOnce()
+    expect(exposed.printError).toContain('thử in lại')
+    // The host shows the error next to its own button, so the receipt itself stays clean.
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  })
+
   it('renders long Vietnamese names, decimal quantity, transfer and customer facts', () => {
     const detailed: Sale = {
       ...sale, totalAmount: 30000, paidAmount: 20000,
