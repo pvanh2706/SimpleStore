@@ -1,6 +1,6 @@
 # Sales screen v0.1
 
-**Status:** Approved screen concept — D-095. The D-106 [Sales HTML Visual Reference v1.0](../approved/sales-html-reference-v1.0/index.html) is the visual source of truth for UI-B production alignment; D-105 remains the capability boundary. **Production alignment:** NOT YET APPROVED / PENDING PRODUCT OWNER REVIEW. **Production polish:** [Sales Production Polish v0.1](../../architecture/sales-production-polish-v0.1.md) scope `APPROVED — D-107`; Pass 1 `APPROVED / COMPLETED — D-108`; Pass 2 `IMPLEMENTED / PENDING PRODUCT OWNER REVIEW`; Pass 3 `NOT STARTED`. Live mode shows only supported capability; visual-only elements stay in Demo / Visual Reference mode.
+**Status:** Approved screen concept — D-095. The D-106 [Sales HTML Visual Reference v1.0](../approved/sales-html-reference-v1.0/index.html) is the visual source of truth for UI-B production alignment; D-105 remains the capability boundary. **Production alignment:** NOT YET APPROVED / PENDING PRODUCT OWNER REVIEW. **Production polish:** [Sales Production Polish v0.1](../../architecture/sales-production-polish-v0.1.md) scope `APPROVED — D-107`; Pass 1 `APPROVED / COMPLETED — D-108`; Pass 2 `APPROVED / COMPLETED — D-109`; Pass 3 `APPROVED FOR IMPLEMENTATION / NOT STARTED`. Live mode shows only supported capability; visual-only elements stay in Demo / Visual Reference mode.
 
 ![Approved Sales visual reference](../references/sales-screen-v0.1.png)
 
