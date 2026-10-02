@@ -35,6 +35,7 @@ async function openSales() {
     routes: [
       { path: '/sales/new', name: 'sale-checkout', component: SaleCheckoutView },
       { path: '/sales', name: 'sales', component: { render: () => h('p', 'Lịch sử bán hàng') } },
+      { path: '/products', name: 'products', component: { render: () => h('p', 'Sản phẩm') } },
     ],
   })
   router.beforeEach(keepPendingSale(() => true))
@@ -46,8 +47,11 @@ async function openSales() {
   const forms = () => wrapper.findAllComponents(SaleCheckoutForm)
   const live = () => forms().find(form => !form.props('previewOnly'))!
   const demo = () => forms().find(form => form.props('previewOnly'))
-  return { wrapper, live, demo }
+  return { wrapper, router, live, demo }
 }
+
+/** Every call the Sales view makes is Sales-specific: settings, Products, Customers, Sales and operations. */
+const salesReads = (from = 0) => calls.slice(from).filter(call => /^\/api\/(store\/operational-settings|products|customers|sales|operations)/.test(call.path))
 
 const button = (form: VueWrapper, text: string) => form.findAll('button').find(item => item.text() === text)!
 const setDemo = async (enabled: boolean) => {
@@ -242,5 +246,102 @@ describe('Sales Demo / Live isolation (D-107 G)', () => {
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids).toContain(`sales-quantity-${coffee.id}`)
     expect(ids).toContain('sales-quantity-demo-coke-preview')
+  })
+  describe('lazy Live start while Dữ liệu mẫu is on (Product Owner review)', () => {
+    it('A: entering Sales with Demo on shows Demo and reads nothing from the Sales API', async () => {
+      salesDemoEnabled.value = true
+      const { live, demo } = await openSales()
+
+      expect(demo()!.isVisible()).toBe(true)
+      expect(live()).toBeUndefined()
+      expect(calls).toEqual([])
+      await demo()!.get('[aria-label="Thêm sản phẩm Pepsi 330ml"]').trigger('click')
+      await button(demo()!, 'Bán nợ').trigger('click')
+      await button(demo()!, 'Hoàn tất bán hàng').trigger('click')
+      await flushPromises()
+      expect(demo()!.get('.sales-pos__message').text()).toContain('dữ liệu mẫu')
+      expect(calls).toEqual([])
+    })
+
+    it('B–D: Demo re-entry reads nothing; returning to Live starts it lazily with the working order intact', async () => {
+      const { router, live, demo } = await openSales()
+      await live().get('[aria-label="Thêm sản phẩm Coffee"]').trigger('click')
+      await live().get('[aria-label="Thêm sản phẩm Tea"]').trigger('click')
+      await chooseCustomer(live())
+      await setDemo(true)
+      await router.push('/products')
+      await flushPromises()
+      expect(live()).toBeUndefined()
+
+      // B: back to /sales/new with Dữ liệu mẫu still on.
+      const reentry = calls.length
+      await router.push('/sales/new')
+      await flushPromises()
+      expect(demo()!.isVisible()).toBe(true)
+      expect(live()).toBeUndefined()
+      await demo()!.get('[aria-label="Thêm sản phẩm Pepsi 330ml"]').trigger('click')
+      await button(demo()!, 'Giữ đơn').trigger('click')
+      await flushPromises()
+      expect(calls.slice(reentry)).toEqual([])
+
+      // C: an explicit return to Live is what starts the Live reads, settings first.
+      await setDemo(false)
+      expect(salesReads(reentry).map(call => call.path.split('?')[0])).toEqual(['/api/store/operational-settings', '/api/products'])
+      expect(live().isVisible()).toBe(true)
+      expect(live().findAll('.sales-pos__product-card')).toHaveLength(2)
+
+      // D: the RAM-only working order survived Demo and the route change.
+      expect(liveOrderBook.active.value.cart.map(line => line.product.id)).toEqual([coffee.id, tea.id])
+      expect(liveOrderBook.active.value.customer?.id).toBe(customer.id)
+      expect(live().get('.sales-pos__customer-picker summary').text()).toContain(customer.name)
+      expect(writes()).toEqual([])
+    })
+
+    it('does not start Live behind Demo when Demo is switched on while settings are still loading', async () => {
+      let answer!: (value: { allowNegativeStock: boolean }) => void
+      const fallback = apiRequest.getMockImplementation()!
+      apiRequest.mockImplementation(async (path: string, init?: RequestInit) => {
+        if (path === '/api/store/operational-settings') {
+          calls.push({ path, method: 'GET', body: null })
+          return new Promise(resolve => { answer = resolve })
+        }
+        return fallback(path, init)
+      })
+      const { live, demo } = await openSales()
+      expect(salesReads().map(call => call.path)).toEqual(['/api/store/operational-settings'])
+
+      await setDemo(true)
+      answer({ allowNegativeStock: false })
+      await flushPromises()
+      expect(live()).toBeUndefined()
+      expect(demo()!.isVisible()).toBe(true)
+      expect(salesReads()).toHaveLength(1)
+
+      // Back to Live: the loaded settings are reused and only now are Products read.
+      await setDemo(false)
+      expect(salesReads().map(call => call.path.split('?')[0])).toEqual(['/api/store/operational-settings', '/api/products'])
+      expect(live().isVisible()).toBe(true)
+    })
+
+    it('starts the next Sale only once Live is shown when Demo was switched on at completion', async () => {
+      const { wrapper, live, demo } = await openSales()
+      await live().get('[aria-label="Thêm sản phẩm Coffee"]').trigger('click')
+      await button(live(), 'Hoàn tất bán hàng').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('h1').text()).toBe('Đơn bán đã hoàn tất')
+
+      await setDemo(true)
+      const before = calls.length
+      await wrapper.get('.sales-complete__new').trigger('click')
+      await flushPromises()
+      expect(demo()!.isVisible()).toBe(true)
+      expect(live()).toBeUndefined()
+      expect(calls.slice(before)).toEqual([])
+
+      await setDemo(false)
+      expect(salesReads(before).map(call => call.path.split('?')[0])).toEqual(['/api/products'])
+      expect(live().isVisible()).toBe(true)
+      expect(liveOrderBook.active.value.cart).toEqual([])
+    })
   })
 })

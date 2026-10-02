@@ -16,6 +16,13 @@ type Attempt = {
   payments: Array<{ amount: number; method: 'Cash' | 'Transfer' }>
 }
 const settings = ref<StoreOperationalSettings | null>(null)
+/**
+ * Whether the live checkout has started in this view. It starts only while Live is shown, so entering Sales with
+ * Dữ liệu mẫu on reads nothing from the Sales API (D-107 G). Once started it stays mounted under Demo, so
+ * Live → Demo → Live keeps its state; the RAM-only working order itself lives in liveOrderBook.
+ */
+const liveStarted = ref(false)
+let settingsLoad: Promise<void> | null = null
 const completed = ref<Sale | null>(null)
 const error = ref('')
 const receipt = ref<InstanceType<typeof SaleReceipt> | null>(null)
@@ -27,9 +34,40 @@ const paymentSummary = (sale: Sale) => sale.payments
   .map(payment => `${methodLabel(payment.method)} ${money(payment.amount)} ₫`)
   .join(' · ')
 
+function loadSettings() {
+  settingsLoad ??= apiRequest<StoreOperationalSettings>('/api/store/operational-settings')
+    .then(result => {
+      settings.value = result
+      error.value = ''
+    })
+    .catch(reason => {
+      // A later return to Live may try again.
+      settingsLoad = null
+      error.value = reason instanceof Error ? reason.message : 'Không thể tải thiết lập bán hàng.'
+    })
+  return settingsLoad
+}
+
+/** Starts Live Sales when it is shown; a switch to Demo while settings load wins, so nothing mounts behind it. */
+async function startLive() {
+  if (liveStarted.value || salesDemoEnabled.value) return
+  if (!settings.value) await loadSettings()
+  if (settings.value && !salesDemoEnabled.value) liveStarted.value = true
+}
+
+watch(salesDemoEnabled, enabled => {
+  if (!enabled) void startLive()
+})
+
 // The checkout (and its focused CTA) is replaced by the confirmed Sale: move focus to the success heading.
+// The next Sale is a fresh checkout, started only once Live is shown again.
 watch(completed, sale => {
-  if (sale) void nextTick(() => completedHeading.value?.focus())
+  if (sale) {
+    liveStarted.value = false
+    void nextTick(() => completedHeading.value?.focus())
+  } else {
+    void startLive()
+  }
 })
 
 /** The next Sale starts in the Product search, ready for the next scan. */
@@ -63,19 +101,18 @@ async function checkOperation(operationId: string) {
   catch (reason) { if (reason instanceof ApiError && reason.status === 404) return null; throw reason }
 }
 async function loadSale(saleId: string) { return apiRequest<Sale>(`/api/sales/${saleId}`) }
-onMounted(async () => {
-  try { settings.value = await apiRequest<StoreOperationalSettings>('/api/store/operational-settings') }
-  catch (reason) { error.value = reason instanceof Error ? reason.message : 'Không thể tải thiết lập bán hàng.' }
+onMounted(() => {
+  void startLive()
 })
 </script>
 
 <template>
   <section class="sales-page">
     <p v-if="error && !salesDemoEnabled" class="error mt-5" role="alert">{{ error }}</p>
-    <p v-else-if="!settings && !salesDemoEnabled" class="sales-page__loading no-print" role="status">Đang tải thiết lập bán hàng…</p>
+    <p v-else-if="!liveStarted && !completed && !salesDemoEnabled" class="sales-page__loading no-print" role="status">Đang tải thiết lập bán hàng…</p>
 
     <SaleCheckoutForm
-      v-if="settings && !completed"
+      v-if="liveStarted && settings && !completed"
       v-show="!salesDemoEnabled"
       ref="liveForm"
       :allow-negative-stock="settings.allowNegativeStock"

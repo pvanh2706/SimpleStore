@@ -774,6 +774,50 @@ test('Sales workspace remains usable without horizontal clipping on tablet and m
   }
 })
 
+test('Dữ liệu mẫu stays browser-only when Sales is re-entered; Live starts only when it is shown again', async ({ page }) => {
+  await mockCashierCheckout(page)
+  await page.setViewportSize({ width: 1536, height: 1024 })
+  // Sales-specific reads only; shell reads (session, Store identity, antiforgery) are not Sales leakage.
+  const salesReads: string[] = []
+  page.on('request', request => {
+    const { pathname } = new URL(request.url())
+    if (/^\/api\/(store\/operational-settings|products|customers|sales|operations)/.test(pathname)) salesReads.push(`${request.method()} ${pathname}`)
+  })
+  const navigation = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true })
+  const demoToggle = page.locator('.app-topbar').getByRole('button', { name: 'Dữ liệu mẫu' })
+
+  await page.goto('/sales/new')
+  await page.getByRole('button', { name: `Thêm sản phẩm ${products[1].name}` }).click()
+  await demoToggle.click()
+  await expect(demoToggle).toHaveAttribute('aria-pressed', 'true')
+
+  // Leave Sales with Dữ liệu mẫu still on, and let the Products page settle its own reads.
+  await navigation.getByRole('link', { name: 'Sản phẩm' }).click()
+  await expect(navigation.getByRole('link', { name: 'Sản phẩm' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByText(products[0].name).first()).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  const reentry = salesReads.length
+
+  await navigation.getByRole('link', { name: 'Bán hàng' }).click()
+  const demo = page.locator('.sales-pos--demo')
+  await expect(demo).toBeVisible()
+  await expect(demoToggle).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.sales-pos:not(.sales-pos--demo)')).toHaveCount(0)
+  await demo.getByRole('button', { name: 'Thêm sản phẩm Pepsi 330ml' }).click()
+  await demo.getByRole('button', { name: 'Bán nợ' }).click()
+  await demo.getByRole('button', { name: 'Giữ đơn' }).click()
+  await expect(demo.getByText('Danh sách đơn đang chờ (4)')).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  await captureVisual(page, 'sales-demo-reentry-1536x1024.png')
+  expect(salesReads.slice(reentry)).toEqual([])
+
+  // Only an explicit return to Live starts the Live reads, and the RAM-only working order is still there.
+  await demoToggle.click()
+  await expect(page.getByRole('spinbutton', { name: `Số lượng ${products[1].name}` })).toHaveValue('1')
+  await expect(page.getByRole('button', { name: `Thêm sản phẩm ${products[0].name}` })).toBeVisible()
+  expect(salesReads.slice(reentry)).toEqual(['GET /api/store/operational-settings', 'GET /api/products'])
+})
+
 test('Sales reference preview keeps D-106 visual-only elements without any API write', async ({ page }) => {
   const { attempts } = await mockCashierCheckout(page)
   await page.setViewportSize({ width: 1536, height: 1024 })
